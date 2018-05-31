@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<style>
+    table,th,td
+    {
+        border:1px solid black;
+        border-collapse:collapse;
+    }
+    th,td
+    {
+        padding:5px;
+    }
+    .boxed {
+        border: 1px solid green;
+        white-space: nowrap;
+    }
+    div.box {
+        border: solid 1px black;
+        padding: 4px;
+        margin: 2px 2px 2px 2px;
+        float:left;
+    }
+</style>
+    <body>
+    <table><thead>
+    <tr>
+        <td align="left"><a href="/">List all outputs</a></td>
+        <td align="left"><a href="/all">List all jobs</a></td>
+        <td align="left"><a href="/vis">Visualize dependency graph</a></td>
+    </tr>
+    </thead>
+    </table>
+
+    <table><thead>
+    <tr>
+        <th align="left"><strong><em>Loaded configs:</em></strong></th>
+    </tr>
+    </thead><tbody>
+
+    {% for item in items %}
+    <tr>
+        <td align="left"><a href="/vis/{{loop.index0}}">{{item.name}}</a></td>
+    </tr>
+    {% endfor %}
+    </tbody></table>
+
+    </body>
+</html>

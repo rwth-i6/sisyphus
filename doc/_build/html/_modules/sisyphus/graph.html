@@ -1,0 +1,598 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sisyphus.graph &#8212; Sisyphus 0.9 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sisyphus.graph</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">sisyphus.tools</span> <span class="k">import</span> <span class="n">cache_result</span><span class="p">,</span> <span class="n">extract_paths</span>
+<span class="kn">import</span> <span class="nn">sisyphus.global_settings</span> <span class="k">as</span> <span class="nn">gs</span>
+<span class="kn">from</span> <span class="nn">sisyphus.job</span> <span class="k">import</span> <span class="n">Job</span>
+<span class="kn">from</span> <span class="nn">sisyphus.job_path</span> <span class="k">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">sisyphus.block</span> <span class="k">import</span> <span class="n">Block</span>
+
+<span class="kn">from</span> <span class="nn">inspect</span> <span class="k">import</span> <span class="n">isclass</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">pprint</span>
+
+
+<span class="k">class</span> <span class="nc">Node</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;job&#39;</span><span class="p">,</span> <span class="s1">&#39;sis_id&#39;</span><span class="p">,</span> <span class="s1">&#39;inputs&#39;</span><span class="p">,</span> <span class="s1">&#39;outputs&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sis_id</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">job</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sis_id</span> <span class="o">=</span> <span class="n">sis_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">OutputTarget</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_required</span> <span class="o">=</span> <span class="n">extract_paths</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">required_full_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_required</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">update_requirements</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_required</span> <span class="o">=</span> <span class="p">{</span><span class="n">out</span> <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">out</span><span class="o">.</span><span class="n">available</span><span class="p">()}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">required</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">required</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required</span>
+
+    <span class="k">def</span> <span class="nf">is_done</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_required</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">run_when_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">write_output</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">__fs_like__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">required_full_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">required_full_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">required_full_list</span>
+
+
+<span class="k">class</span> <span class="nc">OutputPath</span><span class="p">(</span><span class="n">OutputTarget</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">sis_path</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sis_path</span><span class="p">,</span> <span class="n">Path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_path</span> <span class="o">=</span> <span class="n">output_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sis_path</span> <span class="o">=</span> <span class="n">sis_path</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">sis_path</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">run_when_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">write_output</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if output is computed, if yes create output link &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_path</span><span class="o">.</span><span class="n">available</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">write_output</span><span class="p">:</span>
+            <span class="c1"># Link output file</span>
+            <span class="n">outfile_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">OUTPUT_DIR</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">ALIAS_AND_OUTPUT_SUBDIR</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_path</span><span class="p">)</span>
+            <span class="n">outfile_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">outfile_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">outfile_dir</span><span class="p">):</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outfile_dir</span><span class="p">)</span>
+
+            <span class="c1"># Check if current link is correct</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">islink</span><span class="p">(</span><span class="n">outfile_name</span><span class="p">)</span> <span class="ow">and</span> \
+               <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">outfile_name</span><span class="p">)</span> <span class="o">!=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sis_path</span><span class="o">.</span><span class="n">get_path</span><span class="p">()):</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">outfile_name</span><span class="p">)</span>
+
+            <span class="c1"># Set new link if needed</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">islink</span><span class="p">(</span><span class="n">outfile_name</span><span class="p">):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Finished output: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">outfile_name</span><span class="p">)</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">symlink</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sis_path</span><span class="o">.</span><span class="n">get_path</span><span class="p">()),</span> <span class="n">outfile_name</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">OutputCall</span><span class="p">(</span><span class="n">OutputTarget</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">argv</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_function_call</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">argv</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">required</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="c1"># This call finishes never</span>
+            <span class="n">required</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">elif</span> <span class="n">required</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Extract requirements automatically</span>
+            <span class="n">required</span> <span class="o">=</span> <span class="p">(</span><span class="n">argv</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Use given requirements</span>
+            <span class="n">required</span> <span class="o">=</span> <span class="n">required</span>
+
+        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;callback_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%i</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">f</span><span class="p">),</span> <span class="n">gs</span><span class="o">.</span><span class="n">SIS_HASH</span><span class="p">(</span><span class="n">argv</span><span class="p">),</span> <span class="n">gs</span><span class="o">.</span><span class="n">SIS_HASH</span><span class="p">(</span><span class="n">kwargs</span><span class="p">))</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">required</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">run_when_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">write_output</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Runs given function if output is available &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">available</span><span class="p">()</span> <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required</span><span class="p">)</span>
+        <span class="c1"># TODO find a better way to handle this</span>
+        <span class="n">f</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_function_call</span>
+        <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">OutputReport</span><span class="p">(</span><span class="n">OutputTarget</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">report_values</span><span class="p">,</span> <span class="n">report_template</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">update_frequency</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">report_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_report_template</span> <span class="o">=</span> <span class="n">report_template</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_report_values</span> <span class="o">=</span> <span class="n">report_values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_path</span> <span class="o">=</span> <span class="n">output_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_frequency</span> <span class="o">=</span> <span class="n">update_frequency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_update</span> <span class="o">=</span> <span class="o">-</span><span class="n">update_frequency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_values</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">update_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report_values</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">report_values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_report_values</span> <span class="o">=</span> <span class="n">report_values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_required</span> <span class="o">=</span> <span class="n">extract_paths</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_report_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">required_full_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_required</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">update_requirements</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">write_output</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Update current report if enough time as passed since last update &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_update</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_frequency</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_update</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">write_output</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_report</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">write_report</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">outfile_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">OUTPUT_DIR</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_path</span><span class="p">)</span>
+        <span class="n">outfile_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">outfile_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">outfile_dir</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outfile_dir</span><span class="p">)</span>
+
+        <span class="c1"># Remove link to avoid overwriting other files</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">islink</span><span class="p">(</span><span class="n">outfile_name</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">outfile_name</span><span class="p">)</span>
+
+        <span class="c1"># Actually write report</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">outfile_name</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_report_template</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_report_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_report_values</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="n">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_report_values</span><span class="p">):</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_report_values</span><span class="p">()))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_report_values</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">140</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">run_when_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">write_output</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">write_output</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_report</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__fs_like__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_report_values</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__fs_like__</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;template&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_report_template</span><span class="p">,</span>
+                    <span class="s1">&#39;values&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_report_values</span><span class="p">,</span>
+                    <span class="s1">&#39;frequency&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_frequency</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="SISGraph"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph">[docs]</a><span class="k">class</span> <span class="nc">SISGraph</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; This graph contains all targets that needs to be calculated and through there dependencies all required jobs.</span>
+<span class="sd">    These jobs can be searched and modified using the provided functions. Most interesting functions are::</span>
+
+<span class="sd">        # Lists all jobs</span>
+<span class="sd">        jobs()</span>
+<span class="sd">        # Find jobs by matching substring</span>
+<span class="sd">        find(pattern)</span>
+<span class="sd">        # Execute function for all nodes</span>
+<span class="sd">        for_all_nodes(f)</span>
+<span class="sd">        # Dictionaries with jobs sorted by current status:</span>
+<span class="sd">        get_jobs_by_status()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">targets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">active_targets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">out</span> <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">out</span><span class="o">.</span><span class="n">is_done</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">targets_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Deprecated: used for backwards comparability, only supports path outputs &quot;&quot;&quot;</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">required_full_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">out</span><span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">required_full_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">required_full_list</span><span class="p">):</span>
+                    <span class="n">out</span><span class="p">[</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%02i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">pos</span><span class="p">)]</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="k">def</span> <span class="nf">add_target</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">target</span><span class="o">.</span><span class="n">is_done</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SISGraph.update_nodes"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.update_nodes">[docs]</a>    <span class="k">def</span> <span class="nf">update_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Update all nodes to get the most current dependency graph &quot;&quot;&quot;</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">update_nodes</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+            <span class="n">job</span><span class="o">.</span><span class="n">_sis_runnable</span><span class="p">()</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">for_all_nodes</span><span class="p">(</span><span class="n">update_nodes</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;All graph nodes updated (time needed: </span><span class="si">%.2f</span><span class="s2">)&quot;</span></div>
+                      <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">))</span>
+
+    <span class="nd">@cache_result</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">FILESYSTEM_CACHE_TIME</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">id_to_job_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">job</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">():</span> <span class="n">job</span> <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span><span class="p">()}</span>
+
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">Job</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">item</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">id_to_job_dict</span><span class="p">()</span>
+
+    <span class="nd">@cache_result</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">FILESYSTEM_CACHE_TIME</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">job_directory_structure</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span><span class="p">():</span>
+            <span class="n">current</span> <span class="o">=</span> <span class="n">d</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">path</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">step</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">current</span><span class="p">:</span>
+                    <span class="n">current</span><span class="p">[</span><span class="n">step</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">current</span> <span class="o">=</span> <span class="n">current</span><span class="p">[</span><span class="n">step</span><span class="p">]</span>
+            <span class="n">current</span><span class="p">[</span><span class="n">path</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">job</span>
+        <span class="k">return</span> <span class="n">d</span>
+
+    <span class="k">def</span> <span class="nf">job_by_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sis_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">id_to_job_dict</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sis_id</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SISGraph.jobs"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.jobs">[docs]</a>    <span class="k">def</span> <span class="nf">jobs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return ([Job, ...]): List with all jobs in grpah</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">job_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+            <span class="n">job_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">job</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">for_all_nodes</span><span class="p">(</span><span class="n">f</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">job_list</span>
+
+<div class="viewcode-block" id="SISGraph.find"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.find">[docs]</a>    <span class="k">def</span> <span class="nf">find</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pattern</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns a list with all jobs and paths that partly match the pattern</span>
+
+<span class="sd">        :param pattern(str): Pattern to match</span>
+<span class="sd">        :param mode(str): Select if jobs, paths or both should be returned. Possible values: all, path, job</span>
+<span class="sd">        :return ([Job/Path, ...]): List with all matching jobs/paths</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">j</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="s1">&#39;job&#39;</span><span class="p">):</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="s1">&#39;path&#39;</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">j</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+                        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">out</span>
+
+<div class="viewcode-block" id="SISGraph.jobs_sorted"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.jobs_sorted">[docs]</a>    <span class="k">def</span> <span class="nf">jobs_sorted</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Yields jobs in a order so that for each jop all jobs</span>
+<span class="sd">        it depends on are already finished</span>
+
+<span class="sd">        :return (generator Node): jobs sorted by dependency</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">id_to_job</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">def</span> <span class="nf">get_job</span><span class="p">(</span><span class="n">sis_id</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">sis_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">id_to_job</span><span class="p">:</span>
+                <span class="n">id_to_job</span><span class="p">[</span><span class="n">sis_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">sis_id</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">id_to_job</span><span class="p">[</span><span class="n">sis_id</span><span class="p">]</span>
+
+        <span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span><span class="p">():</span>
+            <span class="n">node</span> <span class="o">=</span> <span class="n">get_job</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">())</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">job</span> <span class="o">=</span> <span class="n">job</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
+                    <span class="n">node</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">())</span>
+                    <span class="n">other</span> <span class="o">=</span> <span class="n">get_job</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">())</span><span class="o">.</span><span class="n">outputs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">())</span>
+            <span class="n">id_to_job</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">sis_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">node</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">node</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+                <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">n</span><span class="p">:</span> <span class="n">n</span><span class="o">.</span><span class="n">sis_id</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">recursive_depth</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="n">node</span><span class="o">.</span><span class="n">job</span>
+            <span class="k">for</span> <span class="n">sis_id</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">outputs</span><span class="p">)):</span>
+                <span class="n">next_node</span> <span class="o">=</span> <span class="n">id_to_job</span><span class="p">[</span><span class="n">sis_id</span><span class="p">]</span>
+                <span class="n">next_node</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">sis_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">next_node</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">recursive_depth</span><span class="p">(</span><span class="n">next_node</span><span class="p">):</span>
+                        <span class="k">yield</span> <span class="n">i</span>
+
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">stack</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">recursive_depth</span><span class="p">(</span><span class="n">node</span><span class="p">):</span></div>
+                <span class="k">yield</span> <span class="n">i</span>
+
+<div class="viewcode-block" id="SISGraph.for_all_nodes"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.for_all_nodes">[docs]</a>    <span class="k">def</span> <span class="nf">for_all_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">bottom_up</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run function f for each node, stop expanding tree branch</span>
+<span class="sd">        if functions returns False</span>
+
+<span class="sd">        :param f: function will be executed for all nodes</span>
+<span class="sd">        :param bottom_up: start with deepest nodes first,</span>
+<span class="sd">                          ignore return value of f</span>
+<span class="sd">        :return: set with all visited nodes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">visited</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="c1"># recursive function to run through tree</span>
+        <span class="k">def</span> <span class="nf">runner</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+            <span class="n">sis_id</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()</span>
+            <span class="c1"># make sure all inputs are updated</span>
+            <span class="n">job</span><span class="o">.</span><span class="n">_sis_runnable</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">sis_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+                <span class="n">visited</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">sis_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">bottom_up</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
+                            <span class="n">runner</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">)</span>
+                    <span class="n">f</span><span class="p">(</span><span class="n">job</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">f</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
+                            <span class="n">runner</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">target</span><span class="o">.</span><span class="n">required</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
+                    <span class="n">runner</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">visited</span>
+
+    <span class="k">def</span> <span class="nf">path_to_all_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">visited</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">check_later</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># recursive function to run through tree</span>
+        <span class="k">def</span> <span class="nf">runner</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">only_check</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">id</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">StopIteration</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">visited</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="n">obj</span><span class="p">)]</span> <span class="o">=</span> <span class="n">obj</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">isclass</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">sis_id</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">sis_id</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">StopIteration</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">visited</span><span class="p">[</span><span class="n">sis_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span>
+                        <span class="k">if</span> <span class="n">only_check</span><span class="p">:</span>
+                            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not export </span><span class="si">%s</span><span class="s2"> since it&#39;s only reachable &quot;</span>
+                                            <span class="s2">&quot;via sets. </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">only_check</span><span class="p">))</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">yield</span> <span class="n">path</span><span class="p">,</span> <span class="n">obj</span>
+                <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">set</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+                        <span class="k">yield from</span> <span class="n">runner</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">path</span><span class="o">+</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">only_check</span><span class="o">=</span><span class="n">only_check</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">only_check</span><span class="p">:</span>
+                    <span class="c1"># check all values in the given set</span>
+                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+                        <span class="k">yield from</span> <span class="n">runner</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">path</span><span class="o">+</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">only_check</span><span class="o">=</span><span class="n">only_check</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># we can not handle this case since a set can be sorted different every time</span>
+                    <span class="c1"># check later if we have any jobs we could not map in the end</span>
+                    <span class="k">if</span> <span class="nb">id</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="ow">in</span> <span class="n">check_later</span><span class="p">:</span>
+                        <span class="n">check_later</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="n">obj</span><span class="p">)][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">check_later</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="n">obj</span><span class="p">)]</span> <span class="o">=</span> <span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">[</span><span class="n">path</span><span class="p">])</span>
+                    <span class="k">raise</span> <span class="ne">StopIteration</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+                    <span class="k">yield from</span> <span class="n">runner</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">path</span><span class="o">+</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">only_check</span><span class="o">=</span><span class="n">only_check</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">assert</span> <span class="n">is_literal</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="s2">&quot;Can not export </span><span class="si">%s</span><span class="s2"> (type: </span><span class="si">%s</span><span class="s2">) as directory key&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+                    <span class="k">yield from</span> <span class="n">runner</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">path</span><span class="o">+</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">only_check</span><span class="o">=</span><span class="n">only_check</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+                <span class="k">yield from</span> <span class="n">runner</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">creator</span><span class="p">,</span> <span class="n">path</span><span class="o">+</span><span class="p">[</span><span class="s1">&#39;creator&#39;</span><span class="p">],</span> <span class="n">only_check</span><span class="o">=</span><span class="n">only_check</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_sis&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Block</span><span class="p">):</span>
+                            <span class="k">yield from</span> <span class="n">runner</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">path</span><span class="o">+</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">only_check</span><span class="o">=</span><span class="n">only_check</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+        <span class="c1"># check all outputs</span>
+        <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">OutputPath</span><span class="p">):</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">_output_path</span>
+                <span class="n">obj</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">_sis_path</span>
+                <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
+                    <span class="k">yield from</span> <span class="n">runner</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">creator</span><span class="p">,</span> <span class="p">[</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;creator&#39;</span><span class="p">],</span> <span class="n">only_check</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># check if there are any jobs that could not be reached due to sets</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">possible_paths</span><span class="p">)</span> <span class="ow">in</span> <span class="n">check_later</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">del</span> <span class="n">visited</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="n">obj</span><span class="p">)]</span>  <span class="c1"># remove to avoid early aborting</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">runner</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">[],</span> <span class="n">only_check</span><span class="o">=</span><span class="n">possible_paths</span><span class="p">):</span>
+                <span class="k">pass</span>
+
+<div class="viewcode-block" id="SISGraph.get_job_from_path"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.get_job_from_path">[docs]</a>    <span class="k">def</span> <span class="nf">get_job_from_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; The reverse function for get_path_to_all_nodes &quot;&quot;&quot;</span>
+
+        <span class="c1"># extract dict from targets</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">required_full_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">current</span><span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">required_full_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">required_full_list</span><span class="p">):</span>
+                    <span class="n">current</span><span class="p">[</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%02i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">pos</span><span class="p">)]</span> <span class="o">=</span> <span class="n">path</span>
+
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">current</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">step</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">current</span><span class="p">):</span>
+                    <span class="n">current</span> <span class="o">=</span> <span class="n">current</span><span class="p">[</span><span class="n">step</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s1">&#39;__dict__&#39;</span><span class="p">):</span>
+                <span class="n">current</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span></div>
+        <span class="k">return</span> <span class="n">current</span>
+
+<div class="viewcode-block" id="SISGraph.get_jobs_by_status"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.get_jobs_by_status">[docs]</a>    <span class="k">def</span> <span class="nf">get_jobs_by_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_engine</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Return all jobs needed to finish output in dictionary with current status as key</span>
+
+<span class="sd">        :param job_engine(Engine): Use status job status of engine, ignore engine status if set to None (default: None)</span>
+<span class="sd">        :return ({status1\: [Job, ...], status2\: ...}): Dictionary with all jobs sorted by current state</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">visited</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">jobs</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">def</span> <span class="nf">add_output</span><span class="p">(</span><span class="n">out</span><span class="p">):</span>
+            <span class="n">new_jobs</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">get_jobs</span><span class="p">(</span><span class="n">visited</span><span class="p">,</span> <span class="n">job_engine</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">new_jobs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">s</span> <span class="o">=</span> <span class="n">jobs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">jobs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
+
+        <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_targets</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="n">target</span><span class="o">.</span><span class="n">required</span><span class="p">:</span>
+                <span class="n">add_output</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+</div>
+        <span class="k">return</span> <span class="n">jobs</span>
+
+<div class="viewcode-block" id="SISGraph.set_job_targets"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.set_job_targets">[docs]</a>    <span class="k">def</span> <span class="nf">set_job_targets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Add a target to all jobs (if possible) to have a more informative output &quot;&quot;&quot;</span>
+
+        <span class="c1"># Reset all caches</span>
+        <span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">job</span><span class="o">.</span><span class="n">_sis_needed_for_which_targets</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">for_all_nodes</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="n">cache</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">OutputPath</span><span class="p">):</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">_output_path</span>
+                <span class="n">out</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">_sis_path</span>
+                <span class="n">new_jobs</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">get_jobs</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">new_jobs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">job</span><span class="o">.</span><span class="n">_sis_needed_for_which_targets</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span></div></div>
+                            <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">is_literal</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">visited</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="c1"># The most likely checks at the beginning</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">))):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="c1"># Avoid being stuck in a loop</span>
+    <span class="k">if</span> <span class="n">visited</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">visited</span> <span class="o">=</span> <span class="p">{</span><span class="nb">id</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
+    <span class="k">elif</span> <span class="nb">id</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">visited</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">set</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">is_literal</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">visited</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_literal</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">visited</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">is_literal</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">visited</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">False</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Jan-Thorsten Peter, Eugen Beck.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

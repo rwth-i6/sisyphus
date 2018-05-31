@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+table,th,td
+{
+border:1px solid black;
+border-collapse:collapse;
+}
+th,td
+{
+padding:5px;
+}
+.boxed {
+  border: 1px solid green;
+  white-space: nowrap;
+}
+ div.box {
+	border: solid 1px black;
+	padding: 4px;
+	margin: 2px 2px 2px 2px;
+	float:left;
+}
+</style>
+</head>
+<body>
+<table><thead>
+<tr>
+    <td align="left"><a href="/">List all outputs</a></td>
+    <td align="left"><a href="/all">List all jobs</a></td>
+    <td align="left"><a href="/vis">Visualize dependency graph</a></td>
+</tr>
+</thead>
+</table>
+
+<table><thead>
+<tr>
+<th align="left"><strong><em>#</em></strong></th>
+<th align="left"><strong><em>id</em></strong></th>
+<th align="left"><strong><em>status</em></strong></th>
+<th align="left"><strong><em>dependencies</em></strong></th>
+<th align="left"><strong><em>tasks</em></strong></th>
+</tr>
+</thead><tbody>
+    {% for job in jobs %}
+    <tr id="sis_id_{{ job.number }}">
+    <td align="left">{{ job.number }} </td>
+    <td align="left"><a href="/info/{{ job.sis_id }}">{{ job.name }}</a></td>
+    <td align="left">
+        <div class="box" style="background-color:{{ job.state_bg_color }}">
+            {{ job.state }}
+        </div>
+    </td>
+    <td align="left">
+    {% for deb in job.dependencies %}
+        <div class="box" style="background-color:{{ deb.state_bg_color }}">
+        <a href="#sis_id_{{ deb.number }}">{{ deb.number }}</a> 
+        </div>
+    {% endfor %}
+    </td>
+    <td align="left">
+    {% if job.tasks %}
+        {{ job.tasks_count }}
+    {% endif %}
+    </td>
+    </tr>
+    {% endfor %}
+</tbody></table>
+</body>
+</html>

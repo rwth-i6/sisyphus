@@ -1,0 +1,889 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Welcome to Sisyphus’s documentation! &#8212; Sisyphus 0.9 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-sisyphus-s-documentation">
+<h1>Welcome to Sisyphus’s documentation!<a class="headerlink" href="#welcome-to-sisyphus-s-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+<div class="section" id="motivation">
+<h1>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h1>
+<p>The motivation for Sisyphus was to have framework to easily rerun experiments. It should make is simple to come back to an old experiment and see exactly what commands were executed to get the final result.
+Sisyphus makes it easy to have a organized way how to share a workflow, e.g. how to setup a complete translation system from start to end or just use parts of it.
+This is done by creating a graph which connects outputs of jobs (calculations on some input files given some parameter) with other jobs. The connections between these jobs are either files or simple python objects.</p>
+</div>
+<div class="section" id="structure">
+<h1>Structure<a class="headerlink" href="#structure" title="Permalink to this headline">¶</a></h1>
+<dl class="docutils">
+<dt>A Sisyphus experiment folder consists mainly of 5 things:</dt>
+<dd><ul class="first last simple">
+<li>the config.py file or config folder</li>
+<li>the settings.py file</li>
+<li>the recipes folder</li>
+<li>the work folder</li>
+<li>and the output folder (create automatically)</li>
+</ul>
+</dd>
+</dl>
+<div class="section" id="the-recipe-folder">
+<h2>The recipe folder<a class="headerlink" href="#the-recipe-folder" title="Permalink to this headline">¶</a></h2>
+<p>The recipe folder contains python files which describe what commands are executed in which order and how they are linked together.
+A typical file starts with the two lines:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sisyphus</span> <span class="k">import</span> <span class="o">*</span>
+<span class="n">Path</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">setup_path</span><span class="p">(</span><span class="n">__package__</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="docutils">
+<dt>which setup the sisyphus environment by importing/creating:</dt>
+<dd><ul class="first last simple">
+<li>Job, this is the base class for all Jobs created in a sisyphus setup. A job takes some parameter and files as input and creates some other files as output. It represents a node in our workflow graph.</li>
+<li>Task, these are the subelements of a Job. Each job runs one or more Tasks to create it’s actual outputs.</li>
+<li>tk, short for toolkit. Contains commands to communicate with sisyphus</li>
+<li>Path, used to reference to files relative to the path of this python file. This is used to link to scripts that are stored next to the recipe files. Path object are also created as outputs of Jobs. They can be interpreted as edges in the workflow graph.</li>
+</ul>
+</dd>
+</dl>
+<p>A workflow in a python file is now created by connecting these jobs together via a path object.
+This is usually done by a function which serves as template.
+Outputs of the workflow graph a registered at sisyphus via the <code class="docutils literal notranslate"><span class="pre">`tk.register_output('name',</span> <span class="pre">path)`</span></code> function.
+These files will be linked to the output/ folder after the responsible job to create this file finished.</p>
+</div>
+<div class="section" id="config-py-or-config-folder">
+<h2>config.py or config folder<a class="headerlink" href="#config-py-or-config-folder" title="Permalink to this headline">¶</a></h2>
+<p>The config.py file contains the description which experiments should be run. e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sisyphus</span> <span class="k">import</span> <span class="o">*</span>
+
+<span class="kn">from</span> <span class="nn">recipe</span> <span class="k">import</span> <span class="n">tools</span>
+<span class="n">head</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">Head</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s1">&#39;input/file&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">out</span>
+<span class="n">tk</span><span class="o">.</span><span class="n">register_output</span><span class="p">(</span><span class="s1">&#39;head_of_input_file&#39;</span><span class="p">,</span> <span class="n">head</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>this imports the module tools from the recipe folder and runs the job Head with a given input file and registers the result as output.</p>
+</div>
+<div class="section" id="work-folder">
+<h2>work folder<a class="headerlink" href="#work-folder" title="Permalink to this headline">¶</a></h2>
+<p>The work folder stores all files created during the experiment. This folder should point to a directory with a lot available space. The whole folder could be deleted after an experiment is done since everything can be recomputed, assuming your experiments are deterministic.</p>
+</div>
+<div class="section" id="settings-py">
+<h2>settings.py<a class="headerlink" href="#settings-py" title="Permalink to this headline">¶</a></h2>
+<p>Contains all settings that should be changed for the whole setup globally. Usually a description of the work engine that should be used. You can probably just copy the last one you used.</p>
+</div>
+<div class="section" id="job">
+<h2>Job<a class="headerlink" href="#job" title="Permalink to this headline">¶</a></h2>
+<p>Jobs are the most import objects to understand a sisyphus setup. A job defines a operation which creates a well defines output given the same inputs. The outputs of a job are normally the input to other jobs or defines as output of this sisyphus setup. Sisyphus will automatically figure out which jobs need to be run in which order to created all requested outputs.
+If two jobs with the exact same inputs are created sisyphus assumes they are equal since they should produces the same output by definition. They will be grouped together and only run once, this is useful to reduce the number of calculations dramatically.
+Each job gets it’s own clean work directory to work with and a output directory to place it’s finished calculations.
+A simple job looks like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">CountVocab</span><span class="p">(</span><span class="n">Job</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span> <span class="c1"># takes text as input parameter, all inputs for this job need to be listed in the __init__ function</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">text</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">(</span><span class="s1">&#39;counts.gz&#39;</span><span class="p">)</span> <span class="c1"># the output file of this job</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="c1"># this function will be run by the task, see below</span>
+        <span class="c1"># the actual bash command, everything placed in {name} will be replaced by property with the same name of this</span>
+        <span class="c1"># object, e.g. self.name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sh</span><span class="p">(</span><span class="s2">&quot;zcat -f </span><span class="si">{text}</span><span class="s2"> | tr &#39; &#39; &#39;</span><span class="se">\n</span><span class="s2">&#39; | awk &#39;NF&#39; | sort | uniq -c | sort -g | gzip &gt; </span><span class="si">{out}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="c1"># function that will be called to request all tasks from this job, expects a iterable</span>
+        <span class="c1"># request to run the function &#39;run&#39;, with requirements of 2GB memory and 2 hours of time.</span>
+        <span class="k">yield</span> <span class="n">Task</span><span class="p">(</span><span class="s1">&#39;run&#39;</span><span class="p">,</span> <span class="n">rqmt</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;mem&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">})</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="task">
+<h2>Task<a class="headerlink" href="#task" title="Permalink to this headline">¶</a></h2>
+<p>A task defines which functions of a job should be run with which argument and which resources should be requested.
+A job can have multiple tasks. All tasks are executed after another. A possible setup with multiple tasks is a setup task, a worker task which is run on multiple computers and a finalize task to collect the results of all worker tasks.</p>
+</div>
+<div class="section" id="sis-sh">
+<h2>sis.sh<a class="headerlink" href="#sis-sh" title="Permalink to this headline">¶</a></h2>
+<p>The /u/smt/tools/sisyphus/2015-07-28/sis.sh script is a simple bash script wrapper to ensure that the correct python version is used.
+The main mode of this tool is <cite>sis.sh manager</cite> it will parses the config.py file and will submit them to the cluster if started with the <cite>-r</cite> flag (for run). The manager will periodically check which jobs have finished and submits all runnable jobs to the cluster as long as it is running. If you stop the manager (using Ctrl-C) now further jobs are submitted, but jobs submitted to the cluster will continue.</p>
+</div>
+</div>
+<div class="section" id="faq">
+<h1>FAQ<a class="headerlink" href="#faq" title="Permalink to this headline">¶</a></h1>
+</div>
+<div class="section" id="api">
+<h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-sisyphus.toolkit">
+<span id="toolkit"></span><h2>Toolkit<a class="headerlink" href="#module-sisyphus.toolkit" title="Permalink to this headline">¶</a></h2>
+<p>This module contains helper methods used in the console or in a Job. Use tk.&lt;name of function&gt;? for more help.</p>
+<p>Useful examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Find job or path:</span>
+<span class="n">j</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">sis_graph</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;LineSplitter&#39;</span><span class="p">)</span>
+<span class="c1"># Find only job:</span>
+<span class="n">j</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">sis_graph</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;LineSplitter&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;job&#39;</span><span class="p">)</span>
+<span class="c1"># Find only path:</span>
+<span class="n">j</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">sis_graph</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;LineSplitter&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;path&#39;</span><span class="p">)</span>
+
+<span class="c1"># Rerun tasks depending on a given file/job:</span>
+<span class="n">tk</span><span class="o">.</span><span class="n">rerun</span><span class="p">(</span><span class="n">tk</span><span class="o">.</span><span class="n">sis_graph</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;hitchhiker&#39;</span><span class="p">))</span>
+
+<span class="c1"># Setup job:</span>
+<span class="n">tk</span><span class="o">.</span><span class="n">setup_job_directory</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+<span class="c1"># run job:</span>
+<span class="n">tk</span><span class="o">.</span><span class="n">run_job</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+
+<span class="c1"># Reload start up config:</span>
+<span class="n">tk</span><span class="o">.</span><span class="n">reload_config</span><span class="p">(</span><span class="n">config_files</span><span class="p">)</span>
+<span class="c1"># Reload config file:</span>
+<span class="n">tk</span><span class="o">.</span><span class="n">reload_config</span><span class="p">(</span><span class="s1">&#39;path/to/config/file/or/directory&#39;</span><span class="p">)</span>
+<span class="c1"># Reload all recipe files</span>
+<span class="n">reload_recipes</span><span class="p">()</span>
+<span class="c1"># Load job from job directory:</span>
+<span class="n">tk</span><span class="o">.</span><span class="n">load_job</span><span class="p">(</span><span class="s1">&#39;path/to/job/direcotry&#39;</span><span class="p">)</span>
+
+<span class="c1"># Import jobs from other work directory</span>
+<span class="n">tk</span><span class="o">.</span><span class="n">import_work_directory</span><span class="p">([</span><span class="s1">&#39;path/to/other/work&#39;</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;copy&#39;</span><span class="p">)</span>
+
+<span class="c1"># Print short job summary</span>
+<span class="n">tk</span><span class="o">.</span><span class="n">job_info</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+
+<span class="c1"># Cleanup work directory (use with caution):</span>
+<span class="n">tk</span><span class="o">.</span><span class="n">cleaner</span><span class="p">(</span><span class="n">clean_job_dir</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">clean_work_dir</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;remove&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="class">
+<dt id="sisyphus.toolkit.EnvironmentModifier">
+<em class="property">class </em><code class="descclassname">sisyphus.toolkit.</code><code class="descname">EnvironmentModifier</code><a class="reference internal" href="_modules/sisyphus/toolkit.html#EnvironmentModifier"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.EnvironmentModifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>A class to cleanup the environment before a job starts</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="sisyphus.toolkit.Object">
+<em class="property">class </em><code class="descclassname">sisyphus.toolkit.</code><code class="descname">Object</code><a class="reference internal" href="_modules/sisyphus/toolkit.html#Object"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.Object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simple helper class to create Objects without adding code</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.bundle_to_str">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">bundle_to_str</code><span class="sig-paren">(</span><em>bundle</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#bundle_to_str"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.bundle_to_str" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert bundle of objects into a space separated list</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.cleaner">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">cleaner</code><span class="sig-paren">(</span><em>clean_job_dir=False</em>, <em>clean_work_dir=False</em>, <em>mode='dryrun'</em>, <em>keep_value=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#cleaner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.cleaner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Free wasted disk space.
+Creates a list of all possible path in the current setup and deletes all directories that
+are not part of the current graph.
+In addition it can clean up directories of finished jobs by deleting the work directory,
+zipping the log files and removing status files.</p>
+<p>Check keep value of each job, if the job has a lower value then given and is not needed anymore to compute an other
+job it will be removed. Each job has a default value of 50.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>clean_job_dir</strong><strong>(</strong><strong>bool</strong><strong>)</strong> – Clean up job directories by zipping as much as possible into a tar archive, also delete
+the work directory (depending on global setting) and remove status files. Set mode to ‘remove’ for cleaning.</li>
+<li><strong>clean_work_dir</strong><strong>(</strong><strong>bool</strong><strong>)</strong> – Scan the work directory for files and directories not part of the graph</li>
+<li><strong>mode</strong><strong>(</strong><strong>str</strong><strong>)</strong> – Possible values: dryrun, move, remove</li>
+<li><strong>keep_value</strong><strong>(</strong><strong>int</strong><strong>)</strong> – Delete all jobs with a lower value.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.compare_graph">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">compare_graph</code><span class="sig-paren">(</span><em>obj1</em>, <em>obj2</em>, <em>traceback=None</em>, <em>visited=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#compare_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.compare_graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compares two objects and shows traceback to first found difference</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>(</strong><strong>Job/Path</strong><strong>)</strong> (<em>obj2</em>) – Object1 to compare</li>
+<li><strong>(</strong><strong>Job/Path</strong><strong>)</strong> – Object2 which is compared to Object1</li>
+<li><strong>traceback</strong> – Used for recursion, leave blank</li>
+<li><strong>visited</strong> – Used for recursion, leave blank</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">traceback</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.dump">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">dump</code><span class="sig-paren">(</span><em>obj</em>, <em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.dump" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps object using pickle in zipped file, creates directory if needed</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>obj</strong> – Object to pickle</li>
+<li><strong>filename</strong><strong>(</strong><strong>str</strong><strong>)</strong> – Path to pickled file</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.export_graph">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">export_graph</code><span class="sig-paren">(</span><em>output_file=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#export_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.export_graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Needs more testing</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>output_file</strong> – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.import_work_directory">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">import_work_directory</code><span class="sig-paren">(</span><em>directories</em>, <em>mode='dryrun'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#import_work_directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.import_work_directory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Link or copy finished jobs from other work directories</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>directories</strong><strong>(</strong><strong>str</strong><strong>)</strong> – Path to other work directories</li>
+<li><strong>mode</strong><strong>(</strong><strong>str</strong><strong>)</strong> – How to import job directories. Options: (copy, symlink, dryrun)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.input_path">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">input_path</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#input_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.input_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ensures a given input is a Path. Strings are automatically converted into Path objects</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> – path that should be checked</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Path object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.job_info">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">job_info</code><span class="sig-paren">(</span><em>job</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#job_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.job_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prints information about given job to stdout</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>job</strong><strong>(</strong><strong>Job</strong><strong>)</strong> – </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.load_file">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">load_file</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#load_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.load_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load object from pickled file, works with zipped and unzipped files</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong><strong>(</strong><strong>str</strong><strong>)</strong> – Path to pickled file</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Unpickled object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.load_job">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">load_job</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#load_job"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.load_job" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load job from job directory even if it is already cleaned up</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong><strong>(</strong><strong>str</strong><strong>)</strong> – Path to job directory</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return (Job):</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.migrate_graph">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">migrate_graph</code><span class="sig-paren">(</span><em>input_file=None</em>, <em>work_source=None</em>, <em>mode='dryrun'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#migrate_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.migrate_graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Needs more testing</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input_file</strong> – </li>
+<li><strong>work_source</strong> – </li>
+<li><strong>mode</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="sisyphus.toolkit.mktemp">
+<em class="property">class </em><code class="descclassname">sisyphus.toolkit.</code><code class="descname">mktemp</code><a class="reference internal" href="_modules/sisyphus/toolkit.html#mktemp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.mktemp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object to be used by the with statement.
+creates temporary file that will be delete at exit. Can be used like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">temp_file</span><span class="p">()</span> <span class="k">as</span> <span class="n">temp</span><span class="p">:</span>
+    <span class="c1">#do stuff with temp</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">)</span>
+
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+    <span class="n">foo</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<span class="c1"># temp file is deleted</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.reload_config">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">reload_config</code><span class="sig-paren">(</span><em>config_files=[]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#reload_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.reload_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset state, reload old config files, and load given config_files</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>..</strong><strong>]</strong><strong>)</strong> (<em>config_files</em><em>(</em><em>[</em><em>str</em><em>,</em>) – </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.reload_module">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">reload_module</code><span class="sig-paren">(</span><em>module</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#reload_module"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.reload_module" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shortcut to reload module, keep sis_graph if toolkit is reloaded</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>module</strong> – Module to reload</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.reload_recipes">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">reload_recipes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#reload_recipes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.reload_recipes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reload all recipes</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.replace_graph_objects">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">replace_graph_objects</code><span class="sig-paren">(</span><em>current</em>, <em>mapping=None</em>, <em>replace_function=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#replace_graph_objects"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.replace_graph_objects" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function takes a given graph and creates a new graph where every object listed in mapping is replaced.</p>
+<p>current: current graph
+mapping: [(old_object, new_object), ….]
+replace_function: how an object will be replace, defaults using the mapping</p>
+<p>returns: New graph</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.rerun">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">rerun</code><span class="sig-paren">(</span><em>source</em>, <em>just_move=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#rerun"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.rerun" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove all jobs that depend on the given job/path</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>source</strong><strong>(</strong><strong>Job/Path</strong><strong>)</strong> – All jobs depended on it should be removed</li>
+<li><strong>just_move</strong><strong>(</strong><strong>bool</strong><strong>)</strong> – Only move job directories aside</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.run_job">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">run_job</code><span class="sig-paren">(</span><em>job</em>, <em>task_name=None</em>, <em>task_id=1</em>, <em>force_resume=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#run_job"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.run_job" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run job directly in console window.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>job</strong><strong>(</strong><strong>Job</strong><strong>)</strong> – Job with tasks to run</li>
+<li><strong>task_name</strong><strong>(</strong><strong>str</strong><strong>)</strong> – which task should run, default: The first listed task</li>
+<li><strong>task_id</strong><strong>(</strong><strong>int</strong><strong>)</strong> – which task_id should be used, default: 1</li>
+<li><strong>force_resume</strong><strong>(</strong><strong>bool</strong><strong>)</strong> – Force resume of job in error state</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.setup_job_directory">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">setup_job_directory</code><span class="sig-paren">(</span><em>job</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#setup_job_directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.setup_job_directory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Setup the work directory of the given job.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>(</strong><strong>Job</strong><strong>)</strong> (<em>job</em>) – Job which needs work directory</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.start_engine">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">start_engine</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#start_engine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.start_engine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shortcut to start Engine</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Engine object that can be used to submit jobs</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.start_manager">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">start_manager</code><span class="sig-paren">(</span><em>job_engine=None</em>, <em>start_computations=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#start_manager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.start_manager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shortcut to start Manager</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>job_engine</strong> – Use this job engine, init own job engine if set to None</li>
+<li><strong>start_computations</strong> – Submit jobs directly</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Manager</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.zipped">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">zipped</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#zipped"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.zipped" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if given file is zipped</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>(</strong><strong>Path/str</strong><strong>)</strong> – File to be checked</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return (bool):</th><td class="field-body">True if input file is zipped</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="graph">
+<h2>Graph<a class="headerlink" href="#graph" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="sisyphus.graph.SISGraph">
+<em class="property">class </em><code class="descclassname">sisyphus.graph.</code><code class="descname">SISGraph</code><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>This graph contains all targets that needs to be calculated and through there dependencies all required jobs.
+These jobs can be searched and modified using the provided functions. Most interesting functions are:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Lists all jobs</span>
+<span class="n">jobs</span><span class="p">()</span>
+<span class="c1"># Find jobs by matching substring</span>
+<span class="n">find</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+<span class="c1"># Execute function for all nodes</span>
+<span class="n">for_all_nodes</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<span class="c1"># Dictionaries with jobs sorted by current status:</span>
+<span class="n">get_jobs_by_status</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="sisyphus.graph.SISGraph.find">
+<code class="descname">find</code><span class="sig-paren">(</span><em>pattern</em>, <em>mode='all'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.find"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a list with all jobs and paths that partly match the pattern</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>pattern</strong><strong>(</strong><strong>str</strong><strong>)</strong> – Pattern to match</li>
+<li><strong>mode</strong><strong>(</strong><strong>str</strong><strong>)</strong> – Select if jobs, paths or both should be returned. Possible values: all, path, job</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Return ([Job/Path, …]):</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"><p class="first last">List with all matching jobs/paths</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.graph.SISGraph.for_all_nodes">
+<code class="descname">for_all_nodes</code><span class="sig-paren">(</span><em>f</em>, <em>bottom_up=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.for_all_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.for_all_nodes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run function f for each node, stop expanding tree branch
+if functions returns False</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>f</strong> – function will be executed for all nodes</li>
+<li><strong>bottom_up</strong> – start with deepest nodes first,
+ignore return value of f</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">set with all visited nodes</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.graph.SISGraph.get_job_from_path">
+<code class="descname">get_job_from_path</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.get_job_from_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.get_job_from_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>The reverse function for get_path_to_all_nodes</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.graph.SISGraph.get_jobs_by_status">
+<code class="descname">get_jobs_by_status</code><span class="sig-paren">(</span><em>job_engine=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.get_jobs_by_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.get_jobs_by_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all jobs needed to finish output in dictionary with current status as key</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>job_engine</strong><strong>(</strong><strong>Engine</strong><strong>)</strong> – Use status job status of engine, ignore engine status if set to None (default: None)</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Return ({status1: [Job, …], status2: …}):</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body">Dictionary with all jobs sorted by current state</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.graph.SISGraph.jobs">
+<code class="descname">jobs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.jobs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.jobs" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Return ([Job, …]):</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body">List with all jobs in grpah</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.graph.SISGraph.jobs_sorted">
+<code class="descname">jobs_sorted</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.jobs_sorted"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.jobs_sorted" title="Permalink to this definition">¶</a></dt>
+<dd><p>Yields jobs in a order so that for each jop all jobs
+it depends on are already finished</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Return (generator Node):</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body">jobs sorted by dependency</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="sisyphus.graph.SISGraph.output">
+<code class="descname">output</code><a class="headerlink" href="#sisyphus.graph.SISGraph.output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deprecated: used for backwards comparability, only supports path outputs</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.graph.SISGraph.set_job_targets">
+<code class="descname">set_job_targets</code><span class="sig-paren">(</span><em>engine=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.set_job_targets"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.set_job_targets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a target to all jobs (if possible) to have a more informative output</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.graph.SISGraph.update_nodes">
+<code class="descname">update_nodes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.update_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.update_nodes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update all nodes to get the most current dependency graph</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="id1">
+<h2>Job<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="sisyphus.job.Job">
+<em class="property">class </em><code class="descclassname">sisyphus.job.</code><code class="descname">Job</code><a class="reference internal" href="_modules/sisyphus/job.html#Job"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object do hold the job descriptions</p>
+<dl class="classmethod">
+<dt id="sisyphus.job.Job.hash">
+<em class="property">classmethod </em><code class="descname">hash</code><span class="sig-paren">(</span><em>parsed_args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.hash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.hash" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns hash for job given the arguments</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.job.Job.info">
+<code class="descname">info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns information about the currently running job
+to be displayed on the web interface</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.job.Job.job_id">
+<code class="descname">job_id</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.job_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.job_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a unique string to identify this job</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.job.Job.output_path">
+<code class="descname">output_path</code><span class="sig-paren">(</span><em>filename</em>, <em>directory=False</em>, <em>cached=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.output_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.output_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds output path, if directory is true a
+directory will will be created automatically</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.job.Job.output_var">
+<code class="descname">output_var</code><span class="sig-paren">(</span><em>filename</em>, <em>pickle=False</em>, <em>backup=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.output_var"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.output_var" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds output path which contains a python object,
+if directory is true a directory will will be created automatically</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.job.Job.path_available">
+<code class="descname">path_available</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.path_available"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.path_available" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns true if given path is available yet</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> – path to check</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.job.Job.set_attrs">
+<code class="descname">set_attrs</code><span class="sig-paren">(</span><em>attrs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.set_attrs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.set_attrs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds all attrs to self, used in constructor e.gl:
+self.set_attrs(locals())</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.job.Job.set_default">
+<code class="descname">set_default</code><span class="sig-paren">(</span><em>name</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.set_default"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.set_default" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deprecated helper function, will be removed in the future. Don’t use it!</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.job.Job.set_rqmt">
+<code class="descname">set_rqmt</code><span class="sig-paren">(</span><em>task_name</em>, <em>rqmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.set_rqmt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.set_rqmt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overwrites the automatic requirements for this job</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.job.Job.sh">
+<code class="descname">sh</code><span class="sig-paren">(</span><em>command</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.sh"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.sh" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calls a external shell and
+replaces {args} with job inputs, outputs, args
+and executes the command</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sisyphus.job.Job.update">
+<code class="descname">update</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/job.html#Job.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.job.Job.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run after all inputs are computed,
+allowing the job to analyse the given input
+and ask for additional inputs before running.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="id2">
+<h2>Task<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="sisyphus.task.Task">
+<em class="property">class </em><code class="descclassname">sisyphus.task.</code><code class="descname">Task</code><span class="sig-paren">(</span><em>start, resume=None, rqmt={}, args=[[]], mini_task=False, update_rqmt=None, parallel=0, tries=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/task.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.task.Task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object to hold information what function should be run with which requirements</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>start</strong><strong>(</strong><strong>str</strong><strong>)</strong> – name of the function which will be executed on start</li>
+<li><strong>resume</strong><strong>(</strong><strong>str</strong><strong>)</strong> – name of the function which will be executed on resume, often set equal to start</li>
+<li><strong>rqmt</strong><strong>(</strong><strong>dict</strong><strong>)</strong> – job requirements</li>
+<li><strong>args</strong><strong>(</strong><strong>..</strong><strong>)</strong> – job arguments</li>
+<li><strong>mini_task</strong><strong>(</strong><strong>bool</strong><strong>)</strong> – will be run locally if True</li>
+<li><strong>update_rqmt</strong><strong>(</strong><strong>str</strong><strong>)</strong> – function to update job requirements for interrupted jobs</li>
+<li><strong>parallel</strong><strong>(</strong><strong>int</strong><strong>)</strong> – the max. number of jobs to submit to a queue, defaults to the number of args</li>
+<li><strong>tries</strong><strong>(</strong><strong>int</strong><strong>)</strong> – how often this task is resubmitted after failure</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Welcome to Sisyphus’s documentation!</a></li>
+<li><a class="reference internal" href="#motivation">Motivation</a></li>
+<li><a class="reference internal" href="#structure">Structure</a><ul>
+<li><a class="reference internal" href="#the-recipe-folder">The recipe folder</a></li>
+<li><a class="reference internal" href="#config-py-or-config-folder">config.py or config folder</a></li>
+<li><a class="reference internal" href="#work-folder">work folder</a></li>
+<li><a class="reference internal" href="#settings-py">settings.py</a></li>
+<li><a class="reference internal" href="#job">Job</a></li>
+<li><a class="reference internal" href="#task">Task</a></li>
+<li><a class="reference internal" href="#sis-sh">sis.sh</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#faq">FAQ</a></li>
+<li><a class="reference internal" href="#api">API</a><ul>
+<li><a class="reference internal" href="#module-sisyphus.toolkit">Toolkit</a></li>
+<li><a class="reference internal" href="#graph">Graph</a></li>
+<li><a class="reference internal" href="#id1">Job</a></li>
+<li><a class="reference internal" href="#id2">Task</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Jan-Thorsten Peter, Eugen Beck.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

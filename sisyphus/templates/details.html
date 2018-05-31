@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+table,th,td
+{
+border:1px solid black;
+border-collapse:collapse;
+}
+th,td
+{
+padding:5px;
+}
+</style>
+</head>
+<body>
+<table><thead>
+<tr>
+    <td align="left"><a href="/">List all outputs</a></td>
+    <td align="left"><a href="/all">List all jobs</a></td>
+    <td align="left"><a href="/vis">Visualize dependency graph</a></td>
+</tr>
+</thead>
+</table>
+<table>
+<tr>
+<th align="left"><strong><em>Name</em></strong></th>
+<th align="left"><strong><em>Details</em></strong></th>
+</tr>
+</thead><tbody>
+    <tr>
+    <td align="left">sis_id</td>
+    <td align="left">{{ job._sis_id() }}</td>
+    </tr>
+    <tr>
+    <td align="left">work dir</td>
+    <td align="left">{{ os.path.abspath(job._sis_path()) }}</td>
+    </tr>
+    {% if job._sis_runnable() %}
+      <tr>
+      <td align="left">current state</td>
+      <td align="left">
+      <table>
+      {% for task in tasks %}
+        <tr>
+          <td align="left">{{ task.name }}</td>
+          <td align="left">
+          <div class="box" style="background-color:{{ task.state_bg_color }}">
+            {{ task.state }}
+          </div>
+          </td>
+          <td align="left">
+            {{ task.instances }}
+          </td>
+        </tr>
+      {% endfor %}
+      </table>
+      </td>
+      </tr>
+    {% endif %}
+</tbody></table>
+Arguments: <br>
+{{ kwargs|safe }}
+Inputs: <br>
+{{ inputs|safe }}
+{% if info %}
+Informations: <br>
+{{ info|safe }}
+{% endif %}
+{% if rqmt != none and rqmt|length > 0 %}
+Requirements: <br>
+<table>
+  <thead>
+    <tr><th>Task</th><th>Cores</th><th>Memory/GB</th><th>Time/h</th><th>GPUs</th></tr>
+  </head>
+  <tbody>
+    {% for t, r in rqmt.items() %}
+    <tr><td>{{t}}</td><td>{{r.get('cpu')}}</td><td>{{r.get('mem', 0) | round(2)}}</td><td>{{r.get('time')|int}}:{{'%.2d'|format((r.get('time', 0)*60)|int % 60)}}</td><td>{{r.get('gpu') | default(0)}}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% if task_logs|length > 0 %}
+<em>Task Logs:</em><br>
+{% for name, log in task_logs | dictsort %}
+{{name}}:<br>
+<pre>{{log}}</pre>
+{% endfor %}
+{% endif %}
+</body>
+</html>

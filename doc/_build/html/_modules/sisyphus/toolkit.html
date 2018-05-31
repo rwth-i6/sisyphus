@@ -1,0 +1,1000 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sisyphus.toolkit &#8212; Sisyphus 0.9 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sisyphus.toolkit</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Author: Jan-Thorsten Peter &lt;peter@cs.rwth-aachen.de&gt;</span>
+
+<span class="sd">&quot;&quot;&quot; This module contains helper methods used in the console or in a Job. Use tk.&lt;name of function&gt;? for more help.</span>
+
+<span class="sd">Useful examples::</span>
+
+<span class="sd">    # Find job or path:</span>
+<span class="sd">    j = tk.sis_graph.find(&#39;LineSplitter&#39;)</span>
+<span class="sd">    # Find only job:</span>
+<span class="sd">    j = tk.sis_graph.find(&#39;LineSplitter&#39;, mode=&#39;job&#39;)</span>
+<span class="sd">    # Find only path:</span>
+<span class="sd">    j = tk.sis_graph.find(&#39;LineSplitter&#39;, mode=&#39;path&#39;)</span>
+
+<span class="sd">    # Rerun tasks depending on a given file/job:</span>
+<span class="sd">    tk.rerun(tk.sis_graph.find(&#39;hitchhiker&#39;))</span>
+
+<span class="sd">    # Setup job:</span>
+<span class="sd">    tk.setup_job_directory(j)</span>
+<span class="sd">    # run job:</span>
+<span class="sd">    tk.run_job(j)</span>
+
+<span class="sd">    # Reload start up config:</span>
+<span class="sd">    tk.reload_config(config_files)</span>
+<span class="sd">    # Reload config file:</span>
+<span class="sd">    tk.reload_config(&#39;path/to/config/file/or/directory&#39;)</span>
+<span class="sd">    # Reload all recipe files</span>
+<span class="sd">    reload_recipes()</span>
+<span class="sd">    # Load job from job directory:</span>
+<span class="sd">    tk.load_job(&#39;path/to/job/direcotry&#39;)</span>
+
+<span class="sd">    # Import jobs from other work directory</span>
+<span class="sd">    tk.import_work_directory([&#39;path/to/other/work&#39;], mode=&#39;copy&#39;)</span>
+
+<span class="sd">    # Print short job summary</span>
+<span class="sd">    tk.job_info(j)</span>
+
+<span class="sd">    # Cleanup work directory (use with caution):</span>
+<span class="sd">    tk.cleaner(clean_job_dir=True, clean_work_dir=True, mode=&#39;remove&#39;)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">gzip</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">tarfile</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+
+<span class="kn">from</span> <span class="nn">sisyphus.tools</span> <span class="k">import</span> <span class="n">sh</span><span class="p">,</span> <span class="n">extract_paths</span>
+
+<span class="kn">from</span> <span class="nn">sisyphus.block</span> <span class="k">import</span> <span class="n">block</span><span class="p">,</span> <span class="n">sub_block</span><span class="p">,</span> <span class="n">set_root_block</span>
+<span class="kn">from</span> <span class="nn">sisyphus.job_path</span> <span class="k">import</span> <span class="n">Path</span><span class="p">,</span> <span class="n">Variable</span>
+<span class="kn">from</span> <span class="nn">sisyphus.job</span> <span class="k">import</span> <span class="n">Job</span>
+<span class="kn">from</span> <span class="nn">sisyphus.loader</span> <span class="k">import</span> <span class="n">load_configs</span>
+
+<span class="kn">from</span> <span class="nn">sisyphus.global_settings</span> <span class="k">import</span> <span class="n">STATE_ERROR</span><span class="p">,</span> <span class="n">STATE_INTERRUPTED</span>
+<span class="kn">from</span> <span class="nn">sisyphus.global_settings</span> <span class="k">import</span> <span class="n">STATE_RUNNING</span><span class="p">,</span> <span class="n">STATE_FINISHED</span>
+
+<span class="kn">import</span> <span class="nn">sisyphus.global_settings</span> <span class="k">as</span> <span class="nn">gs</span>
+
+<span class="kn">from</span> <span class="nn">sisyphus</span> <span class="k">import</span> <span class="n">graph</span>
+
+
+<span class="c1"># Functions mainly useful in Job definitions</span>
+<div class="viewcode-block" id="zipped"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.zipped">[docs]</a><span class="k">def</span> <span class="nf">zipped</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Check if given file is zipped</span>
+
+<span class="sd">    :param (Path/str): File to be checked</span>
+<span class="sd">    :return (bool): True if input file is zipped&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">filename</span><span class="p">),</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span></div>
+        <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">==</span> <span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x1f\x8b</span><span class="s1">&#39;</span>
+
+
+<div class="viewcode-block" id="mktemp"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.mktemp">[docs]</a><span class="k">class</span> <span class="nc">mktemp</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Object to be used by the with statement.</span>
+<span class="sd">    creates temporary file that will be delete at exit. Can be used like this::</span>
+
+<span class="sd">        with temp_file() as temp:</span>
+<span class="sd">            #do stuff with temp</span>
+<span class="sd">            f = open(temp, &#39;w&#39;)</span>
+<span class="sd">            f.write(&#39;foo&#39;)</span>
+
+<span class="sd">            f = open(temp, &#39;r&#39;)</span>
+<span class="sd">            foo = f.read()</span>
+<span class="sd">        # temp file is deleted</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temp_path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">temp_path</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temp_path</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temp_path</span><span class="p">):</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temp_path</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span></div>
+                <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temp_path</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="input_path"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.input_path">[docs]</a><span class="k">def</span> <span class="nf">input_path</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Ensures a given input is a Path. Strings are automatically converted into Path objects</span>
+
+<span class="sd">    :param path: path that should be checked</span>
+<span class="sd">    :return: Path object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">assert</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">Path</span><span class="p">))</span></div>
+        <span class="k">return</span> <span class="n">path</span>
+
+
+<span class="c1"># TODO remove?</span>
+<span class="k">def</span> <span class="nf">is_path</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">Path</span><span class="p">)</span>
+
+
+<span class="c1"># TODO remove?</span>
+<span class="k">def</span> <span class="nf">uncached_path</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">get_path</span><span class="p">()</span> <span class="k">if</span> <span class="n">is_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+
+<span class="c1"># TODO remove?</span>
+<div class="viewcode-block" id="bundle_to_str"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.bundle_to_str">[docs]</a><span class="k">def</span> <span class="nf">bundle_to_str</span><span class="p">(</span><span class="n">bundle</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Convert bundle of objects into a space separated list &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bundle</span><span class="p">,</span> <span class="nb">set</span><span class="p">):</span>
+        <span class="n">bundle</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">bundle</span><span class="p">)</span>
+</div>
+    <span class="k">return</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">bundle</span><span class="p">)</span>
+
+<span class="n">sis_graph</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">SISGraph</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">register_output</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">export_graph</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Path</span><span class="p">),</span> \
+        <span class="s2">&quot;Can only register Path objects as output, &quot;</span>\
+        <span class="s2">&quot;but </span><span class="si">%s</span><span class="s2"> is of type </span><span class="si">%s</span><span class="s2">.</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+    <span class="n">sis_graph</span><span class="o">.</span><span class="n">add_target</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">OutputPath</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">export_graph</span><span class="p">:</span>
+        <span class="n">dump</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">OUTPUT_DIR</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">ALIAS_AND_OUTPUT_SUBDIR</span><span class="p">,</span> <span class="s1">&#39;.</span><span class="si">%s</span><span class="s1">.sis&#39;</span> <span class="o">%</span> <span class="n">name</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">register_callback</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="n">callable</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">sis_graph</span><span class="o">.</span><span class="n">add_target</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">OutputCall</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">register_report</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">template</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">update_frequency</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+    <span class="n">report</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">OutputReport</span><span class="p">(</span><span class="n">output_path</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                                <span class="n">report_values</span><span class="o">=</span><span class="n">values</span><span class="p">,</span>
+                                <span class="n">report_template</span><span class="o">=</span><span class="n">template</span><span class="p">,</span>
+                                <span class="n">required</span><span class="o">=</span><span class="n">required</span><span class="p">,</span>
+                                <span class="n">update_frequency</span><span class="o">=</span><span class="n">update_frequency</span><span class="p">)</span>
+    <span class="n">sis_graph</span><span class="o">.</span><span class="n">add_target</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">report</span>
+
+<span class="n">current_config_</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">def</span> <span class="nf">current_config</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="n">current_config_</span><span class="p">,</span> <span class="s2">&quot;No config file set at the moment. &quot;</span>
+    <span class="s2">&quot;This function can only be called during the initial setup&quot;</span>
+    <span class="k">return</span> <span class="n">current_config_</span>
+
+
+<div class="viewcode-block" id="Object"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.Object">[docs]</a><span class="k">class</span> <span class="nc">Object</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; Simple helper class to create Objects without adding code &quot;&quot;&quot;</span></div>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">setup_path</span><span class="p">(</span><span class="n">package</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">.job_path</span> <span class="k">import</span> <span class="n">Path</span>
+    <span class="kn">import</span> <span class="nn">os</span>
+
+    <span class="k">assert</span> <span class="n">package</span><span class="p">,</span> <span class="s2">&quot;setup_path is used to make all path relative to the current package directory, &quot;</span>\
+                    <span class="s2">&quot;it only works inside of directories and not if the config file is passed directly&quot;</span>
+
+    <span class="k">class</span> <span class="nc">RelPath</span><span class="p">:</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">origin</span> <span class="o">=</span> <span class="n">origin</span>
+
+        <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">RelPath</span><span class="p">(</span><span class="n">package</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="s1">&#39;/&#39;</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="dump"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.dump">[docs]</a><span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Dumps object using pickle in zipped file, creates directory if needed</span>
+
+<span class="sd">    :param obj: Object to pickle</span>
+<span class="sd">    :param filename(str): Path to pickled file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">outfile_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">outfile_dir</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outfile_dir</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span></div>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="load_file"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.load_file">[docs]</a><span class="k">def</span> <span class="nf">load_file</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Load object from pickled file, works with zipped and unzipped files</span>
+
+<span class="sd">    :param path(str): Path to pickled file</span>
+<span class="sd">    :return: Unpickled object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fopen</span> <span class="o">=</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">zipped</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">else</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">fopen</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span></div>
+        <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+
+<span class="c1"># Helper functions mainly used in the console</span>
+<div class="viewcode-block" id="load_job"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.load_job">[docs]</a><span class="k">def</span> <span class="nf">load_job</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Load job from job directory even if it is already cleaned up</span>
+
+<span class="sd">    :param path(str): Path to job directory</span>
+<span class="sd">    :return (Job):</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">load_tar</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">tar</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">tar</span><span class="o">.</span><span class="n">extractfile</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">JOB_SAVE</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">gzip</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()))</span>
+
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">JOB_FINISHED_ARCHIVE</span><span class="p">):</span>
+            <span class="n">graph</span> <span class="o">=</span> <span class="n">load_tar</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">graph</span> <span class="o">=</span> <span class="n">load_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tmp_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">JOB_SAVE</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+            <span class="n">graph</span> <span class="o">=</span> <span class="n">load_file</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tmp_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">JOB_FINISHED_ARCHIVE</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">),</span> <span class="s2">&quot;Could not find job path or file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">path</span>
+            <span class="n">graph</span> <span class="o">=</span> <span class="n">load_tar</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">graph</span>
+
+
+<div class="viewcode-block" id="setup_job_directory"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.setup_job_directory">[docs]</a><span class="k">def</span> <span class="nf">setup_job_directory</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Setup the work directory of the given job.</span>
+
+<span class="sd">    :param job (Job): Job which needs work directory</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">original_input</span> <span class="o">=</span> <span class="n">job</span>
+    <span class="k">if</span> <span class="n">is_path</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+        <span class="n">job</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">creator</span>
+    <span class="kn">from</span> <span class="nn">sisyphus.job</span> <span class="k">import</span> <span class="n">Job</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">job</span><span class="p">,</span> <span class="n">Job</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_runnable</span><span class="p">():</span>
+            <span class="n">job</span><span class="o">.</span><span class="n">_sis_setup_directory</span><span class="p">()</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Done setting up: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">job</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">missing_inputs</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_inputs</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">i</span><span class="o">.</span><span class="n">available</span><span class="p">())</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Job has still missing inputs: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">missing_inputs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Not a job: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">original_input</span><span class="p">)</span></div>
+        <span class="nb">print</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">job</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="run_job"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.run_job">[docs]</a><span class="k">def</span> <span class="nf">run_job</span><span class="p">(</span><span class="n">job</span><span class="p">,</span> <span class="n">task_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">force_resume</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Run job directly in console window.</span>
+
+<span class="sd">    :param job(Job): Job with tasks to run</span>
+<span class="sd">    :param task_name(str): which task should run, default: The first listed task</span>
+<span class="sd">    :param task_id(int): which task_id should be used, default: 1</span>
+<span class="sd">    :param force_resume(bool): Force resume of job in error state</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">job</span><span class="p">,</span> <span class="n">Job</span><span class="p">),</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> is not a Job&quot;</span> <span class="o">%</span> <span class="n">job</span>
+
+    <span class="n">task</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">task_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_tasks</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_tasks</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">_start</span> <span class="o">==</span> <span class="n">task_name</span><span class="p">:</span>
+                <span class="n">task</span> <span class="o">=</span> <span class="n">t</span>
+                <span class="k">break</span>
+        <span class="k">assert</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> \
+            <span class="s2">&quot;&#39;</span><span class="si">%s</span><span class="s2">&#39; is not a valid task name (Valid names: </span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">task_name</span><span class="p">,</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">_start</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_tasks</span><span class="p">()])</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">call</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">SIS_COMMAND</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;worker&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">path</span><span class="p">()),</span> <span class="n">task</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">task_id</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">force_resume</span><span class="p">:</span>
+            <span class="n">call</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;--force_resume&#39;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">subprocess</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">call</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+            <span class="n">process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="k">raise</span> <span class="n">e</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">traceback</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Job failed </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">e</span><span class="p">)</span></div>
+        <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="rerun"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.rerun">[docs]</a><span class="k">def</span> <span class="nf">rerun</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">just_move</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;  Remove all jobs that depend on the given job/path</span>
+
+<span class="sd">    :param source(Job/Path): All jobs depended on it should be removed</span>
+<span class="sd">    :param just_move(bool): Only move job directories aside</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sis_graph</span><span class="o">.</span><span class="n">update_nodes</span><span class="p">()</span>
+
+    <span class="n">delete_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">not_setup_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">Job</span><span class="p">)):</span>
+        <span class="n">source_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">source</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">source_list</span> <span class="o">=</span> <span class="n">source</span>
+
+    <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="n">source_list</span><span class="p">:</span>
+        <span class="c1"># Make sure source is a string matching the _sis_contains_required_inputs pattern</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">Job</span><span class="p">):</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">BASE_DIR</span><span class="p">,</span>  <span class="n">source</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">())</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span> <span class="s2">&quot;Source is not string, Path, or Job it is: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Check for </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">source</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">add_if_dependened</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+            <span class="c1"># check for new inputs</span>
+            <span class="n">job</span><span class="o">.</span><span class="n">_sis_runnable</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_contains_required_inputs</span><span class="p">({</span><span class="n">source</span><span class="p">},</span> <span class="n">include_job_path</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()):</span>
+                    <span class="n">delete_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">job</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">not_setup_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">job</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">sis_graph</span><span class="o">.</span><span class="n">for_all_nodes</span><span class="p">(</span><span class="n">add_if_dependened</span><span class="p">,</span> <span class="n">bottom_up</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">delete_list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">not_setup_list</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No job depending on input found&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No job depending on input is setup, these are the depending jobs:&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">not_setup_list</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">())</span>
+        <span class="k">return</span>
+
+    <span class="n">delete_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">delete_list</span><span class="p">)))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Deleting the following directories:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">delete_list</span><span class="p">:</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">input_var</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Start deleting? (y/N): &quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">input_var</span> <span class="o">==</span> <span class="s1">&#39;y&#39;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">delete_list</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">just_move</span><span class="p">:</span>
+                <span class="n">job</span><span class="o">.</span><span class="n">_sis_move</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">job</span><span class="o">.</span><span class="n">_sis_delete</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span></div>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Abort&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="import_work_directory"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.import_work_directory">[docs]</a><span class="k">def</span> <span class="nf">import_work_directory</span><span class="p">(</span><span class="n">directories</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;dryrun&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Link or copy finished jobs from other work directories</span>
+
+<span class="sd">    :param directories(str): Path to other work directories</span>
+<span class="sd">    :param mode(str): How to import job directories. Options: (copy, symlink, dryrun)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">directories</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">directories</span> <span class="o">=</span> <span class="p">[</span><span class="n">directories</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">import_directory</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+        <span class="c1"># check for new inputs</span>
+        <span class="n">job</span><span class="o">.</span><span class="n">_sis_runnable</span><span class="p">()</span>
+        <span class="c1"># import work directory if job is not already setup</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_setup</span><span class="p">():</span>
+            <span class="n">job</span><span class="o">.</span><span class="n">_sis_import_from_dirs</span><span class="p">(</span><span class="n">directories</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="n">number_of_jobs</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># run once before to unsure inputs are updated at least once</span>
+    <span class="n">sis_graph</span><span class="o">.</span><span class="n">for_all_nodes</span><span class="p">(</span><span class="n">import_directory</span><span class="p">,</span> <span class="n">bottom_up</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># run until no new jobs are added. This could be more efficient, but this is easier...</span>
+    <span class="k">while</span> <span class="n">number_of_jobs</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sis_graph</span><span class="o">.</span><span class="n">jobs</span><span class="p">()):</span>
+        <span class="n">number_of_jobs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sis_graph</span><span class="o">.</span><span class="n">jobs</span><span class="p">())</span></div>
+        <span class="n">sis_graph</span><span class="o">.</span><span class="n">for_all_nodes</span><span class="p">(</span><span class="n">import_directory</span><span class="p">,</span> <span class="n">bottom_up</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="cleaner"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.cleaner">[docs]</a><span class="k">def</span> <span class="nf">cleaner</span><span class="p">(</span><span class="n">clean_job_dir</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">clean_work_dir</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;dryrun&#39;</span><span class="p">,</span> <span class="n">keep_value</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Free wasted disk space.</span>
+<span class="sd">    Creates a list of all possible path in the current setup and deletes all directories that</span>
+<span class="sd">    are not part of the current graph.</span>
+<span class="sd">    In addition it can clean up directories of finished jobs by deleting the work directory,</span>
+<span class="sd">    zipping the log files and removing status files.</span>
+
+<span class="sd">    Check keep value of each job, if the job has a lower value then given and is not needed anymore to compute an other</span>
+<span class="sd">    job it will be removed. Each job has a default value of 50.</span>
+
+<span class="sd">    :param clean_job_dir(bool): Clean up job directories by zipping as much as possible into a tar archive, also delete</span>
+<span class="sd">           the work directory (depending on global setting) and remove status files. Set mode to &#39;remove&#39; for cleaning.</span>
+<span class="sd">    :param clean_work_dir(bool): Scan the work directory for files and directories not part of the graph</span>
+<span class="sd">    :param mode(str): Possible values: dryrun, move, remove</span>
+<span class="sd">    :param keep_value(int): Delete all jobs with a lower value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">assert</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;dryrun&#39;</span><span class="p">,</span> <span class="s1">&#39;move&#39;</span><span class="p">,</span> <span class="s1">&#39;remove&#39;</span><span class="p">)</span>
+    <span class="c1"># create a dictionary with all paths in the current graph</span>
+    <span class="n">active_paths</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># and a set containing all jobs which should not be deleted yet since they are needed to compute</span>
+    <span class="c1"># the output of unfinished jobs or belong to the output</span>
+    <span class="n">needed</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">sis_graph</span><span class="o">.</span><span class="n">targets</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">target</span><span class="o">.</span><span class="n">required</span><span class="p">:</span>
+            <span class="n">active_paths</span><span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">get_path</span><span class="p">()))]</span> <span class="o">=</span> <span class="n">path</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">needed</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">_sis_get_needed_jobs</span><span class="p">({}))</span>
+                <span class="n">active_paths</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">_sis_get_all_inputs</span><span class="p">())</span>
+
+    <span class="n">needed</span> <span class="o">=</span> <span class="p">{</span><span class="n">job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()</span> <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">needed</span><span class="p">}</span>
+
+    <span class="c1"># create directory with all jobs and partial paths to these jobs</span>
+    <span class="n">job_dirs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">active_paths</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="s1">&#39;creator&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">v</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()</span>
+            <span class="n">job_dirs</span><span class="p">[</span><span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">creator</span>
+            <span class="n">path_parts</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">while</span> <span class="n">path_parts</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">path_parts</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">job_dirs</span><span class="p">:</span>
+                    <span class="n">job_dirs</span><span class="p">[</span><span class="n">path_parts</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">path_parts</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">path_parts</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">unused</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># going to hold all directories not needed anymore</span>
+    <span class="n">low_keep_value</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># going to hold all directories with a too low keep value</span>
+
+    <span class="k">def</span> <span class="nf">scan_work</span><span class="p">(</span><span class="n">current</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">current</span><span class="p">):</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+            <span class="n">symlink</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">islink</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="n">symlink</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">readlink</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="n">symlink</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="n">symlink</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="n">k</span> <span class="o">=</span> <span class="n">job_dirs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">symlink</span> <span class="ow">and</span> <span class="p">(</span><span class="n">k</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">symlink</span> <span class="ow">in</span> <span class="n">job_dirs</span><span class="p">):</span>
+                    <span class="c1"># symlink is still pointing somewhere inside the used graph, ignore it</span>
+                    <span class="k">pass</span>
+                <span class="k">elif</span> <span class="n">k</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="c1"># directory is not created by current graph</span>
+                    <span class="n">unused</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">k</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="c1"># directory has sub directories used by current graph</span>
+                    <span class="n">scan_work</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># It&#39;s a job of this graph, let&#39;s see what we want to do with it</span>
+                    <span class="n">keep_value_local</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">keep_value</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">keep_value</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">gs</span><span class="o">.</span><span class="n">JOB_DEFAULT_KEEP_VALUE</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">k</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()</span> <span class="ow">in</span> <span class="n">needed</span><span class="p">)</span> <span class="ow">and</span> <span class="n">keep_value_local</span> <span class="o">&lt;</span> <span class="n">keep_value</span> <span class="ow">and</span> <span class="n">k</span><span class="o">.</span><span class="n">_sis_finished</span><span class="p">():</span>
+                        <span class="c1"># Job is not needed, has a to low keep value and is finished =&gt; can be removed</span>
+                        <span class="n">low_keep_value</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">clean_job_dir</span> <span class="ow">and</span> <span class="n">k</span><span class="o">.</span><span class="n">_sis_cleanable</span><span class="p">():</span>
+                        <span class="c1"># is part of an active job</span>
+                        <span class="c1"># clean job directory if possible</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Cleanable: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">k</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">())</span>
+                        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;remove&#39;</span><span class="p">:</span>
+                            <span class="n">k</span><span class="o">.</span><span class="n">_sis_cleanup</span><span class="p">()</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Keep this job</span>
+                        <span class="k">pass</span>
+
+    <span class="n">scan_work</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">WORK_DIR</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">remove_directories</span><span class="p">(</span><span class="n">dirs</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">move_postfix</span><span class="p">,</span> <span class="n">just_list</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; List all directories that will be deleted and add a security check &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="n">input_var</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Calculate size of affected directories? (Y/n): &quot;</span><span class="p">)</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dirs</span><span class="p">)</span>
+        <span class="n">tmp</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">input_var</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;n&#39;</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Affected directories:&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tmp</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">command</span> <span class="o">=</span> <span class="s1">&#39;du -sch </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmp</span><span class="p">))</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">just_list</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;dryrun&#39;</span><span class="p">:</span>
+                <span class="n">input_var</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Move directories?&#39;</span> <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;move&#39;</span> <span class="k">else</span> <span class="s1">&#39;Delete directories?&#39;</span>
+                <span class="n">input_var</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> (y/N): &quot;</span> <span class="o">%</span> <span class="n">message</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">input_var</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;y&#39;</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">num</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dirs</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;dryrun&#39;</span><span class="p">:</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Unused: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">k</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;move&#39;</span><span class="p">:</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Move: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">k</span><span class="p">)</span>
+                        <span class="c1"># TODO: k.{postfix} is may already used</span>
+                        <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="n">move_postfix</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;remove&#39;</span><span class="p">:</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Delete: (</span><span class="si">%d</span><span class="s1">/</span><span class="si">%d</span><span class="s1">) </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dirs</span><span class="p">),</span> <span class="n">k</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">islink</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                            <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">assert</span> <span class="kc">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Abort&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">unused</span><span class="p">:</span>
+        <span class="n">remove_directories</span><span class="p">(</span><span class="n">unused</span><span class="p">,</span> <span class="s1">&#39;Unused directories:&#39;</span><span class="p">,</span> <span class="s1">&#39;unused&#39;</span><span class="p">,</span> <span class="ow">not</span> <span class="n">clean_work_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">low_keep_value</span> <span class="ow">and</span> <span class="n">keep_value</span><span class="p">:</span></div>
+        <span class="n">remove_directories</span><span class="p">({</span><span class="n">j</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">low_keep_value</span><span class="p">},</span> <span class="s1">&#39;To low keep value directories:&#39;</span><span class="p">,</span> <span class="s1">&#39;trash&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="start_engine"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.start_engine">[docs]</a><span class="k">def</span> <span class="nf">start_engine</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Shortcut to start Engine</span>
+
+<span class="sd">    :return: Engine object that can be used to submit jobs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">sisyphus</span> <span class="k">import</span> <span class="n">engine</span></div>
+    <span class="k">return</span> <span class="n">engine</span><span class="o">.</span><span class="n">Engine</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="start_manager"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.start_manager">[docs]</a><span class="k">def</span> <span class="nf">start_manager</span><span class="p">(</span><span class="n">job_engine</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start_computations</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Shortcut to start Manager</span>
+
+<span class="sd">    :param job_engine: Use this job engine, init own job engine if set to None</span>
+<span class="sd">    :param start_computations: Submit jobs directly</span>
+<span class="sd">    :return: Manager</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">job_engine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">job_engine</span> <span class="o">=</span> <span class="n">start_engine</span><span class="p">()</span>
+    <span class="kn">import</span> <span class="nn">sisyphus.manager</span>
+    <span class="k">return</span> <span class="n">sisyphus</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">Manager</span><span class="p">(</span><span class="n">sis_graph</span><span class="o">=</span><span class="n">sis_graph</span><span class="p">,</span>
+                                    <span class="n">job_engine</span><span class="o">=</span><span class="n">job_engine</span><span class="p">,</span>
+                                    <span class="n">link_outputs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                    <span class="n">clear_once</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                    <span class="n">start_computations</span><span class="o">=</span><span class="n">start_computations</span><span class="p">,</span></div>
+                                    <span class="n">auto_print_stat_overview</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="job_info"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.job_info">[docs]</a><span class="k">def</span> <span class="nf">job_info</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Prints information about given job to stdout</span>
+
+<span class="sd">    :param job(Job):</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">sisyphus</span> <span class="k">import</span> <span class="n">tools</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Job id: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">())</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Arguments:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  </span><span class="si">%s</span><span class="s2"> : </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Inputs:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_sis_&#39;</span><span class="p">):</span>
+            <span class="n">paths</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">extract_paths</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">job</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  </span><span class="si">%s</span><span class="s2"> : </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  </span><span class="si">%s</span><span class="s2"> : </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">(),</span> <span class="n">path</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Outputs:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_sis_&#39;</span><span class="p">):</span>
+            <span class="n">paths</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">extract_paths</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span> <span class="ow">is</span> <span class="n">job</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  </span><span class="si">%s</span><span class="s2"> : </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Job dir: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()))</span></div>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Work dir: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">WORK_DIR</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">print_graph</span><span class="p">(</span><span class="n">targets</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">required_inputs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">visited</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># create dictionary with available paths</span>
+    <span class="n">required_inputs_str</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">required_inputs</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">required_inputs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+                <span class="n">required_inputs_str</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">get_path</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">Job</span><span class="p">):</span>
+                <span class="n">required_inputs_str</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">BASE_DIR</span><span class="p">,</span>  <span class="n">i</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()))</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">required_inputs_str</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">targets</span><span class="p">,</span> <span class="p">(</span><span class="n">Path</span><span class="p">,</span> <span class="n">Job</span><span class="p">)):</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">targets</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">targets</span><span class="p">:</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">sis_graph</span><span class="o">.</span><span class="n">targets</span><span class="p">:</span>
+            <span class="n">targets</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">required</span><span class="p">)</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span>
+        <span class="n">targets</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+            <span class="n">creator</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">creator</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">target</span>
+            <span class="k">if</span> <span class="n">creator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># This path is a input path of the graph</span>
+                <span class="k">continue</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">Job</span><span class="p">):</span>
+            <span class="n">creator</span> <span class="o">=</span> <span class="n">target</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;Target is neither Job nor Path it&#39;s : </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">target</span><span class="p">),</span> <span class="n">target</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">creator</span><span class="o">.</span><span class="n">_sis_contains_required_inputs</span><span class="p">(</span><span class="n">required_inputs_str</span><span class="p">,</span> <span class="n">include_job_path</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">:&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">creator</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">())</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">_sis_print_tree</span><span class="p">(</span><span class="n">visited</span><span class="p">,</span>
+                                         <span class="n">required_inputs</span><span class="o">=</span><span class="n">required_inputs_str</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: path&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">path</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="export_graph"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.export_graph">[docs]</a><span class="k">def</span> <span class="nf">export_graph</span><span class="p">(</span><span class="n">output_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Needs more testing</span>
+
+<span class="sd">    :param output_file:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+    <span class="n">sis_graph</span><span class="o">.</span><span class="n">update_nodes</span><span class="p">()</span>
+
+    <span class="n">out</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">output_file</span> <span class="k">else</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+
+    <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">sis_graph</span><span class="o">.</span><span class="n">path_to_all_nodes</span><span class="p">():</span></div>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">(),</span> <span class="nb">repr</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+
+
+<div class="viewcode-block" id="migrate_graph"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.migrate_graph">[docs]</a><span class="k">def</span> <span class="nf">migrate_graph</span><span class="p">(</span><span class="n">input_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">work_source</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;dryrun&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Needs more testing</span>
+
+<span class="sd">    :param input_file:</span>
+<span class="sd">    :param work_source:</span>
+<span class="sd">    :param mode:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sis_graph</span><span class="o">.</span><span class="n">update_nodes</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">work_source</span><span class="p">:</span>
+        <span class="n">work_source</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">WORK_DIR</span>
+
+    <span class="kn">import</span> <span class="nn">sys</span>
+    <span class="kn">from</span> <span class="nn">ast</span> <span class="k">import</span> <span class="n">literal_eval</span>
+    <span class="n">in_stream</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file</span><span class="p">)</span> <span class="k">if</span> <span class="n">input_file</span> <span class="k">else</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">in_stream</span><span class="p">:</span>
+        <span class="n">job_id</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">literal_eval</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">job</span> <span class="o">=</span> <span class="n">sis_graph</span><span class="o">.</span><span class="n">get_job_from_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">job</span><span class="p">:</span>
+            <span class="n">job</span><span class="o">.</span><span class="n">_sis_migrate_directory</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">work_source</span><span class="p">,</span> <span class="n">job_id</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span></div>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Could not find: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
+
+
+<span class="c1">#  ### Graph modify and compare functions</span>
+<div class="viewcode-block" id="compare_graph"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.compare_graph">[docs]</a><span class="k">def</span> <span class="nf">compare_graph</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="n">obj2</span><span class="p">,</span> <span class="n">traceback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visited</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Compares two objects and shows traceback to first found difference</span>
+
+<span class="sd">    :param obj1 (Job/Path): Object1 to compare</span>
+<span class="sd">    :param obj2 (Job/Path): Object2 which is compared to Object1</span>
+<span class="sd">    :param traceback: Used for recursion, leave blank</span>
+<span class="sd">    :param visited: Used for recursion, leave blank</span>
+<span class="sd">    :return: traceback</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">visited</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span> <span class="k">if</span> <span class="n">visited</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">visited</span>
+
+    <span class="n">traceback</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">traceback</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">traceback</span>
+    <span class="n">traceback</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">obj1</span><span class="p">,</span> <span class="n">obj2</span><span class="p">))</span>
+
+    <span class="n">sis_hash</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">SIS_HASH</span><span class="p">(</span><span class="n">obj1</span><span class="p">)</span>
+    <span class="n">skip</span> <span class="o">=</span> <span class="n">sis_hash</span> <span class="ow">in</span> <span class="n">visited</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">skip</span><span class="p">:</span>
+        <span class="n">visited</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">SIS_HASH</span><span class="p">(</span><span class="n">obj1</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">skip</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">obj1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">(</span><span class="n">obj2</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="n">traceback</span> <span class="o">+</span> <span class="p">[(</span><span class="nb">type</span><span class="p">(</span><span class="n">obj1</span><span class="p">),</span> <span class="nb">type</span><span class="p">(</span><span class="n">obj2</span><span class="p">))]</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="n">Job</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">obj1</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()</span> <span class="o">!=</span> <span class="n">obj2</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">():</span>
+            <span class="k">yield from</span> <span class="n">compare_graph</span><span class="p">(</span><span class="n">obj1</span><span class="o">.</span><span class="n">_sis_kwargs</span><span class="p">,</span> <span class="n">obj2</span><span class="o">.</span><span class="n">_sis_kwargs</span><span class="p">,</span> <span class="n">traceback</span><span class="p">[:],</span> <span class="n">visited</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">obj1</span><span class="o">.</span><span class="n">path</span> <span class="o">!=</span> <span class="n">obj2</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">traceback</span> <span class="o">+</span> <span class="p">[(</span><span class="n">obj1</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">obj2</span><span class="o">.</span><span class="n">path</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield from</span> <span class="n">compare_graph</span><span class="p">(</span><span class="n">obj1</span><span class="o">.</span><span class="n">creator</span><span class="p">,</span> <span class="n">obj2</span><span class="o">.</span><span class="n">creator</span><span class="p">,</span> <span class="n">traceback</span><span class="p">[:],</span> <span class="n">visited</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">set</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj2</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="n">traceback</span> <span class="o">+</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">obj1</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj2</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="nb">set</span><span class="p">):</span>
+                <span class="n">obj1</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">obj1</span><span class="p">))</span>
+                <span class="n">obj2</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">obj2</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="n">obj2</span><span class="p">):</span>
+                <span class="k">yield from</span> <span class="n">compare_graph</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">traceback</span><span class="p">[:],</span> <span class="n">visited</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v1</span> <span class="ow">in</span> <span class="n">obj1</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">v2</span> <span class="o">=</span> <span class="n">obj2</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">traceback</span> <span class="o">+</span> <span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">yield from</span> <span class="n">compare_graph</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">traceback</span><span class="p">[:],</span> <span class="n">visited</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v2</span> <span class="ow">in</span> <span class="n">obj2</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obj1</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">traceback</span> <span class="o">+</span> <span class="p">[(</span><span class="kc">None</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="s1">&#39;__dict__&#39;</span><span class="p">):</span>
+        <span class="k">yield from</span> <span class="n">compare_graph</span><span class="p">(</span><span class="n">obj1</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span> <span class="n">obj2</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span> <span class="n">traceback</span><span class="p">[:],</span> <span class="n">visited</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="s1">&#39;__slots__&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">obj1</span><span class="o">.</span><span class="vm">__slots__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj2</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                    <span class="n">v1</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                    <span class="n">v2</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj2</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                    <span class="k">yield from</span> <span class="n">compare_graph</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">traceback</span><span class="p">[:],</span> <span class="n">visited</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">traceback</span> <span class="o">+</span> <span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj2</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                    <span class="k">yield</span> <span class="n">traceback</span> <span class="o">+</span> <span class="p">[(</span><span class="kc">None</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">obj1</span> <span class="o">!=</span> <span class="n">obj2</span><span class="p">:</span></div>
+            <span class="k">yield</span> <span class="n">traceback</span><span class="p">[:]</span>
+
+
+<div class="viewcode-block" id="replace_graph_objects"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.replace_graph_objects">[docs]</a><span class="k">def</span> <span class="nf">replace_graph_objects</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">mapping</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">replace_function</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; This function takes a given graph and creates a new graph where every object listed in mapping is replaced.</span>
+
+<span class="sd">    current: current graph</span>
+<span class="sd">    mapping: [(old_object, new_object), ....]</span>
+<span class="sd">    replace_function: how an object will be replace, defaults using the mapping</span>
+
+<span class="sd">    returns: New graph</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">replace_function_mapping</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">old</span><span class="p">,</span> <span class="n">new</span> <span class="ow">in</span> <span class="n">mapping</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">obj</span> <span class="o">==</span> <span class="n">old</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">new</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">if</span> <span class="n">replace_function</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">mapping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">replace_function</span> <span class="o">=</span> <span class="n">replace_function_mapping</span>
+</div>
+    <span class="k">return</span> <span class="n">_replace_graph_objects_helper</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">replace_function</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_replace_graph_objects_helper</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">replace_function</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visited</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">visited</span> <span class="o">=</span> <span class="p">{}</span> <span class="k">if</span> <span class="n">visited</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">visited</span>
+    <span class="n">sis_hash</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">SIS_HASH</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">visited</span><span class="p">[</span><span class="n">sis_hash</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="n">replace</span> <span class="o">=</span> <span class="n">replace_function</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">replace</span> <span class="o">!=</span> <span class="n">current</span><span class="p">:</span>
+        <span class="n">visited</span><span class="p">[</span><span class="n">sis_hash</span><span class="p">]</span> <span class="o">=</span> <span class="n">replace</span>
+        <span class="k">return</span> <span class="n">replace</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">Job</span><span class="p">):</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">_replace_graph_objects_helper</span><span class="p">(</span><span class="n">current</span><span class="o">.</span><span class="n">_sis_kwargs</span><span class="p">,</span> <span class="n">replace_function</span><span class="p">,</span> <span class="n">visited</span><span class="p">)</span>
+        <span class="nb">next</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">current</span><span class="p">)(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+        <span class="n">creator</span> <span class="o">=</span> <span class="n">_replace_graph_objects_helper</span><span class="p">(</span><span class="n">current</span><span class="o">.</span><span class="n">creator</span><span class="p">,</span> <span class="n">replace_function</span><span class="p">,</span> <span class="n">visited</span><span class="p">)</span>
+        <span class="c1"># TODO tage care of other attributes</span>
+        <span class="nb">next</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">current</span><span class="p">)(</span><span class="n">current</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">creator</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">set</span><span class="p">)):</span>
+        <span class="nb">next</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">current</span><span class="p">)(</span><span class="n">_replace_graph_objects_helper</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">replace_function</span><span class="p">,</span> <span class="n">visited</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">current</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="nb">next</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">current</span><span class="p">)((</span><span class="n">k</span><span class="p">,</span> <span class="n">_replace_graph_objects_helper</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">replace_function</span><span class="p">,</span> <span class="n">visited</span><span class="p">))</span>
+                             <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">current</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s1">&#39;__dict__&#39;</span><span class="p">):</span>
+        <span class="c1"># TODO may add usage of get an set state</span>
+        <span class="n">dict_</span> <span class="o">=</span> <span class="n">_replace_graph_objects_helper</span><span class="p">(</span><span class="n">current</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span> <span class="n">replace_function</span><span class="p">,</span> <span class="n">visited</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dict_</span> <span class="o">==</span> <span class="n">current</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+            <span class="nb">next</span> <span class="o">=</span> <span class="n">current</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">next</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">current</span><span class="p">)</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">current</span><span class="p">))</span>
+            <span class="nb">next</span><span class="o">.</span><span class="vm">__dict__</span> <span class="o">=</span> <span class="n">dict_</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="s1">&#39;__slots__&#39;</span><span class="p">):</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">dict_</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">current</span><span class="o">.</span><span class="vm">__slots__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                <span class="n">new</span> <span class="o">=</span> <span class="n">_replace_graph_objects_helper</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">replace_function</span><span class="p">,</span> <span class="n">visited</span><span class="p">)</span>
+                <span class="n">diff</span> <span class="o">=</span> <span class="n">diff</span> <span class="ow">or</span> <span class="n">v</span> <span class="o">!=</span> <span class="n">new</span>
+        <span class="k">if</span> <span class="n">diff</span><span class="p">:</span>
+            <span class="nb">next</span> <span class="o">=</span> <span class="n">current</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">next</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">current</span><span class="p">)</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">current</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dict_</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="nb">next</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">next</span> <span class="o">=</span> <span class="n">current</span>
+    <span class="n">visited</span><span class="p">[</span><span class="n">sis_hash</span><span class="p">]</span> <span class="o">=</span> <span class="nb">next</span>
+    <span class="k">return</span> <span class="nb">next</span>
+
+
+<span class="c1"># Reload functions</span>
+<span class="k">def</span> <span class="nf">_reload_prefix</span><span class="p">(</span><span class="n">prefix</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+    <span class="kn">import</span> <span class="nn">importlib</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">prefix</span><span class="p">):</span>
+            <span class="n">importlib</span><span class="o">.</span><span class="n">reload</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="reload_recipes"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.reload_recipes">[docs]</a><span class="k">def</span> <span class="nf">reload_recipes</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot; Reload all recipes &quot;&quot;&quot;</span></div>
+    <span class="n">_reload_prefix</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">RECIPE_DIR</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="reload_config"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.reload_config">[docs]</a><span class="k">def</span> <span class="nf">reload_config</span><span class="p">(</span><span class="n">config_files</span><span class="o">=</span><span class="p">[]):</span>
+    <span class="sd">&quot;&quot;&quot; Reset state, reload old config files, and load given config_files</span>
+
+<span class="sd">    :param config_files([str, ...]):</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Reset current state</span>
+    <span class="kn">import</span> <span class="nn">sisyphus.job</span>
+    <span class="n">sisyphus</span><span class="o">.</span><span class="n">job</span><span class="o">.</span><span class="n">created_jobs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">global</span> <span class="n">sis_graph</span>
+    <span class="n">sis_graph</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">SISGraph</span><span class="p">()</span>
+
+    <span class="n">_reload_prefix</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">CONFIG_DIR</span><span class="p">)</span>
+
+    <span class="c1"># Load new config</span></div>
+    <span class="n">load_configs</span><span class="p">(</span><span class="n">config_files</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="reload_module"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.reload_module">[docs]</a><span class="k">def</span> <span class="nf">reload_module</span><span class="p">(</span><span class="n">module</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Shortcut to reload module, keep sis_graph if toolkit is reloaded</span>
+
+<span class="sd">    :param module: Module to reload</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">importlib</span>
+
+    <span class="k">if</span> <span class="n">module</span><span class="o">.</span><span class="vm">__file__</span> <span class="o">==</span> <span class="vm">__file__</span><span class="p">:</span>
+        <span class="c1"># Reloading this module, save and restore sis_graph</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">sis_graph</span>
+        <span class="n">importlib</span><span class="o">.</span><span class="n">reload</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+        <span class="n">module</span><span class="o">.</span><span class="n">sis_graph</span> <span class="o">=</span> <span class="n">tmp</span>
+    <span class="k">else</span><span class="p">:</span></div>
+        <span class="n">importlib</span><span class="o">.</span><span class="n">reload</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+
+
+<span class="c1"># Move to tools?</span>
+<div class="viewcode-block" id="EnvironmentModifier"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.EnvironmentModifier">[docs]</a><span class="k">class</span> <span class="nc">EnvironmentModifier</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A class to cleanup the environment before a job starts</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_vars</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_vars</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">keep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">var</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">keep_vars</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">keep_vars</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">var</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_vars</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_vars</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">modify_environment</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">os</span>
+        <span class="kn">import</span> <span class="nn">string</span>
+
+        <span class="n">orig_env</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">)</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_vars</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_vars</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">Template</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="n">substitute</span><span class="p">(</span><span class="n">orig_env</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;environment var </span><span class="si">%s</span><span class="s1">=</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keep_vars</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">set_vars</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Jan-Thorsten Peter, Eugen Beck.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

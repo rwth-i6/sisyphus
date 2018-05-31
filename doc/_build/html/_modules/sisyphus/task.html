@@ -1,0 +1,498 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sisyphus.task &#8212; Sisyphus 0.9 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sisyphus.task</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+<span class="kn">from</span> <span class="nn">ast</span> <span class="k">import</span> <span class="n">literal_eval</span>
+
+<span class="kn">import</span> <span class="nn">sisyphus.tools</span> <span class="k">as</span> <span class="nn">tools</span>
+<span class="kn">import</span> <span class="nn">sisyphus.global_settings</span> <span class="k">as</span> <span class="nn">gs</span>
+
+
+<div class="viewcode-block" id="Task"><a class="viewcode-back" href="../../index.html#sisyphus.task.Task">[docs]</a><span class="k">class</span> <span class="nc">Task</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Object to hold information what function should be run with which requirements</span>
+
+<span class="sd">    :param \start(str): name of the function which will be executed on start</span>
+<span class="sd">    :param resume(str): name of the function which will be executed on resume, often set equal to start</span>
+<span class="sd">    :param rqmt(dict): job requirements</span>
+<span class="sd">    :param args(...): job arguments</span>
+<span class="sd">    :param mini_task(bool): will be run locally if True</span>
+<span class="sd">    :param update_rqmt(str): function to update job requirements for interrupted jobs</span>
+<span class="sd">    :param \parallel(int): the max. number of jobs to submit to a queue, defaults to the number of args</span>
+<span class="sd">    :param tries(int): how often this task is resubmitted after failure</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">resume</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rqmt</span><span class="o">=</span><span class="p">{},</span> <span class="n">args</span><span class="o">=</span><span class="p">[[]],</span> <span class="n">mini_task</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">update_rqmt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">tries</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">=</span> <span class="n">start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resume</span> <span class="o">=</span> <span class="n">resume</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rqmt</span> <span class="o">=</span> <span class="n">rqmt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_rqmt</span> <span class="o">=</span> <span class="n">update_rqmt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parallel</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">)</span> <span class="k">if</span> <span class="n">parallel</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">parallel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mini_task</span> <span class="o">=</span> <span class="n">mini_task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset_cache</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_state</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tries</span> <span class="o">=</span> <span class="n">tries</span>
+
+    <span class="k">def</span> <span class="nf">reset_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state_cache</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state_cache_time</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">set_job</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_job</span> <span class="o">=</span> <span class="n">job</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resume</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s2">&quot;Trying to create a task with an invalid function name&quot;</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s2">&quot;Job name: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">job</span><span class="p">))</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s2">&quot;Function name: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+                <span class="k">raise</span>
+
+    <span class="k">def</span> <span class="nf">get_f</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">task_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Return list with all valid task ids &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parallel</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">rqmt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rqmt</span><span class="p">):</span>
+            <span class="n">rqmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rqmt</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rqmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rqmt</span>
+
+        <span class="c1"># Ensure that the requested memory is a float representing GB</span>
+        <span class="n">mem</span> <span class="o">=</span> <span class="n">rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mem&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mem</span><span class="p">:</span>
+            <span class="n">rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">str_to_GB</span><span class="p">(</span><span class="n">mem</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.</span>
+
+        <span class="k">return</span> <span class="n">rqmt</span>
+
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span>
+
+    <span class="k">def</span> <span class="nf">resumeable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resume</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">resume_job</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">logging_thread</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This function is executed to running this job &quot;&quot;&quot;</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Task name: </span><span class="si">%s</span><span class="s2"> id: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">task_id</span><span class="p">))</span>
+        <span class="n">job</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Start Job: </span><span class="si">%s</span><span class="s2"> Task: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">job</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">()))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Inputs:&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+            <span class="c1"># each input must be at least X seconds old</span>
+            <span class="c1"># if an input file is too young it&#39;s may not synced in a network filesystem yet</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">input_age</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">get_path</span><span class="p">())</span><span class="o">.</span><span class="n">st_mtime</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">WAIT_PERIOD_MTIME_OF_INPUTS</span><span class="o">-</span><span class="n">input_age</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Input path does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">i</span><span class="o">.</span><span class="n">get_path</span><span class="p">())</span>
+
+            <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">creator</span> <span class="ow">and</span> <span class="n">gs</span><span class="o">.</span><span class="n">ENABLE_LAST_USAGE</span><span class="p">:</span>
+                <span class="c1"># mark that input was used</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">creator</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">JOB_LAST_USER</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">getlogin</span><span class="p">()))</span>
+                <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">13</span><span class="p">):</span>
+                        <span class="c1"># 2: file not found</span>
+                        <span class="c1"># 13: permission denied</span>
+                        <span class="k">raise</span> <span class="n">e</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">user_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">creator</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">JOB_LAST_USER</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">getlogin</span><span class="p">())</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">symlink</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()),</span> <span class="n">user_path</span><span class="p">)</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">user_path</span><span class="p">,</span> <span class="mo">0o775</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">17</span><span class="p">):</span>
+                        <span class="c1"># 2: file not found</span>
+                        <span class="c1"># 13: permission denied</span>
+                        <span class="c1"># 17: file exists</span>
+                        <span class="k">raise</span> <span class="n">e</span>
+
+        <span class="n">tools</span><span class="o">.</span><span class="n">get_system_informations</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">resume_job</span><span class="p">:</span>
+                <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resume</span>
+                <span class="k">assert</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Task not resumable&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span>
+                <span class="k">assert</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Error loading task&quot;</span>
+            <span class="c1"># save current directory and change into work directory</span>
+            <span class="k">with</span> <span class="n">tools</span><span class="o">.</span><span class="n">execute_in_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">JOB_WORK_DIR</span><span class="p">)):</span>
+                <span class="n">f</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
+
+                <span class="c1"># get job arguments</span>
+                <span class="k">for</span> <span class="n">arg_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_arg_idx_for_task_id</span><span class="p">(</span><span class="n">task_id</span><span class="p">):</span>
+                    <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">[</span><span class="n">arg_id</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+                        <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="n">args</span><span class="p">]</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting subtask for arg id: </span><span class="si">%d</span><span class="s2"> args: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">arg_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">)))</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+                    <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">sp</span><span class="o">.</span><span class="n">CalledProcessError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">137</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Command got killed (probably out of memory):&quot;</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Cmd: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">e</span><span class="o">.</span><span class="n">cmd</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Args: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">))</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Return-Code: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">e</span><span class="o">.</span><span class="n">returncode</span><span class="p">)</span>
+                <span class="n">logging_thread</span><span class="o">.</span><span class="n">out_of_memory</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">logging_thread</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Executed command failed:&quot;</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Cmd: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">e</span><span class="o">.</span><span class="n">cmd</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Args: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">))</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Return-Code: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">e</span><span class="o">.</span><span class="n">returncode</span><span class="p">)</span>
+                <span class="n">logging_thread</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># Job failed</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Job failed, traceback:&quot;</span><span class="p">)</span>
+            <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+            <span class="n">logging_thread</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="c1"># TODO handle failed job</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Job finished normally</span>
+            <span class="n">logging_thread</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Job finished successful&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">task_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">path_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">JOB_WORK_DIR</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">JOB_SAVE</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">JOB_LOG_ENGINE</span><span class="p">):</span>
+            <span class="n">path_type</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">path_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">path_type</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">check_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">combine</span><span class="o">=</span><span class="nb">all</span><span class="p">,</span> <span class="n">minimal_time_since_change</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return if this state is currently set or not</span>
+
+<span class="sd">        :param state: name of state</span>
+<span class="sd">        :param task_id:</span>
+<span class="sd">        :param update: if not None change state to this value</span>
+<span class="sd">        :param combine: how states are combines, e.g. only finished if all jobs are finished =&gt; all,</span>
+<span class="sd">                        error state is true if only one or more is has the error flag =&gt; any</span>
+<span class="sd">        :param minimal_time_since_change: only true if state change is at least that old</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">task_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">task_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_ids</span><span class="p">()</span>
+
+        <span class="n">current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_file_logging</span><span class="p">(</span><span class="n">state</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="n">update</span><span class="p">,</span>
+                                                    <span class="n">combine</span><span class="o">=</span><span class="n">combine</span><span class="p">,</span> <span class="n">minimal_file_age</span><span class="o">=</span><span class="n">minimal_time_since_change</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">current_state</span>
+
+    <span class="k">def</span> <span class="nf">finished</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_state</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">STATE_FINISHED</span><span class="p">,</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="n">update</span><span class="p">,</span> <span class="n">combine</span><span class="o">=</span><span class="nb">all</span><span class="p">,</span>
+                            <span class="n">minimal_time_since_change</span><span class="o">=</span><span class="n">gs</span><span class="o">.</span><span class="n">WAIT_PERIOD_JOB_FS_SYNC</span> <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">WAIT_PERIOD_JOB_CLEANUP</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Return true if job or task is in error state &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">update</span><span class="p">:</span>
+            <span class="c1"># set error flag</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_state</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">STATE_ERROR</span><span class="p">,</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="n">update</span><span class="p">,</span> <span class="n">combine</span><span class="o">=</span><span class="nb">any</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">task_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">task_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">task_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_ids</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">task_ids</span> <span class="o">=</span> <span class="n">task_id</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_ids</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="n">task_ids</span><span class="p">:</span>
+            <span class="n">error_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">STATE_ERROR</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">task_id</span><span class="p">)</span>
+            <span class="n">error_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">error_file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">error_file</span><span class="p">):</span>  <span class="c1"># task is in error state</span>
+                <span class="c1"># move log file and remove error file if a usued try is left</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tries</span><span class="p">):</span>
+                    <span class="n">log_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">JOB_LOG</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">task_id</span><span class="p">)</span>
+                    <span class="n">new_name</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.error.</span><span class="si">%02i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">log_file</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">new_name</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">log_file</span><span class="p">):</span>
+                            <span class="n">os</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">log_file</span><span class="p">,</span> <span class="n">new_name</span><span class="p">)</span>
+                            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">error_file</span><span class="p">)</span>
+                        <span class="k">break</span>
+
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">error_file</span><span class="p">):</span>
+                <span class="c1"># task is still in error state</span>
+                <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">started</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; True if job execution has started &quot;&quot;&quot;</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">JOB_LOG</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">state</span>
+
+    <span class="k">def</span> <span class="nf">print_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_ids</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">task_id</span><span class="p">):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Job: </span><span class="si">%s</span><span class="s2"> Task: </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">task_id</span><span class="p">))</span>
+                <span class="n">logpath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">JOB_LOG</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">logpath</span><span class="p">):</span>
+                    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">logpath</span><span class="p">)</span> <span class="k">as</span> <span class="n">log</span><span class="p">:</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Logfile:&quot;</span><span class="p">)</span>
+                        <span class="nb">print</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">lines</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">log</span><span class="o">.</span><span class="n">readlines</span><span class="p">()[</span><span class="o">-</span><span class="n">lines</span><span class="p">:]),</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="n">log</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">engine</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">force</span> <span class="ow">or</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_cache_time</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="o">-</span><span class="mi">20</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_state</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state_cache</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state_cache_time</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_cache</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">engine</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Store return of helper as value as last state &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_state_helper</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_state</span>
+
+    <span class="k">def</span> <span class="nf">_get_state_helper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">engine</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Return state of this task given by external code &quot;&quot;&quot;</span>
+        <span class="c1"># Handling external states</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="p">(</span><span class="n">task_id</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_FINISHED</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">task_id</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_ERROR</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Task is not finished and not in error state, time to check the engine</span>
+            <span class="k">if</span> <span class="n">task_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Check all task_id of this task, return the &#39;worst&#39; state</span>
+                <span class="n">engine_states</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_ids</span><span class="p">()]</span>
+                <span class="k">for</span> <span class="n">engine_state</span> <span class="ow">in</span> <span class="p">(</span>
+                        <span class="n">gs</span><span class="o">.</span><span class="n">STATE_ERROR</span><span class="p">,</span>
+                        <span class="n">gs</span><span class="o">.</span><span class="n">STATE_QUEUE_ERROR</span><span class="p">,</span>
+                        <span class="n">gs</span><span class="o">.</span><span class="n">STATE_INTERRUPTED</span><span class="p">,</span>
+                        <span class="n">gs</span><span class="o">.</span><span class="n">STATE_RUNNABLE</span><span class="p">,</span>
+                        <span class="n">gs</span><span class="o">.</span><span class="n">STATE_QUEUE</span><span class="p">,</span>
+                        <span class="n">gs</span><span class="o">.</span><span class="n">STATE_RUNNING</span><span class="p">,</span>
+                        <span class="n">gs</span><span class="o">.</span><span class="n">STATE_RETRY_ERROR</span><span class="p">,</span>
+                        <span class="n">gs</span><span class="o">.</span><span class="n">STATE_FINISHED</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">engine_state</span> <span class="ow">in</span> <span class="n">engine_states</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="n">engine_state</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s2">&quot;Could not determine state of task: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">engine_states</span><span class="p">))</span>
+                <span class="k">assert</span> <span class="kc">False</span>  <span class="c1"># This code point should be unreachable</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># check state for the given task id</span>
+                <span class="k">if</span> <span class="n">engine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">engine_state</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_UNKNOWN</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">engine_state</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">task_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
+                    <span class="k">assert</span> <span class="n">engine_state</span> <span class="ow">in</span> <span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">STATE_QUEUE</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_QUEUE_ERROR</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_RUNNING</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_UNKNOWN</span><span class="p">)</span>
+
+                    <span class="c1"># force cache update to avoid caching problems if last state was not also UNKNOWN</span>
+                    <span class="k">if</span> <span class="n">engine_state</span> <span class="o">==</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_UNKNOWN</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_state</span> <span class="ow">and</span> \
+                       <span class="bp">self</span><span class="o">.</span><span class="n">last_state</span> <span class="o">!=</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_UNKNOWN</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">started</span><span class="p">(</span><span class="n">task_id</span><span class="p">):</span>
+                        <span class="n">engine</span><span class="o">.</span><span class="n">reset_cache</span><span class="p">()</span>
+                        <span class="n">engine_state</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">task_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
+                        <span class="k">assert</span> <span class="n">engine_state</span> <span class="ow">in</span> <span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">STATE_QUEUE</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_QUEUE_ERROR</span><span class="p">,</span>
+                                                <span class="n">gs</span><span class="o">.</span><span class="n">STATE_RUNNING</span><span class="p">,</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_UNKNOWN</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">engine_state</span> <span class="o">==</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_UNKNOWN</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">started</span><span class="p">(</span><span class="n">task_id</span><span class="p">):</span>
+                        <span class="c1"># check again if it finished or crashed while retrieving the state</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="p">(</span><span class="n">task_id</span><span class="p">):</span>
+                            <span class="k">return</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_FINISHED</span>
+                        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">task_id</span><span class="p">):</span>
+                            <span class="k">return</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_ERROR</span>
+                        <span class="c1"># job logging file got updated recently, assume job is still running.</span>
+                        <span class="c1"># used to avoid wrongly marking jobs as interrupted do to slow filesystem updates</span>
+                        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">(</span><span class="n">task_id</span><span class="p">):</span>
+                            <span class="k">return</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_RUNNING</span>
+                        <span class="n">history</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">engine</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_submit_history</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">history</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">history</span><span class="p">[</span><span class="n">task_id</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>  <span class="c1"># TODO make it an global setting</span>
+                            <span class="c1"># More then three tries to run this task, something is wrong</span>
+                            <span class="k">return</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_RETRY_ERROR</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="c1"># Task was started, but isn&#39;t running anymore =&gt; interrupted</span>
+                            <span class="k">return</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_INTERRUPTED</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_RUNNABLE</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">engine_state</span> <span class="o">==</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_RUNNING</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                        <span class="c1"># Warn if job is running but doesn&#39;t update logging file anymore</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Job marked as running but logging file has not been updated: &#39;</span>
+                                        <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> assume it is running&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="p">))</span>
+                    <span class="k">return</span> <span class="n">engine_state</span>
+
+    <span class="k">def</span> <span class="nf">running</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return: True if usage file changed recently, None if usage file doesn&#39;t exist False otherwise</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">usage_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">PLOGGING_FILE</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">abspath</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">maximal_file_age</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">WAIT_PERIOD_JOB_FS_SYNC</span> <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">PLOGGING_UPDATE_FILE_PERIOD</span> <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">WAIT_PERIOD_JOB_CLEANUP</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">usage_file</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">maximal_file_age</span> <span class="o">&gt;</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getmtime</span><span class="p">(</span><span class="n">usage_file</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_arg_idx_for_task_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">task_id</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;this function assumes task_ids start at 1&quot;</span>
+        <span class="n">nargs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">)</span>
+        <span class="n">chunk_size</span> <span class="o">=</span> <span class="n">nargs</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parallel</span>
+        <span class="n">overflow</span> <span class="o">=</span> <span class="n">nargs</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parallel</span>
+        <span class="k">if</span> <span class="n">task_id</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="n">overflow</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="p">(</span><span class="n">chunk_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">task_id</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="n">chunk_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="p">(</span><span class="n">chunk_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">overflow</span> <span class="o">+</span> <span class="n">chunk_size</span> <span class="o">*</span> <span class="p">(</span><span class="n">task_id</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">overflow</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update_rqmt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default_rqmt</span><span class="p">,</span> <span class="n">submit_history</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Update task requirements of interrupted job &quot;&quot;&quot;</span>
+        <span class="n">current_rqmt</span> <span class="o">=</span> <span class="n">default_rqmt</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">usage_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">PLOGGING_FILE</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">abspath</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">last_usage</span> <span class="o">=</span> <span class="n">literal_eval</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">usage_file</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">SyntaxError</span><span class="p">,</span> <span class="ne">IOError</span><span class="p">):</span>
+            <span class="c1"># we don&#39;t know anything if no usage file is writen or is invalid, just reuse last rqmts</span>
+            <span class="k">return</span> <span class="n">current_rqmt</span>
+
+        <span class="n">requested_time</span> <span class="o">=</span> <span class="n">last_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;requested_resources&#39;</span><span class="p">,</span>
+                                        <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">tools</span><span class="o">.</span><span class="n">str_to_seconds</span><span class="p">(</span><span class="n">default_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">3600</span><span class="p">))</span>
+        <span class="n">requested_memory</span> <span class="o">=</span> <span class="n">last_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;requested_resources&#39;</span><span class="p">,</span>
+                                          <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mem&#39;</span><span class="p">,</span> <span class="n">tools</span><span class="o">.</span><span class="n">str_to_GB</span><span class="p">(</span><span class="n">default_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mem&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
+
+        <span class="n">used_time</span> <span class="o">=</span> <span class="n">last_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;used_time&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">used_memory</span> <span class="o">=</span> <span class="n">last_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;rss&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">out_of_memory</span> <span class="o">=</span> <span class="n">last_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;out_of_memory&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">requested_memory</span> <span class="o">-</span> <span class="n">used_memory</span> <span class="o">&lt;</span> <span class="mf">0.25</span>
+        <span class="n">out_of_time</span> <span class="o">=</span> <span class="n">requested_time</span> <span class="o">-</span> <span class="n">used_time</span> <span class="o">&lt;</span> <span class="mf">0.1</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_rqmt</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;Implement and test, not used so far&#39;</span>
+            <span class="n">current_rqmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_rqmt</span><span class="p">(</span><span class="n">current_rqmt</span><span class="o">=</span><span class="n">current_rqmt</span><span class="p">,</span>
+                                             <span class="n">out_of_time</span><span class="o">=</span><span class="n">out_of_time</span><span class="p">,</span>
+                                             <span class="n">out_of_memory</span><span class="o">=</span><span class="n">out_of_memory</span><span class="p">,</span>
+                                             <span class="n">requested_time</span><span class="o">=</span><span class="n">requested_time</span><span class="p">,</span>
+                                             <span class="n">requested_memory</span><span class="o">=</span><span class="n">requested_memory</span><span class="p">,</span>
+                                             <span class="n">last_usage</span><span class="o">=</span><span class="n">last_usage</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">out_of_time</span><span class="p">:</span>
+                <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">tools</span><span class="o">.</span><span class="n">str_to_seconds</span><span class="p">(</span><span class="n">default_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span><span class="o">/</span><span class="mi">3600</span><span class="p">,</span> <span class="n">requested_time</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="c1"># Unsure request stays below maximum</span>
+                <span class="c1"># TODO: max these maximums an engine depended option</span>
+                <span class="k">if</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">32</span><span class="p">:</span>
+                    <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">24</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">out_of_memory</span><span class="p">:</span>
+                <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">tools</span><span class="o">.</span><span class="n">str_to_GB</span><span class="p">(</span><span class="n">default_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mem&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span> <span class="n">requested_memory</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Unsure request stays below maximum</span>
+        <span class="c1"># TODO: max these maximums an engine depended option</span>
+        <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">168</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">24</span><span class="p">:</span>
+            <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">63</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">127</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">current_rqmt</span>
+
+    <span class="k">def</span> <span class="nf">get_process_logging_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">PLOGGING_FILE</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">abspath</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Task &lt; workdir(</span><span class="si">%s</span><span class="s2">) name(</span><span class="si">%s</span><span class="s2">) ids(</span><span class="si">%s</span><span class="s2">) &gt;&quot;</span> <span class="o">%</span> <span class="p">(</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_ids</span><span class="p">()))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Jan-Thorsten Peter, Eugen Beck.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

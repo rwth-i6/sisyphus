@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+# encoding: utf-8
+
+"""
+Framework to setup complex work flows
+
+"""
+from sisyphus.__main__ import main
+
+__author__ = "Jan-Thorsten Peter, Eugen Beck"
+__email__ = "peter@cs.rwth-aachen.de"
+
+if __name__ == '__main__':
+    main()
