@@ -23,8 +23,9 @@ def engine():
         from sisyphus.localengine import LocalEngine
         from sisyphus.engine import EngineSelector
         from sisyphus.son_of_grid_engine import SonOfGridEngine
-        return EngineSelector(engines={'short': LocalEngine(max_cpu=4),
-                                       'long': SonOfGridEngine()},
+        return EngineSelector(engines={'short': LocalEngine(cpus=4),
+                                       'long': SonOfGridEngine(default_rqmt={'cpu': 1, 'mem': 1,
+                                                                             'gpu': 0, 'time': 1})},
                               default_engine='long')
 
     Note: the engines should only be imported locally inside the function to avoid circular imports
