@@ -568,14 +568,20 @@ class SISGraph(object):
                 pass
         self.for_all_nodes(f)
 
-        cache = {}
         for target in self.targets:
             if isinstance(target, OutputPath):
                 name = target._output_path
                 out = target._sis_path
+
                 if out.creator is not None:
-                    self.for_all_nodes(f=lambda job: job._sis_needed_for_which_targets.add(name),
-                                       nodes=[out.creator])
+                    logging.info('Add target %s to jobs (used for more informativ output, '
+                                 'disable with SHOW_JOB_TARGETS=False)' % name)
+                    def f(job):
+                        if gs.SHOW_JOB_TARGETS is True or len(job._sis_needed_for_which_targets) < gs.SHOW_JOB_TARGETS:
+                            job._sis_needed_for_which_targets.add(name)
+                            return True
+                        return False
+                    self.for_all_nodes(f=f, nodes=[out.creator])
 
 
 def is_literal(obj, visited=None):
