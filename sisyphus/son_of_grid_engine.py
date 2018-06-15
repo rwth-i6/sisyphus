@@ -258,7 +258,11 @@ class SonOfGridEngine(EngineBase):
         try:
             etree = xml.etree.cElementTree.fromstring(xml_data)
         except xml.etree.cElementTree.ParseError:
-            logging.warning('qstat -xml parsing error, retrying')
+            logging.warning('qstat -xml parsing error, retrying\n'
+                            'command: %s\n'
+                            'stdout: %s\n'
+                            'stderr: %s\n'
+                            'return value: %s' % (system_command, out, err, retval))
             time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
             return self.queue_state()
 
