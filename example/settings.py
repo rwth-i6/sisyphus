@@ -4,7 +4,7 @@ import socket
 def engine():
     from sisyphus.engine import EngineSelector
     from sisyphus.localengine import LocalEngine
-    return LocalEngine(max_cpu=4)
+    return LocalEngine(cpus=4)
     # Example how to use the engine selector, normally the 'long' engine would be a grid enigne e.g. sge
     return EngineSelector(engines={'short': LocalEngine(cpus=4, gpus=0),
                                    'long': LocalEngine(cpus=8, gpus=1)},

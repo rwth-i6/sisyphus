@@ -40,8 +40,61 @@
 Sisyphus makes it easy to have a organized way how to share a workflow, e.g. how to setup a complete translation system from start to end or just use parts of it.
 This is done by creating a graph which connects outputs of jobs (calculations on some input files given some parameter) with other jobs. The connections between these jobs are either files or simple python objects.</p>
 </div>
+<div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<dl class="docutils">
+<dt>Sisyphus requires a Python 3.5 installation with the following additional libraries:</dt>
+<dd><blockquote class="first">
+<div><ul class="simple">
+<li>sudo pip3 install psutil</li>
+<li>sudo pip3 install ipython</li>
+</ul>
+</div></blockquote>
+<dl class="last docutils">
+<dt>Optional if web interface should be used:</dt>
+<dd><ul class="first last simple">
+<li>sudo pip3 install flask</li>
+</ul>
+</dd>
+<dt>Optional to compile documentation:</dt>
+<dd><ul class="first last simple">
+<li>sudo pip3 install Sphinx</li>
+</ul>
+</dd>
+<dt>Optional if virtual file system should be used:</dt>
+<dd><ul class="first last simple">
+<li>sudo pip3 install fusepy</li>
+<li>sudo addgroup $USER fuse  # depending on your system</li>
+</ul>
+</dd>
+</dl>
+</dd>
+</dl>
+</div>
+<div class="section" id="quickstart">
+<h1>QuickStart<a class="headerlink" href="#quickstart" title="Permalink to this headline">¶</a></h1>
+<p>To run sisyphus you need to setup an experiment folder that contains all needed files (See <a class="reference internal" href="#sec-structure"><span class="std std-ref">Structure</span></a>).
+An example directory is given in the example folder. To start this toy setup run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">../</span><span class="n">sis</span> <span class="n">manager</span>
+</pre></div>
+</div>
+<p>you will get something similar to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[2018-06-15 16:31:50,488] INFO: Add target result to jobs (used for more informativ output, disable with SHOW_JOB_TARGETS=False)
+[2018-06-15 16:31:50,796] INFO: runnable: Job&lt; workdir: work/parallel/LineSpliter.AVSubx1baWqKyMx35c&gt; &lt;target: result&gt;
+[2018-06-15 16:31:50,796] INFO: runnable(1) waiting(1)
+Print verbose overview (v), start manager (y), or exit (n)?
+</pre></div>
+</div>
+<p>Start the computation by pressing <cite>y</cite>. You can stop the manager again at any time by pressing CTRL-C.
+Sisyphus will show you which processes are currently running. For more information about the processes either check the web interface. It can be started with the http option:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">../</span><span class="n">sis</span> <span class="n">manager</span> <span class="o">--</span><span class="n">http</span> <span class="mi">8080</span>
+</pre></div>
+</div>
+<p>This will start a local web server at the given port. Visit it by going to <a class="reference external" href="http://localhost:8080">http://localhost:8080</a>
+Once the final output is computed it will appear in the output folder. In this given example just some random text file.</p>
+</div>
 <div class="section" id="structure">
-<h1>Structure<a class="headerlink" href="#structure" title="Permalink to this headline">¶</a></h1>
+<span id="sec-structure"></span><h1>Structure<a class="headerlink" href="#structure" title="Permalink to this headline">¶</a></h1>
 <dl class="docutils">
 <dt>A Sisyphus experiment folder consists mainly of 5 things:</dt>
 <dd><ul class="first last simple">
@@ -56,9 +109,8 @@ This is done by creating a graph which connects outputs of jobs (calculations on
 <div class="section" id="the-recipe-folder">
 <h2>The recipe folder<a class="headerlink" href="#the-recipe-folder" title="Permalink to this headline">¶</a></h2>
 <p>The recipe folder contains python files which describe what commands are executed in which order and how they are linked together.
-A typical file starts with the two lines:</p>
+A typical file starts with this line:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sisyphus</span> <span class="k">import</span> <span class="o">*</span>
-<span class="n">Path</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">setup_path</span><span class="p">(</span><span class="n">__package__</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="docutils">
@@ -66,19 +118,19 @@ A typical file starts with the two lines:</p>
 <dd><ul class="first last simple">
 <li>Job, this is the base class for all Jobs created in a sisyphus setup. A job takes some parameter and files as input and creates some other files as output. It represents a node in our workflow graph.</li>
 <li>Task, these are the subelements of a Job. Each job runs one or more Tasks to create it’s actual outputs.</li>
+<li>Path, used to reference to files directly. Path object are also created as outputs of Jobs. They can be seen as edges in the workflow graph.</li>
 <li>tk, short for toolkit. Contains commands to communicate with sisyphus</li>
-<li>Path, used to reference to files relative to the path of this python file. This is used to link to scripts that are stored next to the recipe files. Path object are also created as outputs of Jobs. They can be interpreted as edges in the workflow graph.</li>
 </ul>
 </dd>
 </dl>
 <p>A workflow in a python file is now created by connecting these jobs together via a path object.
 This is usually done by a function which serves as template.
 Outputs of the workflow graph a registered at sisyphus via the <code class="docutils literal notranslate"><span class="pre">`tk.register_output('name',</span> <span class="pre">path)`</span></code> function.
-These files will be linked to the output/ folder after the responsible job to create this file finished.</p>
+These files will be linked to the output folder after the responsible job to create this file finished.</p>
 </div>
-<div class="section" id="config-py-or-config-folder">
-<h2>config.py or config folder<a class="headerlink" href="#config-py-or-config-folder" title="Permalink to this headline">¶</a></h2>
-<p>The config.py file contains the description which experiments should be run. e.g.:</p>
+<div class="section" id="config-folder">
+<h2>config folder<a class="headerlink" href="#config-folder" title="Permalink to this headline">¶</a></h2>
+<p>The config folder contains the description which experiments should be run. e.g.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sisyphus</span> <span class="k">import</span> <span class="o">*</span>
 
 <span class="kn">from</span> <span class="nn">recipe</span> <span class="k">import</span> <span class="n">tools</span>
@@ -86,7 +138,7 @@ These files will be linked to the output/ folder after the responsible job to cr
 <span class="n">tk</span><span class="o">.</span><span class="n">register_output</span><span class="p">(</span><span class="s1">&#39;head_of_input_file&#39;</span><span class="p">,</span> <span class="n">head</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>this imports the module tools from the recipe folder and runs the job Head with a given input file and registers the result as output.</p>
+<p>This imports the module tools from the recipe folder and runs the job Head with a given input file and registers the result as output.</p>
 </div>
 <div class="section" id="work-folder">
 <h2>work folder<a class="headerlink" href="#work-folder" title="Permalink to this headline">¶</a></h2>
@@ -94,7 +146,47 @@ These files will be linked to the output/ folder after the responsible job to cr
 </div>
 <div class="section" id="settings-py">
 <h2>settings.py<a class="headerlink" href="#settings-py" title="Permalink to this headline">¶</a></h2>
-<p>Contains all settings that should be changed for the whole setup globally. Usually a description of the work engine that should be used. You can probably just copy the last one you used.</p>
+<p>Contains all settings that should be changed for the whole setup globally.
+Usually a description of the work engine that should be used. You can probably just copy the last one you used.
+A detailed overview of all settings can be found <a class="reference internal" href="#sec-settings-api"><span class="std std-ref">here</span></a>.
+Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">engine</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot; Create engine object used to submit jobs. The simplest setup just creates a local</span>
+<span class="sd">    engine starting all jobs on the local machine e.g.:</span>
+
+<span class="sd">        from sisyphus.localengine import LocalEngine</span>
+<span class="sd">        return LocalEngine(max_cpu=8)</span>
+
+<span class="sd">    The usually recommended version is to use a local and a normal grid engine. The EngineSelector</span>
+<span class="sd">    can be used to schedule tasks on different engines. The main intuition was to have an engine for</span>
+<span class="sd">    very small jobs that don&#39;t required to be scheduled on a large grid engine (e.g. counting lines of file).</span>
+
+<span class="sd">    Note: the engines should only be imported locally inside the function to avoid circular imports</span>
+
+<span class="sd">    :return: engine</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Exmple of local engine:</span>
+    <span class="kn">from</span> <span class="nn">sisyphus.localengine</span> <span class="k">import</span> <span class="n">LocalEngine</span>
+    <span class="k">return</span> <span class="n">LocalEngine</span><span class="p">(</span><span class="n">cpus</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+    <span class="c1"># Example how to use the engine selector, normally the &#39;long&#39; engine would be a grid enigne e.g. sge</span>
+    <span class="kn">from</span> <span class="nn">sisyphus.engine</span> <span class="k">import</span> <span class="n">EngineSelector</span>
+    <span class="kn">from</span> <span class="nn">sisyphus.son_of_grid_engine</span> <span class="k">import</span> <span class="n">SonOfGridEngine</span>
+    <span class="k">return</span> <span class="n">EngineSelector</span><span class="p">(</span><span class="n">engines</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;short&#39;</span><span class="p">:</span> <span class="n">LocalEngine</span><span class="p">(</span><span class="n">cpus</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span>
+                               <span class="s1">&#39;long&#39;</span><span class="p">:</span> <span class="n">SonOfGridEngine</span><span class="p">(</span><span class="n">default_rqmt</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;cpu&#39;</span> <span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;mem&#39;</span> <span class="p">:</span> <span class="s1">&#39;1G&#39;</span><span class="p">,</span> <span class="s1">&#39;gpu&#39;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span> <span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="p">})},</span>
+                      <span class="n">default_engine</span><span class="o">=</span><span class="s1">&#39;long&#39;</span><span class="p">)</span>
+
+<span class="c1"># Wait so long before marking a job as finished to allow network</span>
+<span class="c1"># filesystems so synchronize, should be reduced if only the local engine and filesystem is used.</span>
+<span class="n">WAIT_PERIOD_JOB_FS_SYNC</span> <span class="o">=</span> <span class="mi">30</span>
+
+<span class="c1"># How ofter Sisyphus checking for finished jobs</span>
+<span class="n">WAIT_PERIOD_BETWEEN_CHECKS</span> <span class="o">=</span> <span class="mi">30</span>
+
+<span class="c1"># Disable automatic job directory clean up</span>
+<span class="n">JOB_AUTO_CLEANUP</span> <span class="o">=</span> <span class="kc">False</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="job">
 <h2>Job<a class="headerlink" href="#job" title="Permalink to this headline">¶</a></h2>
@@ -124,14 +216,49 @@ A simple job looks like this:</p>
 <p>A task defines which functions of a job should be run with which argument and which resources should be requested.
 A job can have multiple tasks. All tasks are executed after another. A possible setup with multiple tasks is a setup task, a worker task which is run on multiple computers and a finalize task to collect the results of all worker tasks.</p>
 </div>
-<div class="section" id="sis-sh">
-<h2>sis.sh<a class="headerlink" href="#sis-sh" title="Permalink to this headline">¶</a></h2>
-<p>The /u/smt/tools/sisyphus/2015-07-28/sis.sh script is a simple bash script wrapper to ensure that the correct python version is used.
-The main mode of this tool is <cite>sis.sh manager</cite> it will parses the config.py file and will submit them to the cluster if started with the <cite>-r</cite> flag (for run). The manager will periodically check which jobs have finished and submits all runnable jobs to the cluster as long as it is running. If you stop the manager (using Ctrl-C) now further jobs are submitted, but jobs submitted to the cluster will continue.</p>
+<div class="section" id="sis-command">
+<h2>sis command<a class="headerlink" href="#sis-command" title="Permalink to this headline">¶</a></h2>
+<p>Sisyphus is started by running the <cite>sis</cite> command in it’s folder.
+The main mode of this tool is <cite>sis manager</cite> or short <cite>sis m</cite> it will parses the config directive and will submit the required job to the cluster.
+The manager will periodically check which jobs have finished and submits all jobs that became runnable to the cluster as long as it is running.
+If you stop the manager (using <cite>Ctrl-C</cite>) no further jobs are submitted, but jobs submitted to the cluster will continue.</p>
 </div>
 </div>
 <div class="section" id="faq">
 <h1>FAQ<a class="headerlink" href="#faq" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="dryrun-a-job-without-engine">
+<h2>Dryrun a Job without engine<a class="headerlink" href="#dryrun-a-job-without-engine" title="Permalink to this headline">¶</a></h2>
+<p>For debugging it is often annoying to submit a job to the engine just to see it crashing shortly after.
+If the job directory is already created just run the command that would be executed by Sisyphus manual:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sis</span> <span class="n">worker</span> <span class="n">work</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">job</span> <span class="n">name_of_method</span>
+</pre></div>
+</div>
+<p>If this is not the case you want to switch into console mode and setup the job:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sis</span> <span class="n">console</span>
+</pre></div>
+</div>
+<p>In the console you need to find the job an pass it to tk.run_job to automatically set it up and run it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># find and save job:</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="n">tk</span><span class="o">.</span><span class="n">sis_graph</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;LineSp&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;job&#39;</span><span class="p">)</span>
+<span class="n">Out</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="p">[</span><span class="n">Job</span><span class="o">&lt;</span> <span class="n">workdir</span><span class="p">:</span> <span class="n">work</span><span class="o">/</span><span class="n">parallel</span><span class="o">/</span><span class="n">LineSpliter</span><span class="o">.</span><span class="n">AVSubx1baWqKyMx35c</span><span class="o">&gt;</span><span class="p">]</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">j</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">sis_graph</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;LineSp&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;job&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># setup and run job:</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">tk</span><span class="o">.</span><span class="n">run_job</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="s1">&#39;run&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="c1"># If only the job is given it will run the first task:</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">tk</span><span class="o">.</span><span class="n">run_job</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="using-a-relative-path-in-recipe-folder">
+<h2>Using a relative Path in recipe folder<a class="headerlink" href="#using-a-relative-path-in-recipe-folder" title="Permalink to this headline">¶</a></h2>
+<p>It is nice to have small scripts directly next to the recipe calls. This can be easily achieved by initializing a relative path like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">RelPath</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">setup_path</span><span class="p">(</span><span class="n">__package__</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>All a <cite>Path</cite> created using <cite>RelPath</cite> will be relative to the current recipe file.</p>
+</div>
 </div>
 <div class="section" id="api">
 <h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
@@ -189,6 +316,12 @@ The main mode of this tool is <cite>sis.sh manager</cite> it will parses the con
 <dt id="sisyphus.toolkit.bundle_to_str">
 <code class="descclassname">sisyphus.toolkit.</code><code class="descname">bundle_to_str</code><span class="sig-paren">(</span><em>bundle</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#bundle_to_str"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.bundle_to_str" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert bundle of objects into a space separated list</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.toolkit.cached_engine">
+<code class="descclassname">sisyphus.toolkit.</code><code class="descname">cached_engine</code><span class="sig-paren">(</span><em>cache=[]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#cached_engine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.cached_engine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a cached version, for internal usage</p>
 </dd></dl>
 
 <dl class="function">
@@ -493,20 +626,6 @@ replace_function: how an object will be replace, defaults using the mapping</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="sisyphus.toolkit.start_engine">
-<code class="descclassname">sisyphus.toolkit.</code><code class="descname">start_engine</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#start_engine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.start_engine" title="Permalink to this definition">¶</a></dt>
-<dd><p>Shortcut to start Engine</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Engine object that can be used to submit jobs</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
 <dt id="sisyphus.toolkit.start_manager">
 <code class="descclassname">sisyphus.toolkit.</code><code class="descname">start_manager</code><span class="sig-paren">(</span><em>job_engine=None</em>, <em>start_computations=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/toolkit.html#start_manager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.toolkit.start_manager" title="Permalink to this definition">¶</a></dt>
 <dd><p>Shortcut to start Manager</p>
@@ -585,15 +704,17 @@ These jobs can be searched and modified using the provided functions. Most inter
 
 <dl class="method">
 <dt id="sisyphus.graph.SISGraph.for_all_nodes">
-<code class="descname">for_all_nodes</code><span class="sig-paren">(</span><em>f</em>, <em>bottom_up=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.for_all_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.for_all_nodes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run function f for each node, stop expanding tree branch
-if functions returns False</p>
+<code class="descname">for_all_nodes</code><span class="sig-paren">(</span><em>f</em>, <em>nodes=None</em>, <em>bottom_up=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.for_all_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.for_all_nodes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run function f for each node and ancestor for <cite>nodes</cite> from top down,
+stop expanding tree branch if functions returns False. Does not stop on None to allow functions with no
+return value to run for every node.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>f</strong> – function will be executed for all nodes</li>
+<li><strong>nodes</strong> – all nodes that will be checked, defaults to all output nodes in graph</li>
 <li><strong>bottom_up</strong> – start with deepest nodes first,
 ignore return value of f</li>
 </ul>
@@ -614,16 +735,22 @@ ignore return value of f</li>
 
 <dl class="method">
 <dt id="sisyphus.graph.SISGraph.get_jobs_by_status">
-<code class="descname">get_jobs_by_status</code><span class="sig-paren">(</span><em>job_engine=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.get_jobs_by_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.get_jobs_by_status" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_jobs_by_status</code><span class="sig-paren">(</span><em>nodes=None</em>, <em>engine=None</em>, <em>skip_finished=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/graph.html#SISGraph.get_jobs_by_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.graph.SISGraph.get_jobs_by_status" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return all jobs needed to finish output in dictionary with current status as key</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>job_engine</strong><strong>(</strong><strong>Engine</strong><strong>)</strong> – Use status job status of engine, ignore engine status if set to None (default: None)</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>nodes</strong> – all nodes that will be checked, defaults to all output nodes in graph</li>
+<li><strong>engine</strong><strong>(</strong><strong>Engine</strong><strong>)</strong> – Use status job status of engine, ignore engine status if set to None (default: None)</li>
+<li><strong>skip_finished</strong><strong>(</strong><strong>bool</strong><strong>)</strong> – Stop checking subtrees of finished nodes to save time</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name" colspan="2">Return ({status1: [Job, …], status2: …}):</th></tr>
-<tr class="field-even field"><td>&#160;</td><td class="field-body">Dictionary with all jobs sorted by current state</td>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"><p class="first last">Dictionary with all jobs sorted by current state</p>
+</td>
 </tr>
 </tbody>
 </table>
@@ -788,11 +915,353 @@ and ask for additional inputs before running.</p>
 <li><strong>resume</strong><strong>(</strong><strong>str</strong><strong>)</strong> – name of the function which will be executed on resume, often set equal to start</li>
 <li><strong>rqmt</strong><strong>(</strong><strong>dict</strong><strong>)</strong> – job requirements</li>
 <li><strong>args</strong><strong>(</strong><strong>..</strong><strong>)</strong> – job arguments</li>
-<li><strong>mini_task</strong><strong>(</strong><strong>bool</strong><strong>)</strong> – will be run locally if True</li>
+<li><strong>mini_task</strong><strong>(</strong><strong>bool</strong><strong>)</strong> – will be run on engine for short jobs if True</li>
 <li><strong>update_rqmt</strong><strong>(</strong><strong>str</strong><strong>)</strong> – function to update job requirements for interrupted jobs</li>
 <li><strong>parallel</strong><strong>(</strong><strong>int</strong><strong>)</strong> – the max. number of jobs to submit to a queue, defaults to the number of args</li>
 <li><strong>tries</strong><strong>(</strong><strong>int</strong><strong>)</strong> – how often this task is resubmitted after failure</li>
 </ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-sisyphus.global_settings">
+<span id="settings"></span><span id="sec-settings-api"></span><h2>Settings<a class="headerlink" href="#module-sisyphus.global_settings" title="Permalink to this headline">¶</a></h2>
+<dl class="data">
+<dt id="sisyphus.global_settings.ALIAS_AND_OUTPUT_SUBDIR">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">ALIAS_AND_OUTPUT_SUBDIR</code><em class="property"> = ''</em><a class="headerlink" href="#sisyphus.global_settings.ALIAS_AND_OUTPUT_SUBDIR" title="Permalink to this definition">¶</a></dt>
+<dd><p>If set to a non-empty string aliases and outputs will be placed in a subdir.
+This is useful for setups with multiple configs</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.ALIAS_DIR">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">ALIAS_DIR</code><em class="property"> = 'alias'</em><a class="headerlink" href="#sisyphus.global_settings.ALIAS_DIR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name alias directory</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.AUTO_SET_JOB_INIT_ATTRIBUTES">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">AUTO_SET_JOB_INIT_ATTRIBUTES</code><em class="property"> = False</em><a class="headerlink" href="#sisyphus.global_settings.AUTO_SET_JOB_INIT_ATTRIBUTES" title="Permalink to this definition">¶</a></dt>
+<dd><p>Automatically set all input given to __init__  as attributes of the created job.
+Disabled by default since it tends to confuse new users reading the code.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.CLEANUP_ENVIRONMENT">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">CLEANUP_ENVIRONMENT</code><em class="property"> = True</em><a class="headerlink" href="#sisyphus.global_settings.CLEANUP_ENVIRONMENT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove all environment variables to ensure the same environment between different users</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.CLEAR_ERROR">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">CLEAR_ERROR</code><em class="property"> = False</em><a class="headerlink" href="#sisyphus.global_settings.CLEAR_ERROR" title="Permalink to this definition">¶</a></dt>
+<dd><p>set true to automatically clean jobs in error state and retry</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.CONFIG_DIR">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">CONFIG_DIR</code><em class="property"> = 'config'</em><a class="headerlink" href="#sisyphus.global_settings.CONFIG_DIR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name of config directory</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.CONFIG_FUNCTION_DEFAULT">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">CONFIG_FUNCTION_DEFAULT</code><em class="property"> = 'config.main'</em><a class="headerlink" href="#sisyphus.global_settings.CONFIG_FUNCTION_DEFAULT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name of default fuction to call in config directory</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.DEFAULT_ENVIRONMENT_KEEP">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">DEFAULT_ENVIRONMENT_KEEP</code><em class="property"> = {'SGE_TASK_ID', 'PWD', 'TMP', 'CUDA_VISIBLE_DEVICES', 'SGE_STDERR_PATH', 'USER', 'TMPDIR', 'HOME'}</em><a class="headerlink" href="#sisyphus.global_settings.DEFAULT_ENVIRONMENT_KEEP" title="Permalink to this definition">¶</a></dt>
+<dd><p>Keep these environment variables if CLEANUP_ENVIRONMENT is set</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.DEFAULT_ENVIRONMENT_SET">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">DEFAULT_ENVIRONMENT_SET</code><em class="property"> = {'LANG': 'en_US.UTF-8', 'MKL_NUM_THREADS': 1, 'OMP_NUM_THREADS': 1, 'PATH': '/rbi/sge/bin:/rbi/sge/bin/lx-amd64:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'SHELL': '/bin/bash'}</em><a class="headerlink" href="#sisyphus.global_settings.DEFAULT_ENVIRONMENT_SET" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set these environment variables if CLEANUP_ENVIRONMENT is set</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.FILESYSTEM_CACHE_TIME">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">FILESYSTEM_CACHE_TIME</code><em class="property"> = 30</em><a class="headerlink" href="#sisyphus.global_settings.FILESYSTEM_CACHE_TIME" title="Permalink to this definition">¶</a></dt>
+<dd><p>How long the virtual file system should cache process states</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.GRAPH_WORKER">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">GRAPH_WORKER</code><em class="property"> = 16</em><a class="headerlink" href="#sisyphus.global_settings.GRAPH_WORKER" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many threads should update the graph in parallel, useful if the filesystem has a high latency</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.JOB_AUTO_CLEANUP">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">JOB_AUTO_CLEANUP</code><em class="property"> = True</em><a class="headerlink" href="#sisyphus.global_settings.JOB_AUTO_CLEANUP" title="Permalink to this definition">¶</a></dt>
+<dd><p>Automatically clean up job directory after job has finished</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.JOB_CLEANER_INTERVAL">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">JOB_CLEANER_INTERVAL</code><em class="property"> = 60</em><a class="headerlink" href="#sisyphus.global_settings.JOB_CLEANER_INTERVAL" title="Permalink to this definition">¶</a></dt>
+<dd><p>How often to check for finished jobs in seconds</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.JOB_CLEANER_WORKER">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">JOB_CLEANER_WORKER</code><em class="property"> = 5</em><a class="headerlink" href="#sisyphus.global_settings.JOB_CLEANER_WORKER" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many threads should be cleaning in parallel</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.JOB_CLEANUP_KEEP_WORK">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">JOB_CLEANUP_KEEP_WORK</code><em class="property"> = False</em><a class="headerlink" href="#sisyphus.global_settings.JOB_CLEANUP_KEEP_WORK" title="Permalink to this definition">¶</a></dt>
+<dd><p>If the job internal work directory should be keeped re deleted during clean up</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.JOB_DEFAULT_KEEP_VALUE">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">JOB_DEFAULT_KEEP_VALUE</code><em class="property"> = 50</em><a class="headerlink" href="#sisyphus.global_settings.JOB_DEFAULT_KEEP_VALUE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default value for job used by tk.cleaner to determine if a job should be removed or not</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.LOG_TRACEBACKS">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">LOG_TRACEBACKS</code><em class="property"> = False</em><a class="headerlink" href="#sisyphus.global_settings.LOG_TRACEBACKS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save traceback when a job is created to allow easier debugging. Disabled by default since it increases start up time</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.MANAGER_SUBMIT_WORKER">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">MANAGER_SUBMIT_WORKER</code><em class="property"> = 10</em><a class="headerlink" href="#sisyphus.global_settings.MANAGER_SUBMIT_WORKER" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many threads are used to setup the job directory and submit jobs</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.OUTPUT_DIR">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">OUTPUT_DIR</code><em class="property"> = 'output'</em><a class="headerlink" href="#sisyphus.global_settings.OUTPUT_DIR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name output directory</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.PLOGGING_INTERVAL">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">PLOGGING_INTERVAL</code><em class="property"> = 5</em><a class="headerlink" href="#sisyphus.global_settings.PLOGGING_INTERVAL" title="Permalink to this definition">¶</a></dt>
+<dd><p>Seconds between checks how much memory and cpu a process is using</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.PLOGGING_MIN_CHANGE">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">PLOGGING_MIN_CHANGE</code><em class="property"> = 0.1</em><a class="headerlink" href="#sisyphus.global_settings.PLOGGING_MIN_CHANGE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimal relative change between log entries of used resources</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.PLOGGING_QUIET">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">PLOGGING_QUIET</code><em class="property"> = False</em><a class="headerlink" href="#sisyphus.global_settings.PLOGGING_QUIET" title="Permalink to this definition">¶</a></dt>
+<dd><p>Suppress messages about process resources usage</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.PLOGGING_UPDATE_FILE_PERIOD">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">PLOGGING_UPDATE_FILE_PERIOD</code><em class="property"> = 60</em><a class="headerlink" href="#sisyphus.global_settings.PLOGGING_UPDATE_FILE_PERIOD" title="Permalink to this definition">¶</a></dt>
+<dd><p>In which interval the process used resources file should be updated</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.PRINT_ERROR_LINES">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">PRINT_ERROR_LINES</code><em class="property"> = 40</em><a class="headerlink" href="#sisyphus.global_settings.PRINT_ERROR_LINES" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print that many last lines of error state log file</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.PRINT_ERROR_TASKS">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">PRINT_ERROR_TASKS</code><em class="property"> = 1</em><a class="headerlink" href="#sisyphus.global_settings.PRINT_ERROR_TASKS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print detailed log of that many jobs in error state</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.SHOW_JOB_TARGETS">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">SHOW_JOB_TARGETS</code><em class="property"> = True</em><a class="headerlink" href="#sisyphus.global_settings.SHOW_JOB_TARGETS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Show job targets on status screen, can significantly slow down startup time if many outputs are used</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.SIS_COMMAND">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">SIS_COMMAND</code><em class="property"> = ['/usr/local/bin/sphinx-build']</em><a class="headerlink" href="#sisyphus.global_settings.SIS_COMMAND" title="Permalink to this definition">¶</a></dt>
+<dd><p>Which command should be called to start sisyphus, can be used to replace the python binary</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.global_settings.SIS_HASH">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">SIS_HASH</code><span class="sig-paren">(</span><em>obj</em>, <em>length=12</em>, <em>chars='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'</em><span class="sig-paren">)</span><a class="headerlink" href="#sisyphus.global_settings.SIS_HASH" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default function to hash jobs and objects</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.USE_VERBOSE_TRACEBACK">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">USE_VERBOSE_TRACEBACK</code><em class="property"> = True</em><a class="headerlink" href="#sisyphus.global_settings.USE_VERBOSE_TRACEBACK" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use ipython traceback</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.VIS_ABSOLUTE_MERGE_THRESHOLD">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">VIS_ABSOLUTE_MERGE_THRESHOLD</code><em class="property"> = 5</em><a class="headerlink" href="#sisyphus.global_settings.VIS_ABSOLUTE_MERGE_THRESHOLD" title="Permalink to this definition">¶</a></dt>
+<dd><p>For http visualization, list job input as commen input if it is share between more then X jobs</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.VIS_RELATIVE_MERGE_THRESHOLD">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">VIS_RELATIVE_MERGE_THRESHOLD</code><em class="property"> = 0.25</em><a class="headerlink" href="#sisyphus.global_settings.VIS_RELATIVE_MERGE_THRESHOLD" title="Permalink to this definition">¶</a></dt>
+<dd><p>For http visualization, list job input as commen input if it is share between more then X*(total jobs) jobs</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.WAIT_PERIOD_BETWEEN_CHECKS">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">WAIT_PERIOD_BETWEEN_CHECKS</code><em class="property"> = 30</em><a class="headerlink" href="#sisyphus.global_settings.WAIT_PERIOD_BETWEEN_CHECKS" title="Permalink to this definition">¶</a></dt>
+<dd><p>How often should the manager check for finished jobs</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.WAIT_PERIOD_CACHE">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">WAIT_PERIOD_CACHE</code><em class="property"> = 20</em><a class="headerlink" href="#sisyphus.global_settings.WAIT_PERIOD_CACHE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Safety period to wait for actionable jobs to change status before running action</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.WAIT_PERIOD_HTTP_RETRY_BIND">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">WAIT_PERIOD_HTTP_RETRY_BIND</code><em class="property"> = 10</em><a class="headerlink" href="#sisyphus.global_settings.WAIT_PERIOD_HTTP_RETRY_BIND" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many seconds should be waited before retrying to bind to the desired port</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.WAIT_PERIOD_JOB_CLEANUP">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">WAIT_PERIOD_JOB_CLEANUP</code><em class="property"> = 10</em><a class="headerlink" href="#sisyphus.global_settings.WAIT_PERIOD_JOB_CLEANUP" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many seconds should be waited before cleaning up a finished job</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.WAIT_PERIOD_JOB_FS_SYNC">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">WAIT_PERIOD_JOB_FS_SYNC</code><em class="property"> = 30</em><a class="headerlink" href="#sisyphus.global_settings.WAIT_PERIOD_JOB_FS_SYNC" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many seconds should be waited before assuming a job is finished after the finished file is written
+to allow network file system to sync up</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.WAIT_PERIOD_MTIME_OF_INPUTS">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">WAIT_PERIOD_MTIME_OF_INPUTS</code><em class="property"> = 60</em><a class="headerlink" href="#sisyphus.global_settings.WAIT_PERIOD_MTIME_OF_INPUTS" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many seconds should all inputs be available before starting a job to avoid file system synchronization problems</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.WAIT_PERIOD_QSTAT_PARSING">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">WAIT_PERIOD_QSTAT_PARSING</code><em class="property"> = 15</em><a class="headerlink" href="#sisyphus.global_settings.WAIT_PERIOD_QSTAT_PARSING" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many seconds should be waited before retrying to parse a failed qstat output</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="sisyphus.global_settings.WAIT_PERIOD_SSH_TIMEOUT">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">WAIT_PERIOD_SSH_TIMEOUT</code><em class="property"> = 15</em><a class="headerlink" href="#sisyphus.global_settings.WAIT_PERIOD_SSH_TIMEOUT" title="Permalink to this definition">¶</a></dt>
+<dd><p>How many seconds should be waited before retrying a ssh connection</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.global_settings.check_engine_limits">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">check_engine_limits</code><span class="sig-paren">(</span><em>current_rqmt</em>, <em>task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/global_settings.html#check_engine_limits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.global_settings.check_engine_limits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if requested requirements break and hardware limits and reduce them.
+By default ignored, a possible check for limits could look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">168</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="k">if</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">24</span><span class="p">:</span>
+    <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">63</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">])</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">127</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">])</span>
+<span class="k">return</span> <span class="n">current_rqmt</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>current_rqmt</strong><strong>(</strong><strong>dict</strong><strong>)</strong> – requirements currently requested</li>
+<li><strong>task</strong><strong>(</strong><strong>Task</strong><strong>)</strong> – task that is handled</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">requirements updated to engine limits</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.global_settings.engine">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">engine</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/global_settings.html#engine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.global_settings.engine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create engine object used to submit jobs. The simplest setup just creates a local
+engine starting all jobs on the local machine e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sisyphus.localengine</span> <span class="k">import</span> <span class="n">LocalEngine</span>
+<span class="k">return</span> <span class="n">LocalEngine</span><span class="p">(</span><span class="n">cpus</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The usually recommended version is to use a local and a normal grid engine. The EngineSelector
+can be used to schedule tasks on different engines. The main intuition was to have an engine for
+very small jobs that don’t required to be scheduled on a large grid engine (e.g. counting lines of file).
+A setup using the EngineSelector would look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sisyphus.localengine</span> <span class="k">import</span> <span class="n">LocalEngine</span>
+<span class="kn">from</span> <span class="nn">sisyphus.engine</span> <span class="k">import</span> <span class="n">EngineSelector</span>
+<span class="kn">from</span> <span class="nn">sisyphus.son_of_grid_engine</span> <span class="k">import</span> <span class="n">SonOfGridEngine</span>
+<span class="k">return</span> <span class="n">EngineSelector</span><span class="p">(</span><span class="n">engines</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;short&#39;</span><span class="p">:</span> <span class="n">LocalEngine</span><span class="p">(</span><span class="n">cpus</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span>
+                               <span class="s1">&#39;long&#39;</span><span class="p">:</span> <span class="n">SonOfGridEngine</span><span class="p">(</span><span class="n">default_rqmt</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;cpu&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;mem&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                                                                     <span class="s1">&#39;gpu&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">})},</span>
+                      <span class="n">default_engine</span><span class="o">=</span><span class="s1">&#39;long&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note: the engines should only be imported locally inside the function to avoid circular imports</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">engine</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.global_settings.file_caching">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">file_caching</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/global_settings.html#file_caching"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.global_settings.file_caching" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function should be replaced to enable file caching.
+e.g. copy given file to /var/tmp and return new path.
+The default behaviour is to just pass on the given path</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong><strong>(</strong><strong>str</strong><strong>)</strong> – Path to file that should be cached</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">path to cached file</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sisyphus.global_settings.update_engine_rqmt">
+<code class="descclassname">sisyphus.global_settings.</code><code class="descname">update_engine_rqmt</code><span class="sig-paren">(</span><em>initial_rqmt</em>, <em>last_usage</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sisyphus/global_settings.html#update_engine_rqmt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sisyphus.global_settings.update_engine_rqmt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update requirements after a job got interrupted.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>first_rqmt</strong><strong>(</strong><strong>dict</strong><strong>)</strong> – requirements that are requested first</li>
+<li><strong>last_usage</strong><strong>(</strong><strong>dict</strong><strong>)</strong> – informations about the last usage by the task</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">updated requirements</p>
 </td>
 </tr>
 </tbody>
@@ -820,22 +1289,29 @@ and ask for additional inputs before running.</p>
   <ul>
 <li><a class="reference internal" href="#">Welcome to Sisyphus’s documentation!</a></li>
 <li><a class="reference internal" href="#motivation">Motivation</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#quickstart">QuickStart</a></li>
 <li><a class="reference internal" href="#structure">Structure</a><ul>
 <li><a class="reference internal" href="#the-recipe-folder">The recipe folder</a></li>
-<li><a class="reference internal" href="#config-py-or-config-folder">config.py or config folder</a></li>
+<li><a class="reference internal" href="#config-folder">config folder</a></li>
 <li><a class="reference internal" href="#work-folder">work folder</a></li>
 <li><a class="reference internal" href="#settings-py">settings.py</a></li>
 <li><a class="reference internal" href="#job">Job</a></li>
 <li><a class="reference internal" href="#task">Task</a></li>
-<li><a class="reference internal" href="#sis-sh">sis.sh</a></li>
+<li><a class="reference internal" href="#sis-command">sis command</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#faq">FAQ</a></li>
+<li><a class="reference internal" href="#faq">FAQ</a><ul>
+<li><a class="reference internal" href="#dryrun-a-job-without-engine">Dryrun a Job without engine</a></li>
+<li><a class="reference internal" href="#using-a-relative-path-in-recipe-folder">Using a relative Path in recipe folder</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#api">API</a><ul>
 <li><a class="reference internal" href="#module-sisyphus.toolkit">Toolkit</a></li>
 <li><a class="reference internal" href="#graph">Graph</a></li>
 <li><a class="reference internal" href="#id1">Job</a></li>
 <li><a class="reference internal" href="#id2">Task</a></li>
+<li><a class="reference internal" href="#module-sisyphus.global_settings">Settings</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>

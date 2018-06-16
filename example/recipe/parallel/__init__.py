@@ -5,7 +5,6 @@ import sisyphus.hash
 import time
 
 from sisyphus import *
-Path = setup_path(__package__)
 
 
 class LineSpliter(Job):

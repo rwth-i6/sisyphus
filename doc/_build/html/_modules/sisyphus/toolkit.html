@@ -87,9 +87,7 @@
 <span class="kn">from</span> <span class="nn">sisyphus.job</span> <span class="k">import</span> <span class="n">Job</span>
 <span class="kn">from</span> <span class="nn">sisyphus.loader</span> <span class="k">import</span> <span class="n">load_configs</span>
 
-<span class="kn">from</span> <span class="nn">sisyphus.global_settings</span> <span class="k">import</span> <span class="n">STATE_ERROR</span><span class="p">,</span> <span class="n">STATE_INTERRUPTED</span>
-<span class="kn">from</span> <span class="nn">sisyphus.global_settings</span> <span class="k">import</span> <span class="n">STATE_RUNNING</span><span class="p">,</span> <span class="n">STATE_FINISHED</span>
-
+<span class="kn">from</span> <span class="nn">sisyphus.global_settings</span> <span class="k">import</span> <span class="n">STATE_ERROR</span><span class="p">,</span> <span class="n">STATE_INTERRUPTED</span><span class="p">,</span> <span class="n">STATE_RUNNING</span><span class="p">,</span> <span class="n">STATE_FINISHED</span>
 <span class="kn">import</span> <span class="nn">sisyphus.global_settings</span> <span class="k">as</span> <span class="nn">gs</span>
 
 <span class="kn">from</span> <span class="nn">sisyphus</span> <span class="k">import</span> <span class="n">graph</span>
@@ -306,6 +304,10 @@
 <span class="sd">    :param force_resume(bool): Force resume of job in error state</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">job</span><span class="p">,</span> <span class="n">Job</span><span class="p">),</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> is not a Job&quot;</span> <span class="o">%</span> <span class="n">job</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_setup</span><span class="p">():</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Job directory missing, set it up: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">job</span><span class="p">)</span>
+        <span class="n">setup_job_directory</span><span class="p">(</span><span class="n">job</span><span class="p">)</span>
 
     <span class="n">task</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">task_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -560,13 +562,12 @@
         <span class="n">remove_directories</span><span class="p">({</span><span class="n">j</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">low_keep_value</span><span class="p">},</span> <span class="s1">&#39;To low keep value directories:&#39;</span><span class="p">,</span> <span class="s1">&#39;trash&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="start_engine"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.start_engine">[docs]</a><span class="k">def</span> <span class="nf">start_engine</span><span class="p">():</span>
-    <span class="sd">&quot;&quot;&quot;Shortcut to start Engine</span>
-
-<span class="sd">    :return: Engine object that can be used to submit jobs</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">sisyphus</span> <span class="k">import</span> <span class="n">engine</span></div>
-    <span class="k">return</span> <span class="n">engine</span><span class="o">.</span><span class="n">Engine</span><span class="p">()</span>
+<div class="viewcode-block" id="cached_engine"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.cached_engine">[docs]</a><span class="k">def</span> <span class="nf">cached_engine</span><span class="p">(</span><span class="n">cache</span><span class="o">=</span><span class="p">[]):</span>
+    <span class="sd">&quot;&quot;&quot; Returns a cached version, for internal usage &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cache</span><span class="p">:</span>
+        <span class="c1"># used persistent default argument as cache</span>
+        <span class="n">cache</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">engine</span><span class="p">())</span></div>
+    <span class="k">return</span> <span class="n">cache</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="start_manager"><a class="viewcode-back" href="../../index.html#sisyphus.toolkit.start_manager">[docs]</a><span class="k">def</span> <span class="nf">start_manager</span><span class="p">(</span><span class="n">job_engine</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start_computations</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
@@ -577,7 +578,7 @@
 <span class="sd">    :return: Manager</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">job_engine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">job_engine</span> <span class="o">=</span> <span class="n">start_engine</span><span class="p">()</span>
+        <span class="n">job_engine</span> <span class="o">=</span> <span class="n">cached_engine</span><span class="p">()</span>
     <span class="kn">import</span> <span class="nn">sisyphus.manager</span>
     <span class="k">return</span> <span class="n">sisyphus</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">Manager</span><span class="p">(</span><span class="n">sis_graph</span><span class="o">=</span><span class="n">sis_graph</span><span class="p">,</span>
                                     <span class="n">job_engine</span><span class="o">=</span><span class="n">job_engine</span><span class="p">,</span>

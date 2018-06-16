@@ -49,7 +49,7 @@
 <span class="sd">    :param resume(str): name of the function which will be executed on resume, often set equal to start</span>
 <span class="sd">    :param rqmt(dict): job requirements</span>
 <span class="sd">    :param args(...): job arguments</span>
-<span class="sd">    :param mini_task(bool): will be run locally if True</span>
+<span class="sd">    :param mini_task(bool): will be run on engine for short jobs if True</span>
 <span class="sd">    :param update_rqmt(str): function to update job requirements for interrupted jobs</span>
 <span class="sd">    :param \parallel(int): the max. number of jobs to submit to a queue, defaults to the number of args</span>
 <span class="sd">    :param tries(int): how often this task is resubmitted after failure</span>
@@ -60,7 +60,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">=</span> <span class="n">start</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_resume</span> <span class="o">=</span> <span class="n">resume</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_rqmt</span> <span class="o">=</span> <span class="n">rqmt</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_update_rqmt</span> <span class="o">=</span> <span class="n">update_rqmt</span>
+        <span class="k">if</span> <span class="n">mini_task</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_rqmt</span><span class="p">[</span><span class="s1">&#39;engine&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;short&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_rqmt</span> <span class="o">=</span> <span class="n">update_rqmt</span> <span class="k">if</span> <span class="n">update_rqmt</span> <span class="k">else</span> <span class="n">gs</span><span class="o">.</span><span class="n">update_engine_rqmt</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_parallel</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">)</span> <span class="k">if</span> <span class="n">parallel</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">parallel</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mini_task</span> <span class="o">=</span> <span class="n">mini_task</span>
@@ -98,12 +100,6 @@
             <span class="n">rqmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rqmt</span>
 
         <span class="c1"># Ensure that the requested memory is a float representing GB</span>
-        <span class="n">mem</span> <span class="o">=</span> <span class="n">rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mem&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">mem</span><span class="p">:</span>
-            <span class="n">rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">str_to_GB</span><span class="p">(</span><span class="n">mem</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.</span>
-
         <span class="k">return</span> <span class="n">rqmt</span>
 
     <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -158,11 +154,15 @@
 
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">resume_job</span><span class="p">:</span>
-                <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resume</span>
-                <span class="k">assert</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Task not resumable&quot;</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resume</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resume</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;No resume function set (changed tasks after job was initialized?) &#39;</span>
+                                    <span class="s1">&#39;Fallback to normal start function: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">task</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span>
-                <span class="k">assert</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Error loading task&quot;</span>
+            <span class="k">assert</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Error loading task&quot;</span>
             <span class="c1"># save current directory and change into work directory</span>
             <span class="k">with</span> <span class="n">tools</span><span class="o">.</span><span class="n">execute_in_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">JOB_WORK_DIR</span><span class="p">)):</span>
                 <span class="n">f</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
@@ -396,54 +396,22 @@
             <span class="n">start</span> <span class="o">=</span> <span class="p">(</span><span class="n">chunk_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">overflow</span> <span class="o">+</span> <span class="n">chunk_size</span> <span class="o">*</span> <span class="p">(</span><span class="n">task_id</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">overflow</span><span class="p">)</span>
             <span class="k">return</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">update_rqmt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default_rqmt</span><span class="p">,</span> <span class="n">submit_history</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">update_rqmt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initial_rqmt</span><span class="p">,</span> <span class="n">submit_history</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Update task requirements of interrupted job &quot;&quot;&quot;</span>
-        <span class="n">current_rqmt</span> <span class="o">=</span> <span class="n">default_rqmt</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">initial_rqmt</span> <span class="o">=</span> <span class="n">initial_rqmt</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">initial_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">str_to_GB</span><span class="p">(</span><span class="n">initial_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">])</span>
+        <span class="n">initial_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">str_to_hours</span><span class="p">(</span><span class="n">initial_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])</span>
         <span class="n">usage_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">PLOGGING_FILE</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">abspath</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="n">last_usage</span> <span class="o">=</span> <span class="n">literal_eval</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">usage_file</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">SyntaxError</span><span class="p">,</span> <span class="ne">IOError</span><span class="p">):</span>
             <span class="c1"># we don&#39;t know anything if no usage file is writen or is invalid, just reuse last rqmts</span>
-            <span class="k">return</span> <span class="n">current_rqmt</span>
+            <span class="k">return</span> <span class="n">initial_rqmt</span>
 
-        <span class="n">requested_time</span> <span class="o">=</span> <span class="n">last_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;requested_resources&#39;</span><span class="p">,</span>
-                                        <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">tools</span><span class="o">.</span><span class="n">str_to_seconds</span><span class="p">(</span><span class="n">default_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">3600</span><span class="p">))</span>
-        <span class="n">requested_memory</span> <span class="o">=</span> <span class="n">last_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;requested_resources&#39;</span><span class="p">,</span>
-                                          <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mem&#39;</span><span class="p">,</span> <span class="n">tools</span><span class="o">.</span><span class="n">str_to_GB</span><span class="p">(</span><span class="n">default_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mem&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
-
-        <span class="n">used_time</span> <span class="o">=</span> <span class="n">last_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;used_time&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="n">used_memory</span> <span class="o">=</span> <span class="n">last_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;rss&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-
-        <span class="n">out_of_memory</span> <span class="o">=</span> <span class="n">last_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;out_of_memory&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">requested_memory</span> <span class="o">-</span> <span class="n">used_memory</span> <span class="o">&lt;</span> <span class="mf">0.25</span>
-        <span class="n">out_of_time</span> <span class="o">=</span> <span class="n">requested_time</span> <span class="o">-</span> <span class="n">used_time</span> <span class="o">&lt;</span> <span class="mf">0.1</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_rqmt</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;Implement and test, not used so far&#39;</span>
-            <span class="n">current_rqmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_rqmt</span><span class="p">(</span><span class="n">current_rqmt</span><span class="o">=</span><span class="n">current_rqmt</span><span class="p">,</span>
-                                             <span class="n">out_of_time</span><span class="o">=</span><span class="n">out_of_time</span><span class="p">,</span>
-                                             <span class="n">out_of_memory</span><span class="o">=</span><span class="n">out_of_memory</span><span class="p">,</span>
-                                             <span class="n">requested_time</span><span class="o">=</span><span class="n">requested_time</span><span class="p">,</span>
-                                             <span class="n">requested_memory</span><span class="o">=</span><span class="n">requested_memory</span><span class="p">,</span>
-                                             <span class="n">last_usage</span><span class="o">=</span><span class="n">last_usage</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">out_of_time</span><span class="p">:</span>
-                <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">tools</span><span class="o">.</span><span class="n">str_to_seconds</span><span class="p">(</span><span class="n">default_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span><span class="o">/</span><span class="mi">3600</span><span class="p">,</span> <span class="n">requested_time</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
-                <span class="c1"># Unsure request stays below maximum</span>
-                <span class="c1"># TODO: max these maximums an engine depended option</span>
-                <span class="k">if</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">32</span><span class="p">:</span>
-                    <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">24</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])</span>
-            <span class="k">if</span> <span class="n">out_of_memory</span><span class="p">:</span>
-                <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">tools</span><span class="o">.</span><span class="n">str_to_GB</span><span class="p">(</span><span class="n">default_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mem&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span> <span class="n">requested_memory</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
-
-        <span class="c1"># Unsure request stays below maximum</span>
-        <span class="c1"># TODO: max these maximums an engine depended option</span>
-        <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">168</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">24</span><span class="p">:</span>
-            <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">63</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">])</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">127</span><span class="p">,</span> <span class="n">current_rqmt</span><span class="p">[</span><span class="s1">&#39;mem&#39;</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">current_rqmt</span>
+        <span class="n">new_rqmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_rqmt</span><span class="p">(</span><span class="n">initial_rqmt</span><span class="o">=</span><span class="n">initial_rqmt</span><span class="p">,</span> <span class="n">last_usage</span><span class="o">=</span><span class="n">last_usage</span><span class="p">)</span>
+        <span class="n">new_rqmt</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">check_engine_limits</span><span class="p">(</span><span class="n">new_rqmt</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_rqmt</span>
 
     <span class="k">def</span> <span class="nf">get_process_logging_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">PLOGGING_FILE</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">abspath</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>

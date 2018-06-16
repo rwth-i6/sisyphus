@@ -2,7 +2,7 @@ from recipe import parallel
 from recipe import pipeline
 
 from sisyphus import *
-Path = tk.Path
+RelPath = tk.Path
 
 
 @tk.block(cache=True)
@@ -14,5 +14,5 @@ def init(input_file):
     return parallel.Parallel(spliter.out, pipeline.pipeline)
 
 def starter(path, tags, output):
-    input_data = Path(path, tags=tags)
+    input_data = RelPath(path, tags=tags)
     tk.register_output(output, init(input_data).out, export_graph=True)

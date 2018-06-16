@@ -3,12 +3,12 @@ import os
 import time
 
 from sisyphus import *
-Path = setup_path(__package__)
+RelPath = setup_path(__package__)
 
 
 class CheckState(Job):
     """Example how binaries that detach from the main process and run in the background could be handled"""
-    def __init__(self, text, binary=Path('starter.sh')):
+    def __init__(self, text, binary=RelPath('starter.sh')):
         self.text = text
         self.binary = binary
         self.out = self.output_path('score')

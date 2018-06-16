@@ -1,5 +1,4 @@
 from sisyphus import *
-Path = setup_path(__package__)
 
 
 class Add(Job):

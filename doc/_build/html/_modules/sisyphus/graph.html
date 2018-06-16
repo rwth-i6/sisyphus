@@ -38,9 +38,12 @@
 
 <span class="kn">from</span> <span class="nn">inspect</span> <span class="k">import</span> <span class="n">isclass</span>
 <span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">collections</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">pprint</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">from</span> <span class="nn">multiprocessing.pool</span> <span class="k">import</span> <span class="n">ThreadPool</span>
 
 
 <span class="k">class</span> <span class="nc">Node</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -61,10 +64,6 @@
 
     <span class="k">def</span> <span class="nf">update_requirements</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_required</span> <span class="o">=</span> <span class="p">{</span><span class="n">out</span> <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">out</span><span class="o">.</span><span class="n">available</span><span class="p">()}</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">required</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_required</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">required</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -213,6 +212,14 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">used_output_path</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">pool</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span> <span class="o">=</span> <span class="n">ThreadPool</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">GRAPH_WORKER</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">targets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -220,8 +227,10 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">active_targets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">out</span> <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">out</span><span class="o">.</span><span class="n">is_done</span><span class="p">()]</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span>
+
+    <span class="k">def</span> <span class="nf">remove_from_active_targets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">out</span> <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span> <span class="k">if</span> <span class="n">out</span> <span class="o">!=</span> <span class="n">target</span><span class="p">]</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">targets_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -242,6 +251,16 @@
 
     <span class="k">def</span> <span class="nf">add_target</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+
+        <span class="c1"># check if output path is already used</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">_output_path</span>
+            <span class="k">if</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">used_output_path</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Output path is used more than once: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">used_output_path</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
         <span class="k">if</span> <span class="ow">not</span> <span class="n">target</span><span class="o">.</span><span class="n">is_done</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_active_targets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
 
@@ -349,40 +368,127 @@
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">recursive_depth</span><span class="p">(</span><span class="n">node</span><span class="p">):</span></div>
                 <span class="k">yield</span> <span class="n">i</span>
 
-<div class="viewcode-block" id="SISGraph.for_all_nodes"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.for_all_nodes">[docs]</a>    <span class="k">def</span> <span class="nf">for_all_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">bottom_up</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="SISGraph.get_jobs_by_status"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.get_jobs_by_status">[docs]</a>    <span class="k">def</span> <span class="nf">get_jobs_by_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nodes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_finished</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Return all jobs needed to finish output in dictionary with current status as key</span>
+
+<span class="sd">        :param nodes: all nodes that will be checked, defaults to all output nodes in graph</span>
+<span class="sd">        :param engine(Engine): Use status job status of engine, ignore engine status if set to None (default: None)</span>
+<span class="sd">        :param skip_finished(bool): Stop checking subtrees of finished nodes to save time</span>
+<span class="sd">        :return ({status1\: [Job, ...], status2\: ...}): Dictionary with all jobs sorted by current state</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">states</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+        <span class="n">lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">get_unfinished_jobs</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot; Returns a list with all non finished jobs &quot;&quot;&quot;</span>
+            <span class="c1"># job not visited in this run, need to calculate dependencies</span>
+            <span class="n">new_state</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_runnable</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_setup</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_finished</span><span class="p">():</span>
+                        <span class="c1"># Stop here</span>
+                        <span class="k">if</span> <span class="n">skip_finished</span><span class="p">:</span>
+                            <span class="k">return</span> <span class="kc">False</span>
+                        <span class="k">else</span><span class="p">:</span>
+                           <span class="n">new_state</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_FINISHED</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># check state of tasks</span>
+                        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_tasks</span><span class="p">():</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="n">task</span><span class="o">.</span><span class="n">finished</span><span class="p">():</span>
+                                <span class="n">new_state</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
+                                <span class="k">break</span>
+                        <span class="c1"># if the whole job is not finished one of the tasked should not be finished as well</span>
+                        <span class="k">assert</span> <span class="n">new_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">new_state</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_RUNNABLE</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">new_state</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_WAITING</span>
+
+            <span class="c1"># List input paths</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">creator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">path</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">get_path</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                        <span class="n">path_state</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_INPUT_PATH</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">path_state</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">STATE_INPUT_MISSING</span>
+                    <span class="k">with</span> <span class="n">lock</span><span class="p">:</span>
+                        <span class="n">states</span><span class="p">[</span><span class="n">path_state</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">new_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">with</span> <span class="n">lock</span><span class="p">:</span>
+                <span class="n">states</span><span class="p">[</span><span class="n">new_state</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">job</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">for_all_nodes</span><span class="p">(</span><span class="n">get_unfinished_jobs</span><span class="p">,</span> <span class="n">nodes</span><span class="o">=</span><span class="n">nodes</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">states</span>
+
+<div class="viewcode-block" id="SISGraph.for_all_nodes"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.for_all_nodes">[docs]</a>    <span class="k">def</span> <span class="nf">for_all_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">nodes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bottom_up</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Run function f for each node, stop expanding tree branch</span>
-<span class="sd">        if functions returns False</span>
+<span class="sd">        Run function f for each node and ancestor for `nodes` from top down,</span>
+<span class="sd">        stop expanding tree branch if functions returns False. Does not stop on None to allow functions with no</span>
+<span class="sd">        return value to run for every node.</span>
 
 <span class="sd">        :param f: function will be executed for all nodes</span>
+<span class="sd">        :param nodes: all nodes that will be checked, defaults to all output nodes in graph</span>
 <span class="sd">        :param bottom_up: start with deepest nodes first,</span>
 <span class="sd">                          ignore return value of f</span>
 <span class="sd">        :return: set with all visited nodes</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">visited</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="c1"># fill nodes with all nodes if none are given</span>
+        <span class="k">if</span> <span class="n">nodes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">nodes</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">target</span><span class="o">.</span><span class="n">required_full_list</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
+                        <span class="n">nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">)</span>
+
+        <span class="n">visited</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">pool_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="n">finished_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="n">pool</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pool</span>
+        <span class="n">finished</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># recursive function to run through tree</span>
         <span class="k">def</span> <span class="nf">runner</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
             <span class="n">sis_id</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()</span>
+            <span class="k">with</span> <span class="n">pool_lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">sis_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+                    <span class="n">visited</span><span class="p">[</span><span class="n">sis_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">apply_async</span><span class="p">(</span><span class="n">runner_helper</span><span class="p">,</span> <span class="p">(</span><span class="n">job</span><span class="p">,))</span>
+
+        <span class="k">def</span> <span class="nf">runner_helper</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
             <span class="c1"># make sure all inputs are updated</span>
             <span class="n">job</span><span class="o">.</span><span class="n">_sis_runnable</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">sis_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
-                <span class="n">visited</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">sis_id</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">bottom_up</span><span class="p">:</span>
-                    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
-                        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
-                            <span class="n">runner</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">)</span>
-                    <span class="n">f</span><span class="p">(</span><span class="n">job</span><span class="p">)</span>
-                <span class="k">elif</span> <span class="n">f</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
-                    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
-                        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
-                            <span class="n">runner</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">)</span>
+            <span class="k">nonlocal</span> <span class="n">finished</span>
 
-        <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">target</span><span class="o">.</span><span class="n">required</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
-                    <span class="n">runner</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">)</span></div>
-        <span class="k">return</span> <span class="n">visited</span>
+            <span class="k">if</span> <span class="n">bottom_up</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
+                        <span class="n">runner</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">)</span>
+                <span class="n">f</span><span class="p">(</span><span class="n">job</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">job</span><span class="p">)</span>
+                <span class="c1"># Stop if function has a not None but false return value</span>
+                <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">res</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">job</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">:</span>
+                            <span class="n">runner</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">creator</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">finished_lock</span><span class="p">:</span>
+                <span class="n">finished</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">:</span>
+            <span class="n">runner</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+        <span class="c1"># Check if all jobs are finished</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">visited</span><span class="p">)</span> <span class="o">!=</span> <span class="n">finished</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="c1"># Check again and create output set</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">visited</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">k</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">out</span>
 
     <span class="k">def</span> <span class="nf">path_to_all_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">visited</span> <span class="o">=</span> <span class="p">{}</span>
@@ -483,29 +589,6 @@
                 <span class="k">return</span> <span class="kc">None</span></div>
         <span class="k">return</span> <span class="n">current</span>
 
-<div class="viewcode-block" id="SISGraph.get_jobs_by_status"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.get_jobs_by_status">[docs]</a>    <span class="k">def</span> <span class="nf">get_jobs_by_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_engine</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Return all jobs needed to finish output in dictionary with current status as key</span>
-
-<span class="sd">        :param job_engine(Engine): Use status job status of engine, ignore engine status if set to None (default: None)</span>
-<span class="sd">        :return ({status1\: [Job, ...], status2\: ...}): Dictionary with all jobs sorted by current state</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="n">visited</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">jobs</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="k">def</span> <span class="nf">add_output</span><span class="p">(</span><span class="n">out</span><span class="p">):</span>
-            <span class="n">new_jobs</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">get_jobs</span><span class="p">(</span><span class="n">visited</span><span class="p">,</span> <span class="n">job_engine</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">new_jobs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">s</span> <span class="o">=</span> <span class="n">jobs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span>
-                <span class="n">s</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-                <span class="n">jobs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
-
-        <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_targets</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="n">target</span><span class="o">.</span><span class="n">required</span><span class="p">:</span>
-                <span class="n">add_output</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
-</div>
-        <span class="k">return</span> <span class="n">jobs</span>
-
 <div class="viewcode-block" id="SISGraph.set_job_targets"><a class="viewcode-back" href="../../index.html#sisyphus.graph.SISGraph.set_job_targets">[docs]</a>    <span class="k">def</span> <span class="nf">set_job_targets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Add a target to all jobs (if possible) to have a more informative output &quot;&quot;&quot;</span>
 
@@ -517,18 +600,20 @@
                 <span class="k">pass</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">for_all_nodes</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
 
-        <span class="n">cache</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">OutputPath</span><span class="p">):</span>
                 <span class="n">name</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">_output_path</span>
                 <span class="n">out</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">_sis_path</span>
-                <span class="n">new_jobs</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">get_jobs</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">new_jobs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                    <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
-                        <span class="k">try</span><span class="p">:</span>
+
+                <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">creator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Add target </span><span class="si">%s</span><span class="s1"> to jobs (used for more informativ output, &#39;</span>
+                                 <span class="s1">&#39;disable with SHOW_JOB_TARGETS=False)&#39;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
+                    <span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">gs</span><span class="o">.</span><span class="n">SHOW_JOB_TARGETS</span> <span class="ow">is</span> <span class="kc">True</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">_sis_needed_for_which_targets</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">gs</span><span class="o">.</span><span class="n">SHOW_JOB_TARGETS</span><span class="p">:</span>
                             <span class="n">job</span><span class="o">.</span><span class="n">_sis_needed_for_which_targets</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-                        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span></div></div>
-                            <span class="k">pass</span>
+                            <span class="k">return</span> <span class="kc">True</span>
+                        <span class="k">return</span> <span class="kc">False</span></div></div>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">for_all_nodes</span><span class="p">(</span><span class="n">f</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="n">nodes</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="o">.</span><span class="n">creator</span><span class="p">])</span>
 
 
 <span class="k">def</span> <span class="nf">is_literal</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">visited</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>

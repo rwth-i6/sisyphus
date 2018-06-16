@@ -234,6 +234,14 @@
     <span class="c1"># Functions directly used to run the job</span>
     <span class="k">def</span> <span class="nf">_sis_setup_directory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Setup the working directory&quot;&quot;&quot;</span>
+
+        <span class="n">basepath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">islink</span><span class="p">(</span><span class="n">basepath</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">basepath</span><span class="p">):</span>
+            <span class="c1"># is a broken symlink</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Found broken link </span><span class="si">%s</span><span class="s1"> to </span><span class="si">%s</span><span class="s1"> while setting up </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">basepath</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">readlink</span><span class="p">(</span><span class="n">basepath</span><span class="p">),</span> <span class="bp">self</span><span class="p">))</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">basepath</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Removed broken link </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">basepath</span><span class="p">)</span>
+
         <span class="k">for</span> <span class="n">dirname</span> <span class="ow">in</span> <span class="p">[</span>
                 <span class="n">gs</span><span class="o">.</span><span class="n">JOB_WORK_DIR</span><span class="p">,</span>
                 <span class="n">gs</span><span class="o">.</span><span class="n">JOB_OUTPUT</span><span class="p">,</span>
@@ -243,9 +251,8 @@
             <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">dirname</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">!=</span> <span class="mi">17</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="n">e</span>
+            <span class="k">except</span> <span class="ne">FileExistsError</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 
         <span class="n">os</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sis_path</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">JOB_LAST_USER</span><span class="p">),</span> <span class="mo">0o775</span><span class="p">)</span>
 
@@ -699,19 +706,19 @@
     <span class="k">def</span> <span class="nf">_sis_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Returns all tasks of this job &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_runnable</span><span class="p">():</span>
-            <span class="k">return</span> <span class="p">[]</span>
+            <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;Only runnable jobs can list needed tasks&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_sis_task_cache&#39;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sis_task_cache</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">cache</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tasks</span><span class="p">():</span>
                 <span class="n">task</span><span class="o">.</span><span class="n">set_job</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
                 <span class="n">task_name</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">_start</span>
                 <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_sis_task_rqmt_overwrite&#39;</span><span class="p">)</span> \
                         <span class="ow">and</span> <span class="n">task_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_task_rqmt_overwrite</span><span class="p">:</span>
                     <span class="n">task</span><span class="o">.</span><span class="n">_rqmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_task_rqmt_overwrite</span><span class="p">[</span><span class="n">task_name</span><span class="p">]</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_sis_task_cache</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+                <span class="n">cache</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sis_task_cache</span> <span class="o">=</span> <span class="n">cache</span>
 
-            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_task_cache</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Job has no tasks defined: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_task_cache</span><span class="p">,</span> <span class="s2">&quot;Job has no tasks defined: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_task_cache</span>
 
     <span class="k">def</span> <span class="nf">_sis_next_task</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -722,47 +729,8 @@
         <span class="k">return</span> <span class="kc">None</span>
 
     <span class="c1"># Functions used to calculate the dependencies</span>
-    <span class="k">def</span> <span class="nf">_sis_get_unfinished_jobs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">visited</span><span class="p">,</span> <span class="n">engine</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Returns a list with all non finished jobs &quot;&quot;&quot;</span>
-        <span class="n">jobs</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
-            <span class="c1"># job not visited in this run, need to calculate dependencies</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_runnable</span><span class="p">():</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_setup</span><span class="p">():</span>
-                    <span class="n">jobs</span> <span class="o">=</span> <span class="p">{}</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_finished</span><span class="p">():</span>
-                        <span class="c1"># check state of tasks</span>
-                        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_tasks</span><span class="p">():</span>
-                            <span class="k">if</span> <span class="ow">not</span> <span class="n">task</span><span class="o">.</span><span class="n">finished</span><span class="p">():</span>
-                                <span class="n">state</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
-                                <span class="n">jobs</span> <span class="o">=</span> <span class="p">{</span><span class="n">state</span><span class="p">:</span> <span class="p">{</span><span class="bp">self</span><span class="p">}}</span>
-                                <span class="k">break</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">jobs</span> <span class="o">=</span> <span class="p">{</span><span class="n">gs</span><span class="o">.</span><span class="n">STATE_RUNNABLE</span><span class="p">:</span> <span class="p">{</span><span class="bp">self</span><span class="p">}}</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">jobs</span> <span class="o">=</span> <span class="p">{</span><span class="n">gs</span><span class="o">.</span><span class="n">STATE_WAITING</span><span class="p">:</span> <span class="p">{</span><span class="bp">self</span><span class="p">}}</span>
-                <span class="c1"># Waiting for other jobs =&gt; check input paths</span>
-                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
-                    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">i</span><span class="o">.</span><span class="n">get_jobs</span><span class="p">(</span><span class="n">visited</span><span class="p">,</span> <span class="n">engine</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                        <span class="n">s</span> <span class="o">=</span> <span class="n">jobs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span>
-                        <span class="n">jobs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-            <span class="n">visited</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()]</span> <span class="o">=</span> <span class="n">jobs</span>
-        <span class="k">return</span> <span class="n">visited</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()]</span>
 
-    <span class="k">def</span> <span class="nf">_sis_get_jobs_by_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Returns a dictionary with all jobs using the job id as key</span>
-<span class="sd">            if job_dict is passed the jobs will be added directly to job_dict</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_sis_runnable</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">job_dict</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">job_dict</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">job_dict</span><span class="p">:</span>
-            <span class="n">job_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_sis_id</span><span class="p">()]</span> <span class="o">=</span> <span class="bp">self</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sis_inputs</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">creator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">i</span><span class="o">.</span><span class="n">creator</span><span class="o">.</span><span class="n">_sis_get_jobs_by_id</span><span class="p">(</span><span class="n">job_dict</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">job_dict</span>
-
+    <span class="c1"># TODO Move this to toolkit cleanup together with path method</span>
     <span class="k">def</span> <span class="nf">_sis_get_needed_jobs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">visited</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; It will return all jobs that are currently still needed to compute currently not finished jobs.</span>
 <span class="sd">        This is used to decide if a job can be removed while cleaning up or not.</span>
@@ -1019,11 +987,12 @@
         <span class="k">return</span> <span class="n">path</span>
 
 <div class="viewcode-block" id="Job.set_rqmt"><a class="viewcode-back" href="../../index.html#sisyphus.job.Job.set_rqmt">[docs]</a>    <span class="k">def</span> <span class="nf">set_rqmt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span> <span class="n">rqmt</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Overwrites the automatic requirements for this job &quot;&quot;&quot;</span></div>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_sis_task_rqmt_overwrite</span><span class="p">[</span><span class="n">task_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">rqmt</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="sd">&quot;&quot;&quot; Overwrites the automatic requirements for this job &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sis_task_rqmt_overwrite</span><span class="p">[</span><span class="n">task_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">rqmt</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span> <span class="nf">tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> needs to have the tasks function explicitly defined&quot;</span> <span class="o">%</span> <span class="bp">self</span>
 
     <span class="k">def</span> <span class="nf">keep_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
