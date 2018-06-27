@@ -16,6 +16,10 @@ Sisyphus requires a Python 3.5 installation with the following additional librar
    - sudo pip3 install fusepy
    - sudo addgroup $USER fuse  # depending on your system
    
+# Documentation
+Can be created using make in the doc directory.
+A prepared html version can be found here: doc/_build/html/index.html
+
 # Example 
 A short toy workflow example is given in the example directory. 
 
