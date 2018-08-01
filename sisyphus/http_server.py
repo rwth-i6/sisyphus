@@ -236,6 +236,7 @@ def show_job_informations(sis_id):
                                tasks=tasks,
                                kwargs=object_to_html(job._sis_kwargs),
                                inputs=object_to_html(job._sis_inputs),
+                               outputs=object_to_html(job._sis_outputs),
                                info=info,
                                rqmt=rqmt,
                                task_logs=task_logs
