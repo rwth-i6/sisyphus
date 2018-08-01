@@ -237,7 +237,7 @@ class Manager(threading.Thread):
                              gs.STATE_RETRY_ERROR,
                              gs.STATE_ERROR]:
                     logging.error(info_string)
-                    if state == gs.STATE_ERROR:
+                    if state == gs.STATE_ERROR and gs.PRINT_ERROR:
                         job._sis_print_error(gs.PRINT_ERROR_TASKS,
                                              gs.PRINT_ERROR_LINES)
                 elif state in [gs.STATE_INTERRUPTED, gs.STATE_UNKNOWN]:
