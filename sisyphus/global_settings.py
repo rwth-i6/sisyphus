@@ -172,6 +172,9 @@ WAIT_PERIOD_MTIME_OF_INPUTS = 60
 
 #: set true to automatically clean jobs in error state and retry
 CLEAR_ERROR = False
+
+#: Print error messages of a job in the manager status field
+PRINT_ERROR = True
 #: Print detailed log of that many jobs in error state
 PRINT_ERROR_TASKS = 1
 #: Print that many last lines of error state log file

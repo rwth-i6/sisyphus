@@ -44,6 +44,10 @@ class Block(object):
         else:
             return self.children
 
+    def get_sub_blocks(self):
+         return [child for child in self.children
+                if (isinstance(child, Block) and not child.empty())]
+
     def empty(self):
         return not bool(self.filtered_children())
 

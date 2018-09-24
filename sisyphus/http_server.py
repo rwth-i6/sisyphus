@@ -236,6 +236,7 @@ def show_job_informations(sis_id):
                                tasks=tasks,
                                kwargs=object_to_html(job._sis_kwargs),
                                inputs=object_to_html(job._sis_inputs),
+                               outputs=object_to_html(job._sis_outputs),
                                info=info,
                                rqmt=rqmt,
                                task_logs=task_logs
@@ -268,6 +269,8 @@ def visualize(block_id):
     url_prefix = '/vis/' + block_id
 
     if parent is None:
+        for root_block in all_root_blocks:
+            items.extend(root_block.get_sub_blocks())
         return render_template("vis_overview.html", items=items)
     else:
         dot_file = visualize_block(parent, g_sis_engine, url_prefix)
