@@ -216,7 +216,7 @@ class Manager(threading.Thread):
 
     def print_state_overview(self, verbose=False):
         if verbose:
-            self.update_jobs(skip_finished=True)
+            self.update_jobs(skip_finished=False)
             self.update_state_overview()
 
         for state in sorted(self.jobs.keys(), key=lambda j: state_overview_order.get(j, j)):

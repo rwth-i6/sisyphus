@@ -525,7 +525,7 @@ def cleaner(clean_job_dir=False, clean_work_dir=False, mode='dryrun', keep_value
                 print("Abort")
 
     if unused:
-        remove_directories(unused, 'Unused directories:', 'unused', not clean_work_dir)
+        remove_directories(unused, 'Found unused directories:', 'unused', not clean_work_dir)
     if low_keep_value and keep_value:
         remove_directories({j._sis_path() for j in low_keep_value}, 'To low keep value directories:', 'trash', False)
 
