@@ -269,6 +269,7 @@ def visualize(block_id):
     url_prefix = '/vis/' + block_id
 
     if parent is None:
+        items += all_root_blocks[0].get_sub_blocks()
         return render_template("vis_overview.html", items=items)
     else:
         dot_file = visualize_block(parent, g_sis_engine, url_prefix)
