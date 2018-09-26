@@ -45,11 +45,11 @@ class Path(object):
     def __init__(self, path, creator=None, cached=False, hash_overwrite=None, tags=None):
         """
 
-        :param path(str): Path to file, if creator is given relative to it's output directory
-        :param creator(Job/None): Job that creates output file
-        :param cached(bool):
-        :param hash_overwrite(str/None):
-        :param tags(set/None):
+        :param str path: Path to file, if creator is given relative to it's output directory
+        :param Job|None creator: Job that creates output file
+        :param bool cached:
+        :param str|None hash_overwrite:
+        :param set|None tags:
         """
         self.creator = creator
         self.users = set()
@@ -319,8 +319,8 @@ class Variable(Path):
         as output/input of jobs. Use the set and get method to interact with it.
 
 
-        :param path(str): Name of file where the output is stored
-        :param creator(Job/None): Job that creates this object
+        :param str path: Name of file where the output is stored
+        :param Job|None creator: Job that creates this object
         :param pickle: Object should be pickled or stored as string
         :param backup: Returned if variable get is call but job is not finished
         """
@@ -361,8 +361,6 @@ class Variable(Path):
     # Filesystem functions
     def __fs_directory__(self):
         """ Returns all items that should be listed by virtual filesystem
-        :param job:
-        :return:
         """
         yield 'value'
         if self.creator is not None:

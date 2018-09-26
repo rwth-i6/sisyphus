@@ -128,13 +128,14 @@ def bundle_to_str(bundle):
 
     return ' '.join(str(i) for i in bundle)
 
+
 sis_graph = graph.SISGraph()
 
 
 def register_output(name, value, export_graph=False):
-    assert isinstance(value, Path), \
-        "Can only register Path objects as output, "\
-        "but %s is of type %s.\n%s" % (name, type(value), str(value))
+    assert isinstance(value, Path), (
+        "Can only register Path objects as output, "
+        "but %s is of type %s.\n%s" % (name, type(value), str(value)))
     sis_graph.add_target(graph.OutputPath(name, value))
     if export_graph:
         dump(value, os.path.join(gs.OUTPUT_DIR, gs.ALIAS_AND_OUTPUT_SUBDIR, '.%s.sis' % name))
@@ -154,6 +155,7 @@ def register_report(name, values, template=None, required=None, update_frequency
     sis_graph.add_target(report)
     return report
 
+
 current_config_ = None
 
 
@@ -168,23 +170,25 @@ class Object:
     pass
 
 
+class RelPath:
+
+    def __init__(self, origin):
+        self.origin = origin
+
+    def __call__(self, path, *args, **kwargs):
+        if not os.path.isabs(path):
+            path = os.path.join(self.origin, path)
+            path = os.path.relpath(path)
+        return Path(path, *args, **kwargs)
+
+
 def setup_path(package):
-    from .job_path import Path
-    import os
-
-    assert package, "setup_path is used to make all path relative to the current package directory, "\
-                    "it only works inside of directories and not if the config file is passed directly"
-
-    class RelPath:
-
-        def __init__(self, origin):
-            self.origin = origin
-
-        def __call__(self, path, *args, **kwargs):
-            if not os.path.isabs(path):
-                path = os.path.join(self.origin, path)
-                path = os.path.relpath(path)
-            return Path(path, *args, **kwargs)
+    """
+    :param str package:
+    :rtype: RelPath
+    """
+    assert package, ("setup_path is used to make all path relative to the current package directory, "
+                     "it only works inside of directories and not if the config file is passed directly")
 
     return RelPath(package.replace('.', '/'))
 
@@ -193,7 +197,7 @@ def dump(obj, filename):
     """ Dumps object using pickle in zipped file, creates directory if needed
 
     :param obj: Object to pickle
-    :param filename(str): Path to pickled file
+    :param str filename: Path to pickled file
     """
     outfile_dir = os.path.dirname(filename)
     if not os.path.isdir(outfile_dir):
@@ -205,7 +209,7 @@ def dump(obj, filename):
 def load_file(path):
     """ Load object from pickled file, works with zipped and unzipped files
 
-    :param path(str): Path to pickled file
+    :param str path: Path to pickled file
     :return: Unpickled object
     """
     fopen = gzip.open(path, 'rb') if zipped(path) else open(path, 'rb')
@@ -244,7 +248,7 @@ def load_job(path):
 def setup_job_directory(job):
     """ Setup the work directory of the given job.
 
-    :param job (Job): Job which needs work directory
+    :param Job|Path job: Job which needs work directory
     """
 
     original_input = job

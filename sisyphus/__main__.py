@@ -10,7 +10,7 @@ import argparse
 import sys
 
 from sisyphus.worker import worker
-from sisyphus.manager import manager, unittest
+from sisyphus.manager import manager
 from sisyphus.helper import console
 from sisyphus.loader import RecipeFinder
 from sisyphus.global_settings import update_global_settings_from_file, update_global_settings_from_list
@@ -146,8 +146,8 @@ def main():
 
     # Changing settings via commandline is currently not supported
     # Needs to ensure all parameters are passed correctly to worker, ignored since nobody requested it so far
-    # update_gloabal_settings_from_file(args.settings_file)
-    # update_gloabal_settings_from_list(args.commandline_settings)
+    # update_global_settings_from_file(args.settings_file)
+    # update_global_settings_from_list(args.commandline_settings)
 
     update_global_settings_from_file(gs.GLOBAL_SETTINGS_FILE_DEFAULT)
     if gs.USE_VERBOSE_TRACEBACK:
@@ -158,6 +158,7 @@ def main():
         gs.JOB_AUTO_CLEANUP = False
 
     args.func(args)
+
 
 if __name__ == '__main__':
     main()
