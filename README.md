@@ -31,6 +31,8 @@ Sisyphus requires a Python >=3.5 installation with the following additional libr
 * The current directory (`pwd`), when you run `sis`, should have a file `settings.py` (see `example` dir).
 * Create a directory `work` in the current dir.
   All data created while running the jobs will be stored there.
+* Create a directory `output` in the current dir.
+  All the registered output will end up here.
 * Run `sis --config some_config.py m`.
 
 
