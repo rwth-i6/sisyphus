@@ -3,6 +3,7 @@
 import os
 import sys
 import logging
+import sisyphus
 import sisyphus.hash
 from sisyphus.global_constants import *
 
@@ -29,8 +30,7 @@ def engine():
 
     Note: the engines should only be imported locally inside the function to avoid circular imports
 
-    :return: engine
-    :rtype: sisyphus.localengine.LocalEngine
+    :return: engine (LocalEngine)
     """
     import psutil
     cpu_count = psutil.cpu_count()
@@ -238,7 +238,7 @@ VIS_ABSOLUTE_MERGE_THRESHOLD = 5
 
 
 # Internal functions
-def update_gloabal_settings_from_text(text, filename):
+def update_global_settings_from_text(text, filename):
     """
     :param text:
     :param str filename:
@@ -272,7 +272,7 @@ def update_gloabal_settings_from_text(text, filename):
                         'you might want to use self.set_attrs(locals())')
 
 
-def update_gloabal_settings_from_file(filename):
+def update_global_settings_from_file(filename):
     """
     :param str filename:
     :return: nothing
@@ -289,10 +289,10 @@ def update_gloabal_settings_from_file(filename):
             raise e
 
     globals()['GLOBAL_SETTINGS_FILE_CONTENT'] = content
-    update_gloabal_settings_from_text(content, filename)
+    update_global_settings_from_text(content, filename)
 
 
-def update_gloabal_settings_from_list(settings_list):
+def update_global_settings_from_list(settings_list):
     """
     :param list settings_list:
     :return: nothing
@@ -301,11 +301,17 @@ def update_gloabal_settings_from_list(settings_list):
     content = '\n'.join(settings_list)
     globals()['GLOBAL_SETTINGS_COMMANDLINE'] = content
     if settings_list:
-        update_gloabal_settings_from_text(content, 'COMMANDLINE_SETTINGS')
+        update_global_settings_from_text(content, 'COMMANDLINE_SETTINGS')
 
 
 def cached_engine(cache=[]):
+    """
+    :param list cache:
+    :return: engine (LocalEngine)
+    """
     # Returns a cached version, for internal usage
     if not cache:
-        cache.append(engine())
+        e = engine()
+        cache.append(e)
+        return e  # for better type hinting
     return cache[0]

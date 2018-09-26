@@ -13,7 +13,7 @@ from sisyphus.worker import worker
 from sisyphus.manager import manager, unittest
 from sisyphus.helper import console
 from sisyphus.loader import RecipeFinder
-from sisyphus.global_settings import update_gloabal_settings_from_file, update_gloabal_settings_from_list
+from sisyphus.global_settings import update_global_settings_from_file, update_global_settings_from_list
 import sisyphus.global_settings as gs
 
 # Setup logging
@@ -149,7 +149,7 @@ def main():
     # update_gloabal_settings_from_file(args.settings_file)
     # update_gloabal_settings_from_list(args.commandline_settings)
 
-    update_gloabal_settings_from_file(gs.GLOBAL_SETTINGS_FILE_DEFAULT)
+    update_global_settings_from_file(gs.GLOBAL_SETTINGS_FILE_DEFAULT)
     if gs.USE_VERBOSE_TRACEBACK:
         from IPython.core import ultratb
         sys.excepthook = ultratb.VerboseTB()
