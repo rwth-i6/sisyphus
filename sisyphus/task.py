@@ -11,20 +11,22 @@ import sisyphus.global_settings as gs
 
 
 class Task(object):
-    """ Object to hold information what function should be run with which requirements
-
-    :param str start: name of the function which will be executed on start
-    :param str resume: name of the function which will be executed on resume, often set equal to start
-    :param dict[str] rqmt: job requirements
-    :param list[list[object]|object] args: job arguments
-    :param bool mini_task: will be run on engine for short jobs if True
-    :param (dict[str],dict[str])->dict[str] update_rqmt: function to update job requirements for interrupted jobs
-    :param int parallel: the max. number of jobs to submit to a queue, defaults to the number of args
-    :param int tries: how often this task is resubmitted after failure
+    """
+    Object to hold information what function should be run with which requirements.
     """
 
     def __init__(self, start, resume=None, rqmt={}, args=[[]], mini_task=False,
                  update_rqmt=None, parallel=0, tries=1):
+        """
+        :param str start: name of the function which will be executed on start
+        :param str resume: name of the function which will be executed on resume, often set equal to start
+        :param dict[str] rqmt: job requirements
+        :param list[list[object]|object] args: job arguments
+        :param bool mini_task: will be run on engine for short jobs if True
+        :param (dict[str],dict[str])->dict[str] update_rqmt: function to update job requirements for interrupted jobs
+        :param int parallel: the max. number of jobs to submit to a queue, defaults to the number of args
+        :param int tries: how often this task is resubmitted after failure
+        """
         self._start = start
         self._resume = resume
         self._rqmt = rqmt

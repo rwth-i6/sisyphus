@@ -2,7 +2,6 @@ from sisyphus import *
 
 
 class Add(Job):
-
     """ Simple example with an input and an output file """
 
     def __init__(self, a, b):
@@ -24,7 +23,6 @@ class Add(Job):
 
 
 class Multiply(Job):
-
     """ Simple example with an input and an output file """
 
     def __init__(self, a, b):
@@ -46,7 +44,6 @@ class Multiply(Job):
 
 
 class Power(Job):
-
     """ Simple example with an input and an output file """
 
     def __init__(self, a, b):
