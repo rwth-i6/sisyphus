@@ -30,6 +30,7 @@ def engine():
     Note: the engines should only be imported locally inside the function to avoid circular imports
 
     :return: engine
+    :rtype: sisyphus.localengine.LocalEngine
     """
     import psutil
     cpu_count = psutil.cpu_count()
@@ -41,9 +42,10 @@ def engine():
 def update_engine_rqmt(initial_rqmt, last_usage):
     """ Update requirements after a job got interrupted.
 
-    :param first_rqmt(dict): requirements that are requested first
-    :param last_usage(dict): informations about the last usage by the task
+    :param dict[str] initial_rqmt: requirements that are requested first
+    :param dict[str] last_usage: information about the last usage by the task
     :return: updated requirements
+    :rtype: dict[str]
     """
 
     # Contains the resources requested for interrupted run
@@ -86,9 +88,10 @@ def check_engine_limits(current_rqmt, task):
             current_rqmt['mem'] = min(127, current_rqmt['mem'])
         return current_rqmt
 
-    :param current_rqmt(dict): requirements currently requested
-    :param task(Task): task that is handled
+    :param dict[str] current_rqmt: requirements currently requested
+    :param sisyphus.task.Task task: task that is handled
     :return: requirements updated to engine limits
+    :rtype: dict[str]
     """
     return current_rqmt
 
@@ -98,11 +101,13 @@ def file_caching(path):
     e.g. copy given file to /var/tmp and return new path.
     The default behaviour is to just pass on the given path
 
-    :param path(str): Path to file that should be cached
+    :param str path: Path to file that should be cached
     :return: path to cached file
+    :rtype: str
     """
     logging.info('No file caching function set, simply keep given path: %s' % path)
     return path
+
 
 # Experimental settings
 # Log when a job output was used the last time, currently not active maintained
@@ -211,8 +216,8 @@ LOG_TRACEBACKS = False
 #: Remove all environment variables to ensure the same environment between different users
 CLEANUP_ENVIRONMENT = True  # only Trump would say no!
 #: Keep these environment variables if CLEANUP_ENVIRONMENT is set
-DEFAULT_ENVIRONMENT_KEEP = set(['CUDA_VISIBLE_DEVICES', 'HOME', 'PWD', 'SGE_STDERR_PATH', 'SGE_TASK_ID', 'TMP',
-                                'TMPDIR', 'USER'])
+DEFAULT_ENVIRONMENT_KEEP = {'CUDA_VISIBLE_DEVICES', 'HOME', 'PWD', 'SGE_STDERR_PATH', 'SGE_TASK_ID', 'TMP', 'TMPDIR',
+                            'USER'}
 #: Set these environment variables if CLEANUP_ENVIRONMENT is set
 DEFAULT_ENVIRONMENT_SET = {'LANG': 'en_US.UTF-8',
                            'MKL_NUM_THREADS': 1,
@@ -234,6 +239,11 @@ VIS_ABSOLUTE_MERGE_THRESHOLD = 5
 
 # Internal functions
 def update_gloabal_settings_from_text(text, filename):
+    """
+    :param text:
+    :param str filename:
+    :return: nothing
+    """
     # create basically empty globals
     globals_ = {
         '__builtins__': globals()['__builtins__'],
@@ -263,6 +273,10 @@ def update_gloabal_settings_from_text(text, filename):
 
 
 def update_gloabal_settings_from_file(filename):
+    """
+    :param str filename:
+    :return: nothing
+    """
     # skip if settings file doesn't exist
     globals()['GLOBAL_SETTINGS_FILE'] = filename
 
@@ -279,6 +293,10 @@ def update_gloabal_settings_from_file(filename):
 
 
 def update_gloabal_settings_from_list(settings_list):
+    """
+    :param list settings_list:
+    :return: nothing
+    """
     # skip if no options are given is empty
     content = '\n'.join(settings_list)
     globals()['GLOBAL_SETTINGS_COMMANDLINE'] = content
