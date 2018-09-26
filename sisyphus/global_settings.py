@@ -1,11 +1,12 @@
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
-import os
 import sys
 import logging
-import sisyphus
 import sisyphus.hash
+# noinspection PyUnresolvedReferences
 from sisyphus.global_constants import *
+# noinspection PyUnresolvedReferences
+import os
 
 
 def engine():
@@ -77,6 +78,7 @@ def update_engine_rqmt(initial_rqmt, last_usage):
     return out
 
 
+# noinspection PyUnusedLocal
 def check_engine_limits(current_rqmt, task):
     """ Check if requested requirements break and hardware limits and reduce them.
     By default ignored, a possible check for limits could look like this::
@@ -231,9 +233,9 @@ DEFAULT_ENVIRONMENT_SET = {'LANG': 'en_US.UTF-8',
                            'SHELL': '/bin/bash'}
 
 # Visualization
-#: For http visualization, list job input as commen input if it is share between more then X*(total jobs) jobs
+#: For http visualization, list job input as common input if it is share between more then X*(total jobs) jobs
 VIS_RELATIVE_MERGE_THRESHOLD = 0.25
-#: For http visualization, list job input as commen input if it is share between more then X jobs
+#: For http visualization, list job input as common input if it is share between more then X jobs
 VIS_ABSOLUTE_MERGE_THRESHOLD = 5
 
 
@@ -304,6 +306,7 @@ def update_global_settings_from_list(settings_list):
         update_global_settings_from_text(content, 'COMMANDLINE_SETTINGS')
 
 
+# noinspection PyDefaultArgument
 def cached_engine(cache=[]):
     """
     :param list cache:
