@@ -133,6 +133,11 @@ sis_graph = graph.SISGraph()
 
 
 def register_output(name, value, export_graph=False):
+    """
+    :param str name:
+    :param Path value:
+    :param bool export_graph:
+    """
     assert isinstance(value, Path), (
         "Can only register Path objects as output, "
         "but %s is of type %s.\n%s" % (name, type(value), str(value)))
@@ -268,12 +273,13 @@ def setup_job_directory(job):
 
 
 def run_job(job, task_name=None, task_id=1, force_resume=False):
-    """ Run job directly in console window.
+    """
+    Run job directly in console window.
 
-    :param job(Job): Job with tasks to run
-    :param task_name(str): which task should run, default: The first listed task
-    :param task_id(int): which task_id should be used, default: 1
-    :param force_resume(bool): Force resume of job in error state
+    :param Job job: Job with tasks to run
+    :param str task_name: which task should run, default: The first listed task
+    :param int task_id: which task_id should be used, default: 1
+    :param bool force_resume: Force resume of job in error state
     """
     assert isinstance(job, Job), "%s is not a Job" % job
 
@@ -311,10 +317,11 @@ def run_job(job, task_name=None, task_id=1, force_resume=False):
 
 
 def rerun(source, just_move=False):
-    """  Remove all jobs that depend on the given job/path
+    """
+    Remove all jobs that depend on the given job/path.
 
-    :param source(Job/Path): All jobs depended on it should be removed
-    :param just_move(bool): Only move job directories aside
+    :param Job|Path source: All jobs depended on it should be removed
+    :param bool just_move: Only move job directories aside
     """
     sis_graph.update_nodes()
 
@@ -377,10 +384,11 @@ def rerun(source, just_move=False):
 
 
 def import_work_directory(directories, mode='dryrun'):
-    """ Link or copy finished jobs from other work directories
+    """
+    Link or copy finished jobs from other work directories.
 
-    :param directories(str): Path to other work directories
-    :param mode(str): How to import job directories. Options: (copy, symlink, dryrun)
+    :param str directories: Path to other work directories
+    :param str mode: How to import job directories. Options: (copy, symlink, dryrun)
     """
 
     if isinstance(directories, str):

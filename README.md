@@ -29,6 +29,8 @@ Sisyphus requires a Python >=3.5 installation with the following additional libr
 
 * Add `sis` to the `PATH` env, or symlink it, or call it directly.
 * The current directory (`pwd`), when you run `sis`, should have a file `settings.py` (see `example` dir).
+* Create a directory `work` in the current dir.
+  All data created while running the jobs will be stored there.
 * Run `sis --config some_config.py m`.
 
 
