@@ -1,3 +1,8 @@
+
+"""
+These settings can be overwritten via a ``settings.py`` file in the current directory, when ``sis`` is run.
+"""
+
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
 import sys
