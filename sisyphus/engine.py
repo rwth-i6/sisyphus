@@ -14,28 +14,25 @@ class EngineBase:
 
     def get_task_id(self, task_id, engine_selector):
         """ Gets task id either from args or the environment"""
-        assert False, "Has to implemented by subclass"
-
-    def submit(self, task):
-        assert False, "Has to implemented by subclass"
+        raise NotImplementedError
 
     def task_state(self, task, task_id):
-        assert False, "Has to implemented by subclass"
+        raise NotImplementedError
 
     def start_engine(self):
-        assert False, "Has to implemented by subclass"
+        raise NotImplementedError
 
     def stop_engine(self):
-        assert False, "Has to implemented by subclass"
+        raise NotImplementedError
 
     def reset_cache(self):
-        assert False, "Has to implemented by subclass"
+        raise NotImplementedError
 
     def submit_call(self, call, logpath, rqmt, name, task_name, task_ids):
-        assert False, "Has to implemented by subclass"
+        raise NotImplementedError
 
     def get_default_rqmt(self, task):
-        assert False, "Has to implemented by subclass"
+        raise NotImplementedError
 
     @tools.cache_result()
     def get_submit_history(self, task):
@@ -107,7 +104,12 @@ class EngineBase:
         return gs.STATE_FINISHED
 
     def get_job_used_resources(self, current_process, engine_selector):
-        """Should be overwritten by subclass if a better way to measure the used resources is available, e.g. cgroups"""
+        """
+        Should be overwritten by subclass if a better way to measure the used resources is available, e.g. cgroups.
+
+        :param psutil.Process current_process:
+        :param engine_selector:
+        """
         d = {}
 
         # get memory usage and convert it to GB

@@ -50,6 +50,12 @@ class LoggingThread(Thread):
     """
 
     def __init__(self, job, task, task_id, engine_selector):
+        """
+        :param sisyphus.job.Job job:
+        :param sisyphus.task.Task task:
+        :param int task_id:
+        :param engine_selector:
+        """
         self.job = job
         self.task = task
         self.task_id = task_id
