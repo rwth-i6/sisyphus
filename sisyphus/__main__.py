@@ -151,8 +151,15 @@ def main():
 
     update_global_settings_from_file(gs.GLOBAL_SETTINGS_FILE_DEFAULT)
     if gs.USE_VERBOSE_TRACEBACK:
-        from IPython.core import ultratb
-        sys.excepthook = ultratb.VerboseTB()
+        if gs.VERBOSE_TRACEBACK_TYPE == "ipython":
+            from IPython.core import ultratb
+            sys.excepthook = ultratb.VerboseTB()
+        elif gs.VERBOSE_TRACEBACK_TYPE == "better_exchook":
+            # noinspection PyPackageRequirements
+            import better_exchook
+            better_exchook.install()
+        else:
+            raise Exception("invalid VERBOSE_TRACEBACK_TYPE %r" % gs.VERBOSE_TRACEBACK_TYPE)
 
     if args.func != manager:
         gs.JOB_AUTO_CLEANUP = False
