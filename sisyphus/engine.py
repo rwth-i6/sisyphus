@@ -63,7 +63,12 @@ class EngineBase:
         return s
 
     def get_rqmt(self, task, task_id, update=True):
-        """ Get the requirements submitted for this task
+        """
+        Get the requirements submitted for this task
+
+        :param sisyphus.task.Task task:
+        :param int task_id:
+        :param bool update:
         """
         rqmt = task.rqmt()
 

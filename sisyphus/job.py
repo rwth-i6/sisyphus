@@ -103,6 +103,7 @@ class JobSingleton(type):
         else:
             # create new object
             job = super(Job, cls).__new__(cls)
+            assert isinstance(job, Job)
             job._sis_tags = tags
 
             # store _sis_id
@@ -299,7 +300,13 @@ class Job(object, metaclass=JobSingleton):
 
     # Helper functions
     def _sis_path(self, path_type=None, task_id=None, abspath=False):
-        """ Adjust path according to the job path """
+        """
+        Adjust path according to the job path.
+
+        :param str|None path_type:
+        :param int|None task_id:
+        :param bool abspath:
+        """
 
         if gs.JOB_USE_TAGS_IN_PATH and self._sis_tags:
             tags = '.' + '.'.join(sorted(list(self._sis_tags)))
@@ -326,11 +333,14 @@ class Job(object, metaclass=JobSingleton):
 
     # State logging
     def _sis_file_logging(self, log_name, task_id=None, update=None, combine=all, minimal_file_age=0):
-        """ Bool logging via file system, true if file exist false if not
-        log_type == logfile type
-        task_id == task_id for array job, if None assume whole job
-        update == new value
-        combine == function to combine all array jobs to one bool, e.g. all/any
+        """
+        :param str log_name:
+        :param int|list[int] task_id: task_id for array job, if None assume whole job
+        :param bool update: new value
+        :param combine: function to combine all array jobs to one bool, e.g. all/any
+        :param int|float minimal_file_age: in seconds
+        :rtype: bool
+        :return: logging via file system, true if file exist false if not
         """
 
         # Check single instances of job

@@ -13,14 +13,14 @@ import sisyphus.global_settings as gs
 class Task(object):
     """ Object to hold information what function should be run with which requirements
 
-    :param \start(str): name of the function which will be executed on start
-    :param resume(str): name of the function which will be executed on resume, often set equal to start
-    :param rqmt(dict): job requirements
-    :param args(...): job arguments
-    :param mini_task(bool): will be run on engine for short jobs if True
-    :param update_rqmt(str): function to update job requirements for interrupted jobs
-    :param \parallel(int): the max. number of jobs to submit to a queue, defaults to the number of args
-    :param tries(int): how often this task is resubmitted after failure
+    :param str start: name of the function which will be executed on start
+    :param str resume: name of the function which will be executed on resume, often set equal to start
+    :param dict[str] rqmt: job requirements
+    :param list[list[object]|object] args: job arguments
+    :param bool mini_task: will be run on engine for short jobs if True
+    :param (dict[str],dict[str])->dict[str] update_rqmt: function to update job requirements for interrupted jobs
+    :param int parallel: the max. number of jobs to submit to a queue, defaults to the number of args
+    :param int tries: how often this task is resubmitted after failure
     """
 
     def __init__(self, start, resume=None, rqmt={}, args=[[]], mini_task=False,
@@ -43,6 +43,9 @@ class Task(object):
         self._state_cache_time = {}
 
     def set_job(self, job):
+        """
+        :param sisyphus.job.Job job:
+        """
         self._job = job
         for name in self._start, self._resume:
             try:
@@ -77,7 +80,13 @@ class Task(object):
         return self._resume is not None
 
     def run(self, task_id, resume_job=False, logging_thread=None):
-        """ This function is executed to running this job """
+        """
+        This function is executed to run this job.
+
+        :param int task_id:
+        :param bool resume_job:
+        :param sisyphus.worker.LoggingThread logging_thread:
+        """
 
         logging.debug("Task name: %s id: %s" % (self.name(), task_id))
         job = self._job
@@ -353,6 +362,10 @@ class Task(object):
         return maximal_file_age > time.time() - os.path.getmtime(usage_file)
 
     def _get_arg_idx_for_task_id(self, task_id):
+        """
+        :param int task_id:
+        :rtype: list[int]
+        """
         assert task_id > 0, "this function assumes task_ids start at 1"
         nargs = len(self._args)
         chunk_size = nargs // self._parallel
