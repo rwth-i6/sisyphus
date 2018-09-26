@@ -136,7 +136,9 @@ class JobSingleton(type):
 
 
 class Job(object, metaclass=JobSingleton):
-    """ Object do hold the job descriptions """
+    """
+    Object do hold the job descriptions
+    """
 
     __sis_version__ = None
 
@@ -465,7 +467,10 @@ class Job(object, metaclass=JobSingleton):
                     logging.warning('Could not clean up %s: %s' % (self._sis_path(), str(e)))
 
     def _sis_id(self):
-        """ Return unique job identifier"""
+        """
+        :return: unique job identifier, "<sis_name>.<sis_hash>"
+        :rtype: str
+        """
         return self._sis_id_cache
 
     def _sis_hash(self):
@@ -473,6 +478,11 @@ class Job(object, metaclass=JobSingleton):
 
     @classmethod
     def _sis_hash_static(cls, parsed_args):
+        """
+        :param dict[str] parsed_args:
+        :return: hash
+        :rtype: str
+        """
         h = cls.hash(parsed_args)
         assert isinstance(h, str), 'hash return value must be str'
         allowed_characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.-_'
@@ -682,7 +692,10 @@ class Job(object, metaclass=JobSingleton):
             logging.warning('File not Found: %s' % path)
 
     def _sis_tasks(self):
-        """ Returns all tasks of this job """
+        """
+        :return: all tasks of this job
+        :rtype: list[sisyphus.task.Task]
+        """
         if not self._sis_runnable():
             assert False, "Only runnable jobs can list needed tasks"
         if not hasattr(self, '_sis_task_cache'):
@@ -700,7 +713,10 @@ class Job(object, metaclass=JobSingleton):
         return self._sis_task_cache
 
     def _sis_next_task(self):
-        """ Returns next not finished task """
+        """
+        :return: next not finished task
+        :rtype: sisyphus.task.Task|None
+        """
         for task in self._sis_tasks():
             if not task.finished():
                 return task
@@ -970,11 +986,15 @@ class Job(object, metaclass=JobSingleton):
         return self
 
     def tasks(self):
-        assert False, "%s needs to have the tasks function explicitly defined" % self
+        """
+        :return: yields Task's
+        :rtype: list[sisyphus.task.Task]
+        """
+        raise NotImplementedError("%s needs to have the tasks function explicitly defined" % self)
 
     def keep_value(self, value=None):
         if value is not None:
-            assert(0 <= value < 100)
+            assert 0 <= value < 100
             self._sis_keep_value = value
         return self._sis_keep_value
 
@@ -1018,7 +1038,11 @@ class Job(object, metaclass=JobSingleton):
 
     @classmethod
     def hash(cls, parsed_args):
-        """ Returns hash for job given the arguments """
+        """
+        :param dict[str] parsed_args:
+        :return: hash for job given the arguments
+        :rtype: str
+        """
         d = {}
         for k, v in parsed_args.items():
             if k not in cls.__sis_hash_exclude__ or cls.__sis_hash_exclude__[k] != v:

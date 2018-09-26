@@ -3,19 +3,29 @@ from inspect import isclass, isfunction
 
 
 def md5(obj):
+    """
+    :param obj:
+    :rtype: str
+    """
     return hashlib.md5(str(obj).encode()).hexdigest()
 
 
 def short_hash(obj,
                length=12,
                chars='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'):
+    """
+    :param object obj:
+    :param int length:
+    :param str|T chars:
+    :rtype: str|T
+    """
     h = hashlib.sha256(sis_hash_helper(obj)).digest()
     h = int.from_bytes(h, byteorder='big', signed=False)
-    l = []
+    ls = []
     for i in range(length):
-        l.append(chars[int(h % len(chars))])
+        ls.append(chars[int(h % len(chars))])
         h = h // len(chars)
-    return ''.join(l)
+    return ''.join(ls)
 
 
 def get_object_state(obj):
@@ -47,11 +57,16 @@ def get_object_state(obj):
     if args is None:
         return state
     else:
-        return (args, state)
+        return args, state
 
 
 def sis_hash_helper(obj):
-    """ Takes most object and tries to convert the current state into bytes """
+    """
+    Takes most object and tries to convert the current state into bytes.
+
+    :param object obj:
+    :rtype: bytes
+    """
 
     # Store type to ensure it's unique
     byte_list = [type(obj).__qualname__.encode()]

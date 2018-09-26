@@ -92,7 +92,12 @@ def extract_paths(args):
 
 
 def sis_hash(obj):
-    """ Takes most object and tries to convert the current state into a hash """
+    """
+    Takes most object and tries to convert the current state into a hash.
+
+    :param object obj:
+    :rtype: str
+    """
     return gs.SIS_HASH(obj)
 
 
