@@ -29,6 +29,16 @@ class EngineBase:
         raise NotImplementedError
 
     def submit_call(self, call, logpath, rqmt, name, task_name, task_ids):
+        """
+        :param list[str] call:
+        :param str logpath:
+        :param dict[str] rqmt:
+        :param str name:
+        :param str task_name:
+        :param list[int] task_ids:
+        :return: ENGINE_NAME, submitted (list of (list of task ids, job id))
+        :rtype: str, list[(list[int],int)]
+        """
         raise NotImplementedError
 
     def get_default_rqmt(self, task):
