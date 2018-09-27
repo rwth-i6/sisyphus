@@ -173,7 +173,7 @@ class Task(object):
         except Exception as e:
             # Job failed
             logging.error("Job failed, traceback:")
-            traceback.print_exc()
+            sys.excepthook(*sys.exc_info())
             logging_thread.stop()
             self.error(task_id, True)
             # TODO handle failed job
