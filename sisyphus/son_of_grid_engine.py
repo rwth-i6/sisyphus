@@ -49,6 +49,12 @@ class SonOfGridEngine(EngineBase):
         self.auto_clean_eqw = auto_clean_eqw
 
     def system_call(self, command, send_to_stdin=None):
+        """
+        :param list[str] command: qsub command
+        :param str|None send_to_stdin: shell code, e.g. the command itself to execute
+        :return: stdout, stderr, retval
+        :rtype: list[bytes], list[bytes], int
+        """
         if self.gateway:
             system_command = ['ssh', '-x', self.gateway] + [' '.join(['cd', os.getcwd(), '&&'] + command)]
         else:
@@ -62,7 +68,11 @@ class SonOfGridEngine(EngineBase):
         out, err = p.communicate(input=send_to_stdin, timeout=30)
 
         def fix_output(o):
-            # split output and drop last empty line
+            """
+            split output and drop last empty line
+            :param bytes o:
+            :rtype: list[bytes]
+            """
             o = o.split(b'\n')
             if o[-1] != b'':
                 print(o[-1])
@@ -91,7 +101,7 @@ class SonOfGridEngine(EngineBase):
             else:
                 err_.append(raw_line)
 
-        return (out, err_, retval)
+        return out, err_, retval
 
     def options(self, rqmt):
         out = []
@@ -136,6 +146,16 @@ class SonOfGridEngine(EngineBase):
         return out
 
     def submit_call(self, call, logpath, rqmt, name, task_name, task_ids):
+        """
+        :param list[str] call:
+        :param str logpath:
+        :param dict[str] rqmt:
+        :param str name:
+        :param str task_name:
+        :param list[int] task_ids:
+        :return: ENGINE_NAME, submitted (list of (list of task ids, job id))
+        :rtype: str, list[(list[int],int)]
+        """
         if not task_ids:
             # skip empty list
             return
@@ -155,15 +175,25 @@ class SonOfGridEngine(EngineBase):
                 job_id = self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
                 submitted.append((list(range(start_id, end_id, step_size)), job_id))
                 start_id, end_id, step_size = (task_id, None, None)
-        assert(start_id is not None)
+        assert start_id is not None
         if end_id is None:
             end_id = start_id
             step_size = 1
         job_id = self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
         submitted.append((list(range(start_id, end_id, step_size)), job_id))
-        return (ENGINE_NAME, submitted)
+        return ENGINE_NAME, submitted
 
     def submit_helper(self, call, logpath, rqmt, name, task_name, start_id, end_id, step_size):
+        """
+        :param list[str] call:
+        :param str logpath:
+        :param dict[str] rqmt:
+        :param str name:
+        :param str task_name:
+        :param int start_id:
+        :param int end_id:
+        :param int step_size:
+        """
         name = escape_name(name)
         qsub_call = [
             'qsub',
@@ -218,7 +248,7 @@ class SonOfGridEngine(EngineBase):
                     self._task_info_cache[(name, task_id)].append((job_id, 'qw'))
 
                 if False:  # for debugging
-                    logging.warn("Boost job!")
+                    logging.warning("Boost job!")
                     subprocess.check_call(('qalter', '-p', '300', job_id))
 
         else:

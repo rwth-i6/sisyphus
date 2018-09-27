@@ -161,6 +161,15 @@ class Manager(threading.Thread):
                  start_computations=False,
                  auto_print_stat_overview=True,
                  job_cleaner=None):
+        """
+        :param sisyphus.graph.SISGraph sis_graph:
+        :param sisyphus.engine.EngineBase job_engine:
+        :param bool link_outputs:
+        :param bool clear_once:
+        :param bool start_computations:
+        :param bool auto_print_stat_overview:
+        :param JobCleaner|None job_cleaner:
+        """
         threading.Thread.__init__(self)
         self.start_computations = start_computations
         self.clear_once = clear_once
@@ -296,8 +305,8 @@ class Manager(threading.Thread):
         self.thread_pool.map(f, self.jobs.get(gs.STATE_INTERRUPTED, []))
 
     def run_jobs(self):
-        """ Setup directories and submit next job task to queue
-        :return:
+        """
+        Setup directories and submit next job task to queue
         """
 
         # function to submit jobs to queue, run in parallel

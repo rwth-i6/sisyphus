@@ -100,6 +100,9 @@ class LocalEngine(threading.Thread, EngineBase):
         return LOCAL_DEFAULTS
 
     def start_task(self, task):
+        """
+        :param TaskQueueInstance task:
+        """
         task_id = task.task_id
         logpath = self.get_logpath(task.logpath, task.task_name, task_id)
 
@@ -217,7 +220,7 @@ class LocalEngine(threading.Thread, EngineBase):
             with self.waiting_tasks as waiting_tasks:
                 self.input_queue.put(task)
                 waiting_tasks[(name, task_id)] = task
-        return (ENGINE_NAME, socket.gethostname())
+        return ENGINE_NAME, socket.gethostname()
 
     def task_done(self, running_tasks, task):
         name = (task.name, task.task_id)

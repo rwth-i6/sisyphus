@@ -133,7 +133,7 @@ class EngineBase:
         """ Prepares all relevant commands and calls submit_call of subclass to actual
         pass job to relevant engine
 
-        :param task(Task): Task to submit
+        :param sisyphus.task.Task task: Task to submit
         :return: None
         """
 

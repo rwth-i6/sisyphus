@@ -46,4 +46,4 @@ STATE_UNKNOWN = 'unknown'  # Task is not know known by the engine
 STATE_RETRY_ERROR = 'retry_error'  # to many failed retries
 
 # commandline parameter
-CMD_WORKER = 'worker'  # command to call ther worker from commandline
+CMD_WORKER = 'worker'  # command to call the worker from commandline

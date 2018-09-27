@@ -546,7 +546,9 @@ def cached_engine(cache=[]):
     """ Returns a cached version, for internal usage """
     if not cache:
         # used persistent default argument as cache
-        cache.append(gs.engine())
+        e = gs.engine()
+        cache.append(e)
+        return e
     return cache[0]
 
 
