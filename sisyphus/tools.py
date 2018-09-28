@@ -288,7 +288,7 @@ def dump_all_thread_tracebacks(exclude_thread_ids=None, exclude_self=False, file
     :param set[int]|None exclude_thread_ids: set|list of thread.ident to exclude
     :param bool exclude_self:
     """
-    from traceback import print_tb
+    from traceback import print_stack
     import threading
 
     if not hasattr(sys, "_current_frames"):
@@ -322,7 +322,7 @@ def dump_all_thread_tracebacks(exclude_thread_ids=None, exclude_self=False, file
         if tid in exclude_thread_ids:
             print("(Excluded thread.)", file=file)
         else:
-            print_tb(stack, file=file)
+            print_stack(stack, file=file)
         print("", file=file)
     print("That were all threads.", file=file)
 
