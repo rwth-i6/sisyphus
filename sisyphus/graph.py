@@ -442,7 +442,8 @@ class SISGraph(object):
             sis_id = job._sis_id()
             with pool_lock:
                 if sis_id not in visited:
-                    visited[sis_id] = pool.apply_async(tools.default_handle_exception_interrupt_main_thread(runner_helper), (job,))
+                    visited[sis_id] = pool.apply_async(
+                        tools.default_handle_exception_interrupt_main_thread(runner_helper), (job,))
 
         def runner_helper(job):
             """

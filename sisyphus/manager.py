@@ -15,6 +15,10 @@ import sisyphus.global_settings as gs
 class JobCleaner(threading.Thread):
     """ Thread to scan all jobs and clean if needed """
     def __init__(self, sis_graph, worker=gs.JOB_CLEANER_WORKER):
+        """
+        :param sisyphus.graph.SISGraph sis_graph:
+        :param int worker: number of workers for the thread pool
+        """
         threading.Thread.__init__(self)
         self.daemon = True
         self.sis_graph = sis_graph
@@ -26,7 +30,7 @@ class JobCleaner(threading.Thread):
 
         def f(job):
             if job._sis_cleanable():
-                self.thread_pool.apply_async(job._sis_cleanup)
+                self.thread_pool.apply_async(tools.default_handle_exception_interrupt_main_thread(job._sis_cleanup))
             return True
 
         while not self.stopped:

@@ -8,6 +8,7 @@ import subprocess
 import psutil
 import time
 from sisyphus.engine import EngineBase
+from sisyphus import tools
 import sisyphus.global_settings as gs
 from collections import namedtuple
 from ast import literal_eval
@@ -70,6 +71,10 @@ class LocalEngine(threading.Thread, EngineBase):
     """
 
     def __init__(self, cpus=1, gpus=0):
+        """
+        :param int cpus: number of CPUs to use
+        :param int gpus: number of GPUs to use
+        """
         # TODO change max_cpu to ressorces and remove multiprocessing stuff
         # resources
         self.lock = threading.Lock()
@@ -159,6 +164,7 @@ class LocalEngine(threading.Thread, EngineBase):
         assert 0 <= self.cpu.value <= self.max_cpu
         assert 0 <= self.gpu.value <= self.max_gpu
 
+    @tools.default_handle_exception_interrupt_main_thread
     def run(self):
         next_task = None
         try:
@@ -191,7 +197,6 @@ class LocalEngine(threading.Thread, EngineBase):
                                 running_tasks[name] = (process, next_task)
                                 next_task = None
                                 wait = False
-
 
                 if wait:
                     # check only once per second for new jobs
