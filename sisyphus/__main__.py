@@ -158,6 +158,7 @@ def main():
             # noinspection PyPackageRequirements
             import better_exchook
             better_exchook.install()
+            better_exchook.replace_traceback_format_tb()
         else:
             raise Exception("invalid VERBOSE_TRACEBACK_TYPE %r" % gs.VERBOSE_TRACEBACK_TYPE)
 
