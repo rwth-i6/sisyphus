@@ -965,8 +965,15 @@ class Job(object, metaclass=JobSingleton):
                 self.add_input(value)
 
     def output_path(self, filename, directory=False, cached=False):
-        """ Adds output path, if directory is true a
-        directory will will be created automatically """
+        """
+        Adds output path, if directory is true a
+        directory will will be created automatically.
+
+        :param str filename:
+        :param bool directory:
+        :param bool cached:
+        :rtype: Path
+        """
         path = Path(filename, self, cached)
         assert path.get_path() not in self._sis_outputs
         self._sis_outputs[path.get_path()] = path
