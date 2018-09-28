@@ -644,7 +644,7 @@ class Job(object, metaclass=JobSingleton):
                 path_str = '%s/%s/%s/' % (gs.ALIAS_DIR, list(self._sis_alias_prefixes)[0], alias)
         else:
             path_str = self._sis_path()
-        return "Job< workdir: %s>" % path_str
+        return "%s< workdir: %s>" % (self.__class__.__name__, path_str)
 
     def __repr__(self):
         return str(self)
