@@ -107,6 +107,7 @@ class LocalEngine(threading.Thread, EngineBase):
     def start_task(self, task):
         """
         :param TaskQueueInstance task:
+        :rtype: psutil.Process
         """
         task_id = task.task_id
         logpath = self.get_logpath(task.logpath, task.task_name, task_id)
