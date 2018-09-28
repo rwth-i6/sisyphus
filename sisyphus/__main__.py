@@ -162,6 +162,10 @@ def main():
         else:
             raise Exception("invalid VERBOSE_TRACEBACK_TYPE %r" % gs.VERBOSE_TRACEBACK_TYPE)
 
+    if gs.USE_SIGNAL_HANDLERS:
+        from sisyphus.tools import maybe_install_signal_handers
+        maybe_install_signal_handers()
+
     if args.func != manager:
         gs.JOB_AUTO_CLEANUP = False
 

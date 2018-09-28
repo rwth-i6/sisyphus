@@ -281,3 +281,96 @@ def default_handle_exception_interrupt_main_thread(func):
             raise SystemExit(1)
 
     return wrapped_func
+
+
+def dump_all_thread_tracebacks(exclude_thread_ids=None, exclude_self=False, file=sys.stderr):
+    """
+    :param set[int]|None exclude_thread_ids: set|list of thread.ident to exclude
+    :param bool exclude_self:
+    """
+    from traceback import print_tb
+    import threading
+
+    if not hasattr(sys, "_current_frames"):
+        print("Does not have sys._current_frames, cannot get thread tracebacks.", file=file)
+        return
+    if exclude_thread_ids is None:
+        exclude_thread_ids = set()
+    if exclude_self:
+        exclude_thread_ids = set(list(exclude_thread_ids) + [threading.current_thread().ident])
+
+    print("", file=file)
+    threads = {t.ident: t for t in threading.enumerate()}
+    for tid, stack in sorted(sys._current_frames().items()):
+        # This is a bug in earlier Python versions.
+        # http://bugs.python.org/issue17094
+        # Note that this leaves out all threads not created via the threading module.
+        if tid not in threads:
+            continue
+        tags = []
+        thread = threads.get(tid)
+        if thread:
+            assert isinstance(thread, threading.Thread)
+            if thread is threading.current_thread():
+                tags += ["current"]
+            if thread is threading.main_thread():
+                tags += ["main"]
+            tags += [str(thread)]
+        else:
+            tags += ["unknown with id %i" % tid]
+        print("Thread %s:" % ", ".join(tags), file=file)
+        if tid in exclude_thread_ids:
+            print("(Excluded thread.)", file=file)
+        else:
+            print_tb(stack, file=file)
+        print("", file=file)
+    print("That were all threads.", file=file)
+
+
+def format_signum(signum):
+    """
+    :param int signum:
+    :return: string "signum (signame)"
+    :rtype: str
+    """
+    import signal
+    signum_to_signame = {
+        k: v for v, k in reversed(sorted(signal.__dict__.items()))
+        if v.startswith('SIG') and not v.startswith('SIG_')}
+    return "%s (%s)" % (signum, signum_to_signame.get(signum, "unknown"))
+
+
+def signal_handler(signum, frame):
+    """
+    Prints a message on stdout and dump all thread stacks.
+
+    :param int signum: e.g. signal.SIGUSR1
+    :param frame: ignored, will dump all threads
+    """
+    print("Signal handler: got signal %s" % format_signum(signum), file=sys.stderr)
+    dump_all_thread_tracebacks(file=sys.stderr)
+
+
+def install_signal_handler_if_default(signum, exceptions_are_fatal=False):
+    """
+    :param int signum: e.g. signal.SIGUSR1
+    :param bool exceptions_are_fatal: if True, will reraise any exceptions. if False, will just print a message
+    :return: True iff no exception, False otherwise. not necessarily that we registered our own handler
+    :rtype: bool
+    """
+    try:
+        import signal
+        if signal.getsignal(signum) == signal.SIG_DFL:
+            signal.signal(signum, signal_handler)
+        return True
+    except Exception as exc:
+        if exceptions_are_fatal:
+            raise
+        print("Cannot install signal handler for signal %s, exception %s" % (format_signum(signum), exc))
+    return False
+
+
+def maybe_install_signal_handers():
+    import signal
+    install_signal_handler_if_default(signal.SIGUSR1)
+    install_signal_handler_if_default(signal.SIGUSR2)

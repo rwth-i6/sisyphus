@@ -214,6 +214,9 @@ USE_VERBOSE_TRACEBACK = True
 #: The verbose traceback type. "ipython" or "better_exchook"
 VERBOSE_TRACEBACK_TYPE = "ipython"
 
+#: Install signal handlers for debugging
+USE_SIGNAL_HANDLERS = False
+
 # Job setup options
 #: Automatically set all input given to __init__  as attributes of the created job.
 #: Disabled by default since it tends to confuse new users reading the code.
