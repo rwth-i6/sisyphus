@@ -3,6 +3,7 @@ import sisyphus.global_settings as gs
 from sisyphus.job import Job
 from sisyphus.job_path import Path
 from sisyphus.block import Block
+import sisyphus.tools as tools
 
 from inspect import isclass
 import logging
@@ -441,7 +442,7 @@ class SISGraph(object):
             sis_id = job._sis_id()
             with pool_lock:
                 if sis_id not in visited:
-                    visited[sis_id] = pool.apply_async(runner_helper, (job,))
+                    visited[sis_id] = pool.apply_async(tools.default_handle_exception_interrupt_main_thread(runner_helper), (job,))
 
         def runner_helper(job):
             """
