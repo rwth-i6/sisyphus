@@ -169,7 +169,17 @@ def main():
     if args.func != manager:
         gs.JOB_AUTO_CLEANUP = False
 
-    args.func(args)
+    try:
+        args.func(args)
+    except BaseException:
+        logging.error("Main thread unhandled exception:")
+        sys.excepthook(*sys.exc_info())
+        import threading
+        non_daemon_threads = {
+            thread for thread in threading.enumerate()
+            if not thread.daemon and thread is not threading.main_thread()}
+        if non_daemon_threads:
+            logging.warning("Main thread exit. Still running non-daemon threads: %r" % non_daemon_threads)
 
 
 if __name__ == '__main__':
