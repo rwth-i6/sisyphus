@@ -11,6 +11,9 @@ import sisyphus.tools as tools
 
 
 class EngineBase:
+    """
+    An engine manages the execution of jobs, e.g. locally, or in a queuing system like SGE.
+    """
 
     def get_task_id(self, task_id, engine_selector):
         """ Gets task id either from args or the environment"""
@@ -185,25 +188,36 @@ class EngineBase:
 
 
 class EngineSelector(EngineBase):
+    """
+    The EngineSelector engine wraps multiple other engines
+    and schedules the jobs according to the requirements (rqmt).
+    """
 
     def __init__(self, engines, default_engine):
         """
-
-        :param engines:
-        :param default_engine:
+        :param dict[str,EngineBase] engines:
+        :param str default_engine:
         """
-        assert isinstance(default_engine, str), "default_engine must be a string: %s" % default_engine
+        assert isinstance(default_engine, str), "default_engine must be a string: %r" % (default_engine,)
         for k, v in engines.items():
-            assert isinstance(k, str) and isinstance(v, EngineBase), "engines must only contain strings as keys " \
-                                                                     "and Engines as value: (%s, %s)" % (k, v)
+            assert isinstance(k, str) and isinstance(v, EngineBase), ("engines must only contain strings as keys "
+                                                                      "and Engines as value: (%r, %r)" % (k, v))
         self.engines = engines
         self.default_engine = default_engine
 
     def get_used_engine(self, engine_selector):
-        assert engine_selector in self.engines, "Unknown engine selector: %s" % engine_selector
+        """
+        :param str engine_selector: name in self.engines
+        :rtype: EngineBase
+        """
+        assert engine_selector in self.engines, "Unknown engine selector: %r" % engine_selector
         return self.engines[engine_selector]
 
     def get_used_engine_by_rqmt(self, rqmt):
+        """
+        :param dict[str] rqmt:
+        :rtype: EngineBase
+        """
         engine_selector = rqmt.get('engine', self.default_engine)
         return self.get_used_engine(engine_selector)
 
