@@ -1,4 +1,6 @@
-# Create Blocks
+"""
+Create Blocks
+"""
 
 import os
 import inspect
@@ -10,6 +12,10 @@ class Block(object):
     sis_graph = None
 
     def __init__(self, name, parents=None):
+        """
+        :param str name:
+        :param set[Block]|None parents:
+        """
         self.name = name
         self.children = []
         if parents is None:
@@ -91,15 +97,20 @@ class Block(object):
         try:
             pos = int(step.split('_')[0])
             return None, self.filtered_children()[pos]
-        except:
+        except Exception:
             raise KeyError(step)
 
-active_blocks = set()
-all_root_blocks = []
+
+active_blocks = set()  # type: set[Block]
+all_root_blocks = []  # type: list[Block]
 
 
 def set_root_block(name):
-    """ Set new root block, usually with the name of the config file """
+    """
+    Set new root block, usually with the name of the config file.
+
+    :param str name:
+    """
     global active_blocks
     current_block = Block(name)
     active_blocks = {current_block}
@@ -107,12 +118,19 @@ def set_root_block(name):
 
 
 def sub_block(name):
+    """
+    :param str name:
+    :rtype: Block
+    """
     b = Block(name)
     add_to_active_blocks(b)
     return b
 
 
 def add_to_active_blocks(current_block):
+    """
+    :param Block current_block:
+    """
     for block in active_blocks:
         if block not in current_block.parents:
             block.add_block(current_block)
@@ -120,21 +138,28 @@ def add_to_active_blocks(current_block):
 
 
 class block(object):
-    """ Open block and add job created inside of this block to it.
+    """
+    Open block and add job created inside of this block to it.
+    See :class:`Block`.
     Can also be used as decorator, the decorator can cache the output of a given function.
 
-    Usage:
-    with block('foo'):
-        # everything here will be grouped to one block
-        ....
+    Usage::
 
-    @block(cache=True):
-    def bar():
-        # block named bar will be opened when function is called
-        ...
+        with block('foo'):
+            # everything here will be grouped to one block
+            ....
+
+        @block(cache=True):
+        def bar():
+            # block named bar will be opened when function is called
+            ...
     """
 
     def __init__(self, name=None, cache=False):
+        """
+        :param str name:
+        :param bool cache:
+        """
         self.name = name
         self.cache = cache
         self.last_active_blocks = None
