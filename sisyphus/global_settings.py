@@ -15,7 +15,8 @@ import os
 
 
 def engine():
-    """ Create engine object used to submit jobs. The simplest setup just creates a local
+    """
+    Create engine object used to submit jobs. The simplest setup just creates a local
     engine starting all jobs on the local machine e.g.::
 
         from sisyphus.localengine import LocalEngine
@@ -36,7 +37,7 @@ def engine():
 
     Note: the engines should only be imported locally inside the function to avoid circular imports
 
-    :return: engine (LocalEngine)
+    :return: engine (EngineBase)
     """
     import psutil
     cpu_count = psutil.cpu_count()
@@ -317,11 +318,13 @@ def update_global_settings_from_list(settings_list):
 def cached_engine(cache=[]):
     """
     :param list cache:
-    :return: engine (LocalEngine)
+    :return: engine (EngineBase)
     """
     # Returns a cached version, for internal usage
     if not cache:
         e = engine()
+        from sisyphus.engine import EngineBase
+        assert isinstance(e, EngineBase)
         cache.append(e)
         return e  # for better type hinting
     return cache[0]
