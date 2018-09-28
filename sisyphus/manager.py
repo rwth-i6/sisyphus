@@ -66,73 +66,75 @@ def manager(args):
     Block.sis_graph = sis_graph
     job_engine = toolkit.cached_engine()
     job_engine.start_engine()
-
-    if args.run:
-        create_aliases(sis_graph.jobs())
-    else:
-        gs.JOB_AUTO_CLEANUP = False
-
     job_cleaner = None
-    if gs.JOB_AUTO_CLEANUP:
-        job_cleaner = JobCleaner(sis_graph=sis_graph)
-        job_cleaner.start()
-
-    # The actual work loop
-    if args.http_port is not None:
-        logging.debug("Start http server")
-        start_http_server(sis_graph=sis_graph,
-                          sis_engine=job_engine,
-                          port=args.http_port,
-                          thread=True)
-
-    manager = Manager(sis_graph=sis_graph,
-                      job_engine=job_engine,
-                      link_outputs=args.run,
-                      clear_once=args.clear_once,
-                      start_computations=args.run,
-                      job_cleaner=job_cleaner)
-
-    kernel_connect_file = None
-    if gs.START_KERNEL:
-        kernel_connect_file = init_IPython_kernel(user_ns={'manager': manager,
-                                                           'job_engine': job_engine,
-                                                           'tk': toolkit,
-                                                           'sis_graph': sis_graph})
 
     try:
-        if args.filesystem:
-            # Start main loop
-            logging.debug("Start main loop")
-            manager.start()
-
-            # graph updates
-            graph_update_thread = threading.Thread(
-                target=tools.default_handle_exception_interrupt_main_thread(sis_graph.update_nodes))
-            graph_update_thread.start()
-
-            # Start filesystem
-            # run in main thread to allow signal handling of FUSE
-            if not os.path.isdir(args.filesystem):
-                os.mkdir(args.filesystem)
-            filesystem.start(work_dir=gs.WORK_DIR, sis_graph=sis_graph, mountpoint=args.filesystem)
+        if args.run:
+            create_aliases(sis_graph.jobs())
         else:
-            manager.run()
-    except KeyboardInterrupt:
-        logging.info('Got user interrupt signal stop engine and exit')
-        if kernel_connect_file:
-            try:
-                os.remove(kernel_connect_file)
-            except (IOError, OSError):
-                pass
+            gs.JOB_AUTO_CLEANUP = False
+
+        if gs.JOB_AUTO_CLEANUP:
+            job_cleaner = JobCleaner(sis_graph=sis_graph)
+            job_cleaner.start()
+
+        # The actual work loop
+        if args.http_port is not None:
+            logging.debug("Start http server")
+            start_http_server(sis_graph=sis_graph,
+                              sis_engine=job_engine,
+                              port=args.http_port,
+                              thread=True)
+
+        manager = Manager(sis_graph=sis_graph,
+                          job_engine=job_engine,
+                          link_outputs=args.run,
+                          clear_once=args.clear_once,
+                          start_computations=args.run,
+                          job_cleaner=job_cleaner)
+
+        kernel_connect_file = None
+        if gs.START_KERNEL:
+            kernel_connect_file = init_IPython_kernel(user_ns={'manager': manager,
+                                                               'job_engine': job_engine,
+                                                               'tk': toolkit,
+                                                               'sis_graph': sis_graph})
+
+        try:
+            if args.filesystem:
+                # Start main loop
+                logging.debug("Start main loop")
+                manager.start()
+
+                # graph updates
+                graph_update_thread = threading.Thread(
+                    target=tools.default_handle_exception_interrupt_main_thread(sis_graph.update_nodes))
+                graph_update_thread.start()
+
+                # Start filesystem
+                # run in main thread to allow signal handling of FUSE
+                if not os.path.isdir(args.filesystem):
+                    os.mkdir(args.filesystem)
+                filesystem.start(work_dir=gs.WORK_DIR, sis_graph=sis_graph, mountpoint=args.filesystem)
+            else:
+                manager.run()
+        except KeyboardInterrupt:
+            logging.info('Got user interrupt signal stop engine and exit')
+            if kernel_connect_file:
+                try:
+                    os.remove(kernel_connect_file)
+                except (IOError, OSError):
+                    pass
+
+            # Print traceback in debug mode
+            if logging.root.isEnabledFor(logging.DEBUG):
+                raise
+
+            sys.exit(1)
+    finally:
         if job_cleaner:
             job_cleaner.close()
         job_engine.stop_engine()
-
-        # Print traceback in debug mode
-        if logging.root.isEnabledFor(logging.DEBUG):
-            raise
-
-        sys.exit(1)
 
 
 # This is used to order the states in a useful way
