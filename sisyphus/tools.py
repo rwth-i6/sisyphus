@@ -330,26 +330,26 @@ def dump_all_thread_tracebacks(exclude_thread_ids=None, exclude_self=False, file
         if tid in exclude_thread_ids:
             print("(Excluded thread.)\n", file=file)
             continue
-        stack_frames = list(walk_stack(stack))
+        stack_frames = [f[0] for f in walk_stack(stack)]
         stack_func_code = [f.f_code for f in stack_frames]
         if mp_worker.__code__ in stack_func_code:
             i = stack_func_code.index(mp_worker.__code__)
-            if i + 1 < len(stack_func_code) and stack_func_code[i + 1] is Queue.get.__code__:
+            if i > 0 and stack_func_code[i - 1] is Queue.get.__code__:
                 print("(Exclude multiprocessing idling worker.)\n", file=file)
                 continue
         if Pool._handle_tasks.__code__ in stack_func_code:
             i = stack_func_code.index(Pool._handle_tasks.__code__)
-            if i + 1 < len(stack_func_code) and stack_func_code[i + 1] is Queue.get.__code__:
+            if i > 0 and stack_func_code[i - 1] is Queue.get.__code__:
                 print("(Exclude multiprocessing idling task handler.)\n", file=file)
                 continue
         if Pool._handle_workers.__code__ in stack_func_code:
             i = stack_func_code.index(Pool._handle_workers.__code__)
-            if i + 1 < len(stack_func_code) and stack_func_code[i + 1] is Queue.get.__code__:
+            if i == 0:  # time.sleep is native, thus not on the stack
                 print("(Exclude multiprocessing idling worker handler.)\n", file=file)
                 continue
         if Pool._handle_results.__code__ in stack_func_code:
             i = stack_func_code.index(Pool._handle_results.__code__)
-            if i + 1 < len(stack_func_code) and stack_func_code[i + 1] is Queue.get.__code__:
+            if i > 0 and stack_func_code[i - 1] is Queue.get.__code__:
                 print("(Exclude multiprocessing idling result handler.)\n", file=file)
                 continue
         print_stack(stack, file=file)
