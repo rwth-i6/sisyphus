@@ -191,6 +191,9 @@ class EngineSelector(EngineBase):
     """
     The EngineSelector engine wraps multiple other engines
     and schedules the jobs according to the requirements (rqmt).
+
+    Tasks with mini_task=True will use the engine selector 'short',
+    so usually that engine should be specified as well.
     """
 
     def __init__(self, engines, default_engine):

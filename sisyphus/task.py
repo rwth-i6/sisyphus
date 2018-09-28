@@ -40,6 +40,9 @@ class Task(object):
         self.last_state = None
         self.tries = tries
 
+    def __repr__(self):
+        return "<Task %r job=%r>" % (self._start, getattr(self, "_job", None))
+
     def reset_cache(self):
         self._state_cache = {}
         self._state_cache_time = {}
