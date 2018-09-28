@@ -62,7 +62,11 @@ def str_to_hours(t):
 
 
 def extract_paths(args):
-    """ Extract all path objects from the given arguments """
+    """
+    Extract all path objects from the given arguments.
+
+    :rtype: set
+    """
     out = set()
     if isinstance(args, Block):
         return out

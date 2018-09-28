@@ -26,6 +26,10 @@ class Node(object):
 
 class OutputTarget:
     def __init__(self, name, inputs):
+        """
+        :param str name:
+        :param inputs:
+        """
         self._required = extract_paths(inputs)
         self.required_full_list = sorted(list(self._required))
         self.name = name
@@ -178,8 +182,8 @@ class SISGraph(object):
     """
 
     def __init__(self):
-        self._targets = []
-        self._active_targets = []
+        self._targets = []  # type: list[OutputTarget]
+        self._active_targets = []  # type: list[OutputTarget]
         self._pool = None
         self.used_output_path = set()
 
@@ -202,6 +206,10 @@ class SISGraph(object):
 
     @property
     def targets_dict(self):
+        """
+        :return: dict name -> target
+        :rtype: dict[str,OutputTarget]
+        """
         return {t.name: t for t in self._targets}
 
     @property
@@ -218,6 +226,9 @@ class SISGraph(object):
         return out
 
     def add_target(self, target):
+        """
+        :param OutputTarget target:
+        """
         self._targets.append(target)
 
         # check if output path is already used
@@ -340,16 +351,22 @@ class SISGraph(object):
         """ Return all jobs needed to finish output in dictionary with current status as key
 
         :param nodes: all nodes that will be checked, defaults to all output nodes in graph
-        :param engine(Engine): Use status job status of engine, ignore engine status if set to None (default: None)
-        :param skip_finished(bool): Stop checking subtrees of finished nodes to save time
+        :param sisyphus.engine.EngineBase engine: Use status job status of engine, ignore engine status if set to None (default: None)
+        :param bool skip_finished: Stop checking subtrees of finished nodes to save time
         :return ({status1\: [Job, ...], status2\: ...}): Dictionary with all jobs sorted by current state
+        :rtype: dict[str,list[Job]]
         """
 
         states = collections.defaultdict(set)
         lock = threading.Lock()
 
         def get_unfinished_jobs(job):
-            """ Returns a list with all non finished jobs """
+            """
+            Returns a list with all non finished jobs.
+
+            :param Job job:
+            :rtype: bool
+            """
             # job not visited in this run, need to calculate dependencies
             new_state = None
             if job._sis_runnable():
@@ -396,10 +413,9 @@ class SISGraph(object):
         stop expanding tree branch if functions returns False. Does not stop on None to allow functions with no
         return value to run for every node.
 
-        :param f: function will be executed for all nodes
+        :param (Job)->bool f: function will be executed for all nodes
         :param nodes: all nodes that will be checked, defaults to all output nodes in graph
-        :param bottom_up: start with deepest nodes first,
-                          ignore return value of f
+        :param bool bottom_up: start with deepest nodes first, ignore return value of f
         :return: set with all visited nodes
         """
 
@@ -419,12 +435,18 @@ class SISGraph(object):
 
         # recursive function to run through tree
         def runner(job):
+            """
+            :param Job job:
+            """
             sis_id = job._sis_id()
             with pool_lock:
                 if sis_id not in visited:
                     visited[sis_id] = pool.apply_async(runner_helper, (job,))
 
         def runner_helper(job):
+            """
+            :param Job job:
+            """
             # make sure all inputs are updated
             job._sis_runnable()
             nonlocal finished
