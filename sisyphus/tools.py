@@ -257,3 +257,27 @@ def hardlink_or_copy(src, dst, use_symlink_instead_of_copy=False):
                         os.symlink(os.path.abspath(src), dst)
                 else:
                     raise e
+
+
+def default_handle_exception_interrupt_main_thread(func):
+    """
+    :param func: any function. usually run in another thread.
+      If some exception occurs, it will interrupt the main thread (send KeyboardInterrupt to the main thread).
+      If this is run in the main thread itself, it will raise SystemExit(1).
+    :return: function func wrapped
+    """
+    import sys
+    import _thread
+    import threading
+
+    def wrapped_func(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            logging.error("Exception in thread %r:" % threading.current_thread())
+            sys.excepthook(*sys.exc_info())
+            if threading.current_thread() is not threading.main_thread():
+                _thread.interrupt_main()
+            raise SystemExit(1)
+
+    return wrapped_func

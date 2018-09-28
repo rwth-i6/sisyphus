@@ -6,7 +6,7 @@ import threading
 
 from multiprocessing.pool import ThreadPool
 
-from sisyphus import toolkit
+from sisyphus import toolkit, tools
 from sisyphus.loader import load_configs, load_config_file
 from sisyphus.block import Block
 import sisyphus.global_settings as gs
@@ -50,6 +50,7 @@ def manager(args):
                 return
 
     # try to load fuse filesystem
+    filesystem = None
     if args.filesystem:
         import sisyphus.filesystem as filesystem
 
@@ -105,7 +106,8 @@ def manager(args):
             manager.start()
 
             # graph updates
-            graph_update_thread = threading.Thread(target=sis_graph.update_nodes)
+            graph_update_thread = threading.Thread(
+                target=tools.default_handle_exception_interrupt_main_thread(sis_graph.update_nodes))
             graph_update_thread.start()
 
             # Start filesystem
@@ -403,6 +405,7 @@ class Manager(threading.Thread):
         if not self._stop_loop:
             self.clear_errors()
 
+    @tools.default_handle_exception_interrupt_main_thread
     def run(self):
         self.startup()
         last_state_overview = self.state_overview
