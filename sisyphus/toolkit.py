@@ -12,7 +12,7 @@ Useful examples::
     j = tk.sis_graph.find('LineSplitter', mode='path')
 
     # Rerun tasks depending on a given file/job:
-    tk.rerun(tk.sis_graph.find('hitchhiker'))
+    tk.remove_job_and_descendants(tk.sis_graph.find('hitchhiker'))
 
     # Setup job:
     tk.setup_job_directory(j)
@@ -316,11 +316,11 @@ def run_job(job, task_name=None, task_id=1, force_resume=False):
         traceback.print_exc()
 
 
-def rerun(source, just_move=False):
+def remove_job_and_descendants(jobs, just_move=False):
     """
-    Remove all jobs that depend on the given job/path.
+    Remove all jobs that depend on the given jobs/paths.
 
-    :param Job|Path source: All jobs depended on it should be removed
+    :param List[Job|Path] jobs: They and all jobs depended on them should be removed
     :param bool just_move: Only move job directories aside
     """
     sis_graph.update_nodes()
@@ -328,12 +328,10 @@ def rerun(source, just_move=False):
     delete_list = []
     not_setup_list = []
 
-    if isinstance(source, (str, Path, Job)):
-        source_list = [source]
-    else:
-        source_list = source
+    if isinstance(jobs, (str, Path, Job)):
+        jobs = [jobs]
 
-    for source in source_list:
+    for source in jobs:
         # Make sure source is a string matching the _sis_contains_required_inputs pattern
         if isinstance(source, Path):
             source = str(source)

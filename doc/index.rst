@@ -217,10 +217,11 @@ It is nice to have small scripts directly next to the recipe calls. This can be 
 
 All a `Path` created using `RelPath` will be relative to the current recipe file. 
 
-Reruning already finished jobs
-------------------------------
+Remove finished jobs and its descendants
+----------------------------------------
 
-You can remove a job with all jobs depending on it in the Sisyphus console.
+You can remove a job with all jobs depending on it from the Sisyphus console using the
+:py:meth:`sisyphus.toolkit.remove_job_and_descendants` method.
 This is useful if a job definition changed and everything depending on it should be rerun::
 
     # find and save job:
@@ -230,7 +231,7 @@ This is useful if a job definition changed and everything depending on it should
     In [2]: jobs = tk.sis_graph.find('LineSp', mode='job')
 
     # delete these jobs with all jobs depending on them
-    In [3]: tk.rerun(jobs)
+    In [3]: tk.remove_job_and_descendants(jobs)
 
 API
 ===
