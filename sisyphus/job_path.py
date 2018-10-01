@@ -14,12 +14,12 @@ created_path = {}
 
 
 class PathSingleton(type):
-
-    """ Meta class to ensure that every Path with the same hash value is only created once """
+    """
+    Meta class to ensure that every Path with the same hash value is only created once
+    """
 
     def __call__(cls, *args, **kwargs):
         """ Implemented to ensure that each path is created only once """
-
         path = super(Path, cls).__new__(cls)
         path.__init__(*args, **kwargs)
         key = path.get_path()
@@ -33,7 +33,8 @@ class PathSingleton(type):
 
 
 class Path(object):
-    """ Object do hold the connecting path to files:
+    """
+    Object do hold the connecting path to files:
 
     that are exchanged between jobs
     each path can have a creator or a direct pass to the target and many users.
@@ -44,7 +45,6 @@ class Path(object):
 
     def __init__(self, path, creator=None, cached=False, hash_overwrite=None, tags=None):
         """
-
         :param str path: Path to file, if creator is given relative to it's output directory
         :param Job|None creator: Job that creates output file
         :param bool cached:
@@ -85,7 +85,11 @@ class Path(object):
         self._tags = value
 
     def add_user(self, user):
-        """ Adds user to this path """
+        """
+        Adds user to this path
+
+        :param sisyphus.job.Job user:
+        """
         assert hasattr(self, 'users'), "May happens during unpickling, change to add user if needed"
         self.users.add(user)
 
@@ -135,7 +139,10 @@ class Path(object):
             return self.creator._sis_get_needed_jobs(visited)
 
     def rel_path(self):
-        """ Return a string with the relative path to this file """
+        """
+        :return: a string with the relative path to this file
+        :rtype: str
+        """
         if self.creator is None:
             return self.path
         else:
@@ -147,7 +154,10 @@ class Path(object):
             return os.path.join(creator_path, self.path)
 
     def get_path(self):
-        """ Return a string with the absolute path to this file """
+        """
+        :return: a string with the absolute path to this file
+        :rtype: str
+        """
         path = self.rel_path()
         if os.path.isabs(path):
             return path
@@ -164,7 +174,9 @@ class Path(object):
         return repr(str(self))
 
     def __lt__(self, other):
-        """ Define smaller then other by first comparing the creator sis id, next the path
+        """
+        Define smaller then other by first comparing the creator sis id, next the path
+
         :param other:
         :return:
         """

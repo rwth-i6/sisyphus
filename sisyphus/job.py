@@ -925,6 +925,11 @@ class Job(object, metaclass=JobSingleton):
         return self._sis_path(gs.WORK_DIR)
 
     def add_input(self, path):
+        """
+        :param Path path:
+        :return: path
+        :rtype: Path
+        """
         assert isinstance(path, Path)
         self._sis_inputs.add(path)
         self._sis_get_all_inputs(clear_cache=True)

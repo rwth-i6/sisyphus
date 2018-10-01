@@ -117,6 +117,10 @@ def is_path(path):
 
 # TODO remove?
 def uncached_path(path):
+    """
+    :param Path|str path:
+    :rtype: str
+    """
     return path.get_path() if is_path(path) else str(path)
 
 
