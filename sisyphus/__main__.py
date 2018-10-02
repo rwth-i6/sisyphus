@@ -171,9 +171,10 @@ def main():
 
     try:
         args.func(args)
-    except BaseException:
-        logging.error("Main thread unhandled exception:")
-        sys.excepthook(*sys.exc_info())
+    except BaseException as exc:
+        if not isinstance(exc, SystemExit):
+            logging.error("Main thread unhandled exception:")
+            sys.excepthook(*sys.exc_info())
         import threading
         non_daemon_threads = {
             thread for thread in threading.enumerate()
