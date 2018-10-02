@@ -47,7 +47,7 @@ class Path(object):
         """
         :param str path: Path to file, if creator is given relative to it's output directory
         :param Job|None creator: Job that creates output file
-        :param bool cached:
+        :param bool cached: use file caching, via gs.file_caching, e.g. using cache manager
         :param str|None hash_overwrite:
         :param set|None tags:
         """
