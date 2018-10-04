@@ -161,6 +161,11 @@ def worker_helper(args):
     """ This program is run on the client side when running the job """
 
     # ignore ctrl-c signal
+    # Ctrl-c should only kill the manager, and jobs should complete.
+    # The second ctrl-c will kill the jobs.
+    # It might be obsolete now as the local jobs run detached,
+    # and Sisyphus will search for running jobs at restart,
+    # i.e. the jobs can complete.
     def catch_signal(signal_number, frame):
         pass
     signal.signal(signal.SIGINT, catch_signal)
