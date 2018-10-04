@@ -8,7 +8,7 @@ import pwd
 import signal
 import socket
 import time
-from threading import Thread
+from threading import Thread, Condition
 
 import sisyphus.global_settings as gs
 engine = gs.cached_engine
@@ -46,7 +46,7 @@ def format_number(number,
 
 
 class LoggingThread(Thread):
-    """ Thread to log memory and time consumtion of job
+    """ Thread to log memory and time consumption of job
     """
 
     def __init__(self, job, task, task_id, engine_selector):
@@ -63,6 +63,7 @@ class LoggingThread(Thread):
         self.engine_selector = engine_selector
         super().__init__()
         self.out_of_memory = False
+        self._cond = Condition()
         self.__stop = False
         self.rqmt = engine().get_rqmt(task, task_id, update=False)
 
@@ -120,7 +121,9 @@ class LoggingThread(Thread):
                 log_usage(resources)
                 last_log_value = max_resources['rss']
                 last_log_time = time.time()
-            time.sleep(gs.PLOGGING_INTERVAL)
+
+            with self._cond:
+                self._cond.wait(gs.PLOGGING_INTERVAL)
 
             # if less then 2% or less then 256MB are free
             # if max_mem * 0.98 < last_rss:
@@ -135,7 +138,9 @@ class LoggingThread(Thread):
                                vms=format_bytes(max_resources['vms']*1024**3)))
 
     def stop(self):
-        self.__stop = True
+        with self._cond:
+            self.__stop = True
+            self._cond.notify_all()
         self.join()
 
 
