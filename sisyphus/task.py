@@ -21,6 +21,11 @@ class Task(object):
         :param str start: name of the function which will be executed on start
         :param str resume: name of the function which will be executed on resume, often set equal to start
         :param dict[str] rqmt: job requirements
+            Might contain:
+                "cpu": number of cpus
+                "gpu": number of gpus
+                "mem": amount of memory, in GB
+                "time": amount of time, in hours
         :param list[list[object]|object] args: job arguments
         :param bool mini_task: will be run on engine for short jobs if True
         :param (dict[str],dict[str])->dict[str] update_rqmt: function to update job requirements for interrupted jobs
