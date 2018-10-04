@@ -340,7 +340,7 @@ class Job(object, metaclass=JobSingleton):
     def _sis_file_logging(self, log_name, task_id=None, update=None, combine=all, minimal_file_age=0):
         """
         :param str log_name:
-        :param int|list[int] task_id: task_id for array job, if None assume whole job
+        :param int|list[int]|None task_id: task_id for array job, if None assume whole job
         :param bool update: new value
         :param combine: function to combine all array jobs to one bool, e.g. all/any
         :param int|float minimal_file_age: in seconds

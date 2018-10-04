@@ -71,7 +71,10 @@ class Task(object):
         return getattr(self._job, name)
 
     def task_ids(self):
-        """ Return list with all valid task ids """
+        """
+        :return: list with all valid task ids
+        :rtype: list[int]
+        """
         return list(range(1, self._parallel + 1))
 
     def rqmt(self):
@@ -201,15 +204,14 @@ class Task(object):
 
     def check_state(self, state, task_id=None, update=None, combine=all, minimal_time_since_change=0):
         """
-        Return if this state is currently set or not
-
         :param state: name of state
-        :param task_id:
-        :param update: if not None change state to this value
+        :param int|list[int]|None task_id:
+        :param bool|None update: if not None change state to this value
         :param combine: how states are combines, e.g. only finished if all jobs are finished => all,
                         error state is true if only one or more is has the error flag => any
         :param minimal_time_since_change: only true if state change is at least that old
-        :return:
+        :return: if this state is currently set or not
+        :rtype: bool
         """
 
         if task_id is None:
@@ -224,10 +226,15 @@ class Task(object):
                             minimal_time_since_change=gs.WAIT_PERIOD_JOB_FS_SYNC + gs.WAIT_PERIOD_JOB_CLEANUP):
             return True
         else:
-            False
+            return False
 
     def error(self, task_id=None, update=None):
-        """ Return true if job or task is in error state """
+        """
+        :param int|list[int]|None task_id:
+        :param bool|None update:
+        :return: true if job or task is in error state.
+        :rtype: bool
+        """
 
         if update:
             # set error flag
@@ -239,6 +246,8 @@ class Task(object):
             task_ids = self.task_ids()
         elif isinstance(task_id, list):
             task_ids = task_id
+        else:
+            raise Exception("unexpected task_id %r" % (task_id,))
 
         assert isinstance(task_ids, list)
 
