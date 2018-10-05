@@ -20,7 +20,7 @@ def engine():
     engine starting all jobs on the local machine e.g.::
 
         from sisyphus.localengine import LocalEngine
-        return LocalEngine(cpus=8)
+        return LocalEngine(cpu=8)
 
     The usually recommended version is to use a local and a normal grid engine. The EngineSelector
     can be used to schedule tasks on different engines. The main intuition was to have an engine for
@@ -30,7 +30,7 @@ def engine():
         from sisyphus.localengine import LocalEngine
         from sisyphus.engine import EngineSelector
         from sisyphus.son_of_grid_engine import SonOfGridEngine
-        return EngineSelector(engines={'short': LocalEngine(cpus=4),
+        return EngineSelector(engines={'short': LocalEngine(cpu=4),
                                        'long': SonOfGridEngine(default_rqmt={'cpu': 1, 'mem': 1,
                                                                              'gpu': 0, 'time': 1})},
                               default_engine='long')
@@ -41,9 +41,9 @@ def engine():
     """
     import psutil
     cpu_count = psutil.cpu_count()
-    logging.info('No custom engine setup, using default engine: LocalEngine(cpus=%i, gpus=0)' % cpu_count)
+    logging.info('No custom engine setup, using default engine: LocalEngine(cpu=%i, gpu=0)' % cpu_count)
     from sisyphus.localengine import LocalEngine
-    return LocalEngine(cpus=cpu_count, gpus=0)
+    return LocalEngine(cpu=cpu_count, gpu=0)
 
 
 def update_engine_rqmt(initial_rqmt, last_usage):

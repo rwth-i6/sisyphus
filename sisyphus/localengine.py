@@ -40,15 +40,15 @@ def get_process_logging_path(task_path, task_name, task_id):
 class sync_object(object):
 
     """ Object to be used by the with statement to sync an object via queue
-    e.g.:
+    e.g.::
 
-    self.sobj = sync_object({})
-    with self.sobj as sobj:
-        sobj[7] = 9
+        self.sobj = sync_object({})
+        with self.sobj as sobj:
+            sobj[7] = 9
 
-    # other process
-    with self.sobj as sobj:
-        assert( sobj == { 7: 9 } )
+        # other process
+        with self.sobj as sobj:
+            assert( sobj == { 7: 9 } )
     """
 
     def __init__(self, obj):
@@ -66,22 +66,26 @@ class sync_object(object):
 
 class LocalEngine(threading.Thread, EngineBase):
 
-    """ Simple engine to execute running tasks locally,
-        the only checked resource is cpus so far
+    """ Simple engine to execute running tasks locally.
+    CPU and GPU are always checked, all other requirements only if given during initialisation.
     """
 
-    def __init__(self, cpus=1, gpus=0):
+    def __init__(self, cpus=1, gpus=0, **kwargs):
+        """ The parameter cpus and gpus are kept for backwards compatibility, if cpu and gpu are given
+        they will overwrite the values of cpus and gpus.
+
+        :param int cpus: number of CPUs that can be used
+        :param int gpus: number of GPUs that can be used
+        :param **kwargs: other consumable resources e.g. mem (in GB)
         """
-        :param int cpus: number of CPUs to use
-        :param int gpus: number of GPUs to use
-        """
-        # TODO change max_cpu to ressorces and remove multiprocessing stuff
         # resources
         self.lock = threading.Lock()
-        self.max_cpu = cpus
-        self.cpu = multiprocessing.Value('i', cpus)
-        self.max_gpu = gpus
-        self.gpu = multiprocessing.Value('i', gpus)
+        # There is a mismatch between the requested resources names (?pus) and internal name (?pu)
+        # Keep old naming for backwards compatibility, but internal name will overwrite default values
+        self.max_resources = {'cpu': cpus, 'gpu': gpus}
+        self.max_resources.update(kwargs)
+        self.free_resources = self.max_resources.copy()
+
         self.running_subprocess = []
         self.started = False
         self.running = multiprocessing.Value('B', 1)  # set to 0 to stop engine
@@ -140,30 +144,28 @@ class LocalEngine(threading.Thread, EngineBase):
                         self.task_done(running_tasks, task)
 
     def enough_free_resources(self, rqmt):
-        cpu = rqmt.get('cpu')
-        gpu = rqmt.get('gpu', 0)
-        assert(cpu)
-        if self.cpu.value > self.max_cpu or self.gpu.value > self.max_gpu:
-            logging.warning('Requested resources are higher than available resources\n'
-                            'Available resources CPU: %i GPU: %i\n'
-                            'Requested resources %s' % (self.max_cpu, self.max_gpu, rqmt))
-        if self.cpu.value < cpu:
-            return False
-        if self.gpu.value < gpu:
-            return False
+        for key, max_available in self.max_resources.items():
+            free = self.free_resources[key]
+            requested = rqmt.get(key, 0)
+            if max_available < requested:
+                logging.warning('Requested resources are higher than maximal available resources\n'
+                                'Available resources %s\n'
+                                'Requested resources %s' % (self.max_resources, rqmt))
+            if free < requested:
+                return False
         return True
 
     def reserve_resources(self, rqmt):
-        self.cpu.value -= rqmt.get('cpu')
-        self.gpu.value -= rqmt.get('gpu', 0)
-        assert 0 <= self.cpu.value <= self.max_cpu
-        assert 0 <= self.gpu.value <= self.max_gpu
+        self.free_resources = {key: free-rqmt.get(key, 0) for key, free in self.free_resources.items()}
+        for key, max_available in self.max_resources.items():
+            free = self.free_resources[key]
+            assert 0 <= free <= max_available
 
     def release_resources(self, rqmt):
-        self.cpu.value += rqmt.get('cpu')
-        self.gpu.value += rqmt.get('gpu', 0)
-        assert 0 <= self.cpu.value <= self.max_cpu
-        assert 0 <= self.gpu.value <= self.max_gpu
+        self.free_resources = {key: free+rqmt.get(key, 0) for key, free in self.free_resources.items()}
+        for key, max_available in self.max_resources.items():
+            free = self.free_resources[key]
+            assert 0 <= free <= max_available
 
     @tools.default_handle_exception_interrupt_main_thread
     def run(self):
@@ -174,7 +176,7 @@ class LocalEngine(threading.Thread, EngineBase):
 
                 wait = True  # wait if no new job is started
                 # get next task
-                logging.debug('Check for new task (Free CPU cores: %i, GPUs: %i)' % (self.cpu.value, self.gpu.value))
+                logging.debug('Check for new task (Free resources %s)' % self.free_resources)
                 with self.waiting_tasks as waiting_tasks:  # get object for synchronisation
                     if next_task is None and not self.input_queue.empty():
                         next_task = self.input_queue.get()
@@ -307,8 +309,8 @@ class LocalEngine(threading.Thread, EngineBase):
         if task_id is not None:
             # task id passed via argument
             return task_id
-        logging.critical("Job in local engine started without task_id, "
-                         "this should not happen! Continue with task_id=1")
+        logging.warning("Job in local engine started without task_id, "
+                        "worker is probably started manualy. Continue with task_id=1")
         return 1
 
     @staticmethod

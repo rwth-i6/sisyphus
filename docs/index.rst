@@ -124,12 +124,12 @@ Example::
         """
         # Exmple of local engine:
         from sisyphus.localengine import LocalEngine
-        return LocalEngine(cpus=4)
+        return LocalEngine(cpu=4)
 
         # Example how to use the engine selector, normally the 'long' engine would be a grid enigne e.g. sge
         from sisyphus.engine import EngineSelector
         from sisyphus.son_of_grid_engine import SonOfGridEngine
-        return EngineSelector(engines={'short': LocalEngine(cpus=8),
+        return EngineSelector(engines={'short': LocalEngine(cpu=8),
                                    'long': SonOfGridEngine(default_rqmt={'cpu' : 1, 'mem' : '1G', 'gpu' : 0, 'time' : 1, })},
                           default_engine='long')
 
@@ -260,6 +260,17 @@ Task
 Settings
 --------
 .. automodule:: sisyphus.global_settings
+  :members:
+
+Engines
+-------
+.. automodule:: sisyphus.engine
+  :members:
+.. automodule:: sisyphus.localengine
+  :members:
+.. automodule:: sisyphus.son_of_grid_engine
+  :members:
+.. automodule:: sisyphus.load_sharing_facility_engine
   :members:
 
 Indices and tables
