@@ -300,8 +300,9 @@ class SISGraph(object):
         """
         out = []
         for j in self.jobs():
-            if pattern in j._sis_path():
-                if mode in ('all', 'job'):
+            if mode in ('all', 'job'):
+                vis_name = j.get_vis_name()
+                if pattern in j._sis_path() or (vis_name is not None and pattern in vis_name):
                     out.append(j)
             if mode in ('all', 'path'):
                 for p in j._sis_inputs:
