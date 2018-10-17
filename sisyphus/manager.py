@@ -253,6 +253,11 @@ class Manager(threading.Thread):
                 if hasattr(job, "get_vis_name") and job.get_vis_name() is not None:
                     info_string += " [%s]" % job.get_vis_name()
 
+                if hasattr(job, "manager_callback"):
+                    job_manager_callback_string = job.manager_callback()
+                    if job_manager_callback_string is not None:
+                        info_string += " {%s} " % job_manager_callback_string
+
                 if state in [gs.STATE_INPUT_MISSING,
                              gs.STATE_RETRY_ERROR,
                              gs.STATE_ERROR]:
