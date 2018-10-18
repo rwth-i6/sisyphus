@@ -1048,7 +1048,10 @@ class Job(object, metaclass=JobSingleton):
 
     def info(self):
         """ Returns information about the currently running job
-        to be displayed on the web interface """
+        to be displayed on the web interface and the manager view
+        :return: string to be displayed or None if not available
+        :rtype: str
+        """
         pass
 
     @classmethod
