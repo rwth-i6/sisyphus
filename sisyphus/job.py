@@ -1048,16 +1048,11 @@ class Job(object, metaclass=JobSingleton):
 
     def info(self):
         """ Returns information about the currently running job
-        to be displayed on the web interface """
-        pass
-
-    def manager_callback(self):
-        """ Is executed each time the job is displayed in the manager,
-        can be used to print live information about the job
+        to be displayed on the web interface and the manager view
         :return: string to be displayed or None if not available
         :rtype: str
         """
-        return None
+        pass
 
     @classmethod
     def hash(cls, parsed_args):
