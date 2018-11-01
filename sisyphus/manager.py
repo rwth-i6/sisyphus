@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import threading
+import tracemalloc
 
 from multiprocessing.pool import ThreadPool
 
@@ -362,6 +363,11 @@ class Manager(threading.Thread):
         return self.work_left()
 
     def startup(self):
+        if gs.MEMORY_PROFILE_LOG:
+            self.mem_profile = tools.MemoryProfiler(open(gs.MEMORY_PROFILE_LOG, 'w'))
+        else:
+            self.mem_profile = None
+
         self.job_engine.reset_cache()
         self.check_output(write_output=False, update_all_outputs=True)
         self.update_jobs()
@@ -423,6 +429,8 @@ class Manager(threading.Thread):
         while self.continue_manager_loop():
             # check if finished
             logging.debug('Begin of manager loop')
+
+            if self.mem_profile: self.mem_profile.snapshot()
             self.job_engine.reset_cache()
             self.check_output(write_output=self.link_outputs)
 

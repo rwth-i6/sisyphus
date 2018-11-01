@@ -11,6 +11,8 @@ import shutil
 import time
 import logging
 import subprocess
+import linecache
+import tracemalloc
 
 import sisyphus.global_settings as gs
 from sisyphus.block import Block
@@ -404,3 +406,39 @@ def maybe_install_signal_handers():
     import signal
     install_signal_handler_if_default(signal.SIGUSR1)
     install_signal_handler_if_default(signal.SIGUSR2)
+
+
+class MemoryProfiler:
+    def __init__(self, log_stream, line_limit=10, min_change=512000):
+        self.log_stream = log_stream
+        self.limit = line_limit
+        tracemalloc.start()
+        self.min_change = min_change
+        self.last_total = 0
+
+    def snapshot(self):
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics('lineno')
+        total = sum(stat.size for stat in top_stats)
+        if abs(self.last_total - total) < self.min_change:
+            return
+
+        self.last_total = total
+
+        self.log_stream.write("Top %s lines at %s\n" % (self.limit, time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())))
+        for index, stat in enumerate(top_stats[:self.limit], 1):
+            frame = stat.traceback[0]
+            # replace "/path/to/module/file.py" with "module/file.py"
+            filename = os.sep.join(frame.filename.split(os.sep)[-2:])
+            self.log_stream.write("#%s: %s:%s: %.1f KiB\n"
+                  % (index, filename, frame.lineno, stat.size / 1024))
+            line = linecache.getline(frame.filename, frame.lineno).strip()
+            if line:
+                self.log_stream.write('    %s\n' % line)
+
+        other = top_stats[self.limit:]
+        if other:
+            size = sum(stat.size for stat in other)
+            self.log_stream.write("%s other: %.1f KiB\n" % (len(other), size / 1024))
+        self.log_stream.write("Total allocated size: %.1f KiB\n\n" % (total / 1024))
+        self.log_stream.flush()

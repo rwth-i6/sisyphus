@@ -331,3 +331,7 @@ def cached_engine(cache=[]):
         cache.append(e)
         return e  # for better type hinting
     return cache[0]
+
+
+# Parameter used for debugging or profiling
+MEMORY_PROFILE_LOG = None
