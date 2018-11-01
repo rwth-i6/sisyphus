@@ -128,9 +128,13 @@ def overview():
         dependencies = [job_list[i] for i in dependencies]
 
         tasks = get_tasks_from_job(job)
+
+        job_name = job.get_one_alias()
+        if not job_name:
+            job_name = job._sis_id()
         job_item = JobItem(len(job_list),
                            job._sis_id(),
-                           str(job)[14:-1],
+                           job_name,
                            dependencies,
                            state,
                            bg_color,
