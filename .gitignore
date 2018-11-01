@@ -1,2 +1,7 @@
 __pycache__
 /.idea
+.DS_Store
+docs/_build
+example/output
+example/work
+*.swo
