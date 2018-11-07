@@ -388,7 +388,8 @@ class SonOfGridEngine(EngineBase):
         """ No stopping action required with the current implementation """
         pass
 
-    def get_task_id(self, task_id, engine_selector):
+    @staticmethod
+    def get_task_id(task_id, engine_selector):
         assert task_id is None, "SGE task should not be started with task id, it's given via $SGE_TASK_ID"
         task_id = os.getenv('SGE_TASK_ID')
         if task_id in ['undefined', None]:
@@ -401,7 +402,23 @@ class SonOfGridEngine(EngineBase):
     def get_default_rqmt(self, task):
         return self.default_rqmt
 
-    @staticmethod
-    def get_logpath(logpath_base, task_name, task_id, engine_selector=None):
+    def init_worker(self, task):
+        # setup log file by linking to engine logfile
+        task_id = SonOfGridEngine.get_task_id(None, None)
+        logpath = os.path.relpath(task.path(gs.JOB_LOG, task_id))
+        if os.path.isfile(logpath):
+            os.unlink(logpath)
+
+        engine_logpath = os.getenv('SGE_STDERR_PATH')
+        try:
+            if os.path.isfile(engine_logpath):
+                os.link(engine_logpath, logpath)
+            else:
+                logging.warning("Could not find engine logfile: %s Create soft link anyway." % engine_logpath)
+                os.symlink(os.path.relpath(engine_logpath, os.path.dirname(logpath)), logpath)
+        except FileExistsError:
+            pass
+
+    def get_logpath(self, logpath_base, task_name, task_id):
         """ Returns log file for the currently running task """
         return os.getenv('SGE_STDERR_PATH')

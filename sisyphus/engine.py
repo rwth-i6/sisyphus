@@ -15,7 +15,8 @@ class EngineBase:
     An engine manages the execution of jobs, e.g. locally, or in a queuing system like SGE.
     """
 
-    def get_task_id(self, task_id, engine_selector):
+    @staticmethod
+    def get_task_id(task_id):
         """ Gets task id either from args or the environment"""
         raise NotImplementedError
 
@@ -46,6 +47,9 @@ class EngineBase:
 
     def get_default_rqmt(self, task):
         raise NotImplementedError
+
+    def get_used_engine(self, engine_selector):
+        return self
 
     @tools.cache_result()
     def get_submit_history(self, task):
@@ -116,7 +120,7 @@ class EngineBase:
                 return self.task_state(task)
         return gs.STATE_FINISHED
 
-    def get_job_used_resources(self, current_process, engine_selector):
+    def get_job_used_resources(self, current_process):
         """
         Should be overwritten by subclass if a better way to measure the used resources is available, e.g. cgroups.
 
@@ -186,6 +190,16 @@ class EngineBase:
 
         task.reset_cache()
 
+    def init_worker(self, task):
+        """
+        This method will be call before the task is started by the worker.
+        e.g. SGE uses this method to link the SGE log file to the desired position.
+
+        :param task:
+        :return:
+        """
+        pass
+
 
 class EngineSelector(EngineBase):
     """
@@ -214,7 +228,7 @@ class EngineSelector(EngineBase):
         :rtype: EngineBase
         """
         assert engine_selector in self.engines, "Unknown engine selector: %r" % engine_selector
-        return self.engines[engine_selector]
+        return self.engines[engine_selector].get_used_engine(engine_selector)
 
     def get_used_engine_by_rqmt(self, rqmt):
         """
@@ -224,7 +238,9 @@ class EngineSelector(EngineBase):
         engine_selector = rqmt.get('engine', self.default_engine)
         return self.get_used_engine(engine_selector)
 
-    def get_job_used_resources(self, current_process, engine_selector):
+    def get_job_used_resources(self, current_process):
+        # This function should only be used while the worker
+        assert NotImplementedError, "Used active engine first via get_used_engine first"
         return self.get_used_engine(engine_selector).get_job_used_resources(current_process, engine_selector)
 
     def task_state(self, task, task_id):
@@ -250,16 +266,19 @@ class EngineSelector(EngineBase):
     def reset_cache(self):
         self.for_all_engines(lambda e: e.reset_cache())
 
-    def get_task_id(self, task_id, engine_selector):
-        """ Gets task id either from args or the environment"""
-        if task_id is not None:
-            # task id passed via argument
-            return task_id
-        return self.get_used_engine(engine_selector).get_task_id(task_id, engine_selector)
+    # def get_task_id(self, task_id):
+    #     # This function should only be used while the worker
+    #     assert NotImplementedError, "Used active engine first via get_used_engine first"
 
-    def get_logpath(self, logpath, task_name, task_id, engine_selector):
-        """ Returns log file for the currently running task """
-        return self.get_used_engine(engine_selector).get_logpath(logpath, task_name, task_id, engine_selector)
+    #     """ Gets task id either from args or the environment"""
+    #     if task_id is not None:
+    #         # task id passed via argument
+    #         return task_id
+    #     return self.get_used_engine(engine_selector).get_task_id(task_id, engine_selector)
+
+    # def get_logpath(self, logpath, task_name, task_id):
+    #     """ Returns log file for the currently running task """
+    #     return self.get_used_engine(engine_selector).get_logpath(logpath, task_name, task_id, engine_selector)
 
     def submit_call(self, call, logpath, rqmt, name, task_name, task_ids):
         engine_selector = rqmt.get('engine', self.default_engine)

@@ -7,11 +7,12 @@ import psutil
 import pwd
 import signal
 import socket
+import sys
+import subprocess
 import time
 from threading import Thread, Condition
 
 import sisyphus.global_settings as gs
-engine = gs.cached_engine
 
 
 def format_time(t):
@@ -49,23 +50,21 @@ class LoggingThread(Thread):
     """ Thread to log memory and time consumption of job
     """
 
-    def __init__(self, job, task, task_id, engine_selector):
+    def __init__(self, job, task, task_id):
         """
         :param sisyphus.job.Job job:
         :param sisyphus.task.Task task:
         :param int task_id:
-        :param engine_selector:
         """
         self.job = job
         self.task = task
         self.task_id = task_id
         self.start_time = None
-        self.engine_selector = engine_selector
         super().__init__()
         self.out_of_memory = False
         self._cond = Condition()
         self.__stop = False
-        self.rqmt = engine().get_rqmt(task, task_id, update=False)
+        self.rqmt = gs.active_engine.get_rqmt(task, task_id, update=False)
 
     def run(self):
         start_time = time.time()
@@ -93,9 +92,9 @@ class LoggingThread(Thread):
 
         last_log_value = 0
         last_log_time = 0
-        max_resources = resources = engine().get_job_used_resources(current_process, self.engine_selector)
+        max_resources = resources = gs.active_engine.get_job_used_resources(current_process)
         while not self.__stop:
-            resources = engine().get_job_used_resources(current_process, self.engine_selector)
+            resources = gs.active_engine.get_job_used_resources(current_process)
             # Only print log if rss changed at least bey PLOGGING_MIN_CHANGE
             if last_rss is None or abs(last_rss - resources['rss'])/last_rss > gs.PLOGGING_MIN_CHANGE:
                 if not gs.PLOGGING_QUIET:
@@ -145,10 +144,12 @@ class LoggingThread(Thread):
 
 
 def worker(args):
+    # Change job into error state in case of any exception
+    gs.active_engine = gs.cached_engine().get_used_engine(args.engine)
     try:
         worker_helper(args)
     except Exception:
-        task_id = engine().get_task_id(args.task_id, args.engine)
+        task_id = gs.active_engine.get_task_id(args.task_id, args.engine)
         error_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.STATE_ERROR, args.task_name, task_id)
         if not os.path.isfile(error_file) and not os.path.isdir(error_file):
             # create error file
@@ -159,6 +160,23 @@ def worker(args):
 
 def worker_helper(args):
     """ This program is run on the client side when running the job """
+
+    # Redirect stdout and stderr by starting a subprocess
+    if args.redirect_output:
+        task_id = gs.active_engine.get_task_id(args.task_id, args.engine)
+        log_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.JOB_LOG, args.task_name, task_id)
+
+        argv = sys.argv[sys.argv.index('worker'):]
+        del argv[argv.index('--redirect_output')]
+
+        call = gs.SIS_COMMAND + argv
+
+        is_not_first = os.path.isfile(log_file)
+        with open(log_file, 'a') as logfile:
+            if is_not_first:
+                log_file.write('\n' + ('#'*80) + '\nRETRY OR CONTINUE TASK\n' + ('#'*80) + '\n\n')
+            subprocess.check_call(call, stdout=logfile, stderr=logfile)
+        return
 
     with gzip.open(os.path.join(args.jobdir, gs.JOB_SAVE)) as f:
         job = pickle.load(f)
@@ -183,32 +201,35 @@ def worker_helper(args):
     # for some reason, this sets it back. TODO: find the real problem
     task._job = job
 
-    task_id = engine().get_task_id(args.task_id, args.engine)
+    task_id = gs.active_engine.get_task_id(args.task_id, args.engine)
     logging.debug("Task id: %s" % str(task_id))
-    logging_thread = LoggingThread(job, task, task_id, args.engine)
+    logging_thread = LoggingThread(job, task, task_id)
     logging_thread.start()
 
     resume_job = False
+    gs.active_engine.init_worker(task)
 
-    # setup log file by linking to engine logfile
-    logpath = os.path.relpath(task.path(gs.JOB_LOG, task_id))
-    if os.path.isfile(logpath):
-        if not args.force_resume:  # skip setting the resume flag to run unresumable jobs
-            resume_job = True
-        os.unlink(logpath)
+    #gs.active_engine.get_default_rqmt()
 
-    engine_logpath = engine().get_logpath(task.path(gs.JOB_LOG_ENGINE), task.name(), task_id, args.engine)
-    try:
-        if engine_logpath is None:
-            logging.info("Not linking logfile to since it looks like we are running in manual mode")
-        elif os.path.isfile(engine_logpath):
-            os.link(engine_logpath, logpath)
-        else:
-            # e.g. LSF engine only creates this file after job terminates
-            logging.warning("Could not find engine logfile: %s Create soft link anyway." % engine_logpath)
-            os.symlink(os.path.relpath(engine_logpath, os.path.dirname(logpath)), logpath)
-    except FileExistsError:
-        pass
+    # # setup log file by linking to engine logfile
+    # logpath = os.path.relpath(task.path(gs.JOB_LOG, task_id))
+    # if os.path.isfile(logpath):
+    #     if not args.force_resume:  # skip setting the resume flag to run unresumable jobs
+    #         resume_job = True
+    #     os.unlink(logpath)
+
+    # engine_logpath = engine().get_logpath(task.path(gs.JOB_LOG_ENGINE), task.name(), task_id, args.engine)
+    # try:
+    #     if engine_logpath is None:
+    #         logging.info("Not linking logfile to since it looks like we are running in manual mode")
+    #     elif os.path.isfile(engine_logpath):
+    #         os.link(engine_logpath, logpath)
+    #     else:
+    #         # e.g. LSF engine only creates this file after job terminates
+    #         logging.warning("Could not find engine logfile: %s Create soft link anyway." % engine_logpath)
+    #         os.symlink(os.path.relpath(engine_logpath, os.path.dirname(logpath)), logpath)
+    # except FileExistsError:
+    #     pass
 
     # cleanup environment
     if hasattr(task._job, '_sis_environment'):

@@ -168,7 +168,8 @@ class Task(object):
                     f(*args)
         except sp.CalledProcessError as e:
             if e.returncode == 137:
-                logging.error("Command got killed (probably out of memory):")
+                # TODO move this into engine class
+                logging.error("Command got killed by SGE (probably out of memory):")
                 logging.error("Cmd: %s" % e.cmd)
                 logging.error("Args: %s" % str(e.args))
                 logging.error("Return-Code: %s" % e.returncode)
@@ -192,6 +193,8 @@ class Task(object):
             # Job finished normally
             logging_thread.stop()
             self.finished(task_id, True)
+            sys.stdout.flush()
+            sys.stderr.flush()
             logging.info("Job finished successful")
 
     def task_name(self):

@@ -114,16 +114,14 @@ class LocalEngine(threading.Thread, EngineBase):
         :rtype: psutil.Process
         """
         task_id = task.task_id
-        logpath = self.get_logpath(task.logpath, task.task_name, task_id)
 
         # Start new task
-        with open(logpath, 'a') as logfile:
-            call = task.call[:]
-            sp = subprocess.Popen(call, stdout=logfile, stderr=logfile, start_new_session=True)
-            self.running_subprocess.append(sp)
-            pid = sp.pid
-            process = psutil.Process(pid)
-            return process
+        call = task.call[:]
+        sp = subprocess.Popen(call, start_new_session=True)
+        self.running_subprocess.append(sp)
+        pid = sp.pid
+        process = psutil.Process(pid)
+        return process
 
     def check_finished_tasks(self):
         with self.lock:
@@ -223,6 +221,7 @@ class LocalEngine(threading.Thread, EngineBase):
         # run one thread for each task id
         for task_id in task_ids:
             call_with_id = call[:] + [str(task_id)]
+            call_with_id += ['--redirect_stdout']
 
             task = TaskQueueInstance(call_with_id, logpath, rqmt, name, task_name, task_id)
             with self.waiting_tasks as waiting_tasks:
@@ -282,6 +281,7 @@ class LocalEngine(threading.Thread, EngineBase):
             rqmt = d['requested_resources']
             logpath = os.path.relpath(task.path(gs.JOB_LOG_ENGINE))
             call_with_id = gs.SIS_COMMAND + ['worker', os.path.relpath(task.path()), task.name(), str(task_id)]
+            call_with_id += ['--redirect_stdout']
             name = task.task_name()
             task_name = task.name()
             task_instance = TaskQueueInstance(call_with_id, logpath, rqmt, name, task_name, task_id)
@@ -305,17 +305,10 @@ class LocalEngine(threading.Thread, EngineBase):
             logging.debug('Failed to load running job: %s' % e)
         return False
 
-    def get_task_id(self, task_id, engine_selector):
+    def get_task_id(self, task_id):
         if task_id is not None:
             # task id passed via argument
             return task_id
         logging.warning("Job in local engine started without task_id, "
                         "worker is probably started manualy. Continue with task_id=1")
         return 1
-
-    @staticmethod
-    def get_logpath(logpath_base, task_name, task_id, engine_selector=None):
-        """ Returns log file for the currently running task """
-        path = os.path.join(logpath_base, gs.ENGINE_LOG)
-        path = '%s.%s.%i' % (path, task_name, task_id)
-        return path

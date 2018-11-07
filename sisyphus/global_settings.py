@@ -194,7 +194,7 @@ PRINT_ERROR_TASKS = 1
 PRINT_ERROR_LINES = 40
 
 #: Which command should be called to start sisyphus, can be used to replace the python binary
-SIS_COMMAND = [sys.argv[0]]
+SIS_COMMAND = [sys.executable, sys.argv[0]]
 
 # Parameter to log used resources by each task
 #: Seconds between checks how much memory and cpu a process is using
