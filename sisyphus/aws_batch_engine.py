@@ -136,7 +136,7 @@ class AWSBatchEngine(EngineBase):
                 "containerOverrides": {
                     "vcpus": cpu,
                     "memory": mem,
-                    "command": ['cd', os.getcwd(), '&&'] + call_with_id + ['2>&1', '>', logfile]
+                    "command": ['cd', os.getcwd(), '&&'] + call_with_id + ['--redirect_output']
                 }
             }
             job_id = self.json_call(['aws', 'batch', 'submit-job'], aws_call)['jobId']

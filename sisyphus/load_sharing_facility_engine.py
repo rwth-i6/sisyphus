@@ -167,9 +167,10 @@ class LoadSharingFacilityEngine(EngineBase):
             '%s/%s.%%J.%%I' % (logpath, name.split('.')[-1])]
 
         bsub_call += self.options(rqmt)
+        # TODO these are commands very depended on the RWTH cluster, should be changed to be an option
         command = '. /usr/local_host/etc/bashrc; module unload intel; module load gcc/7; ' \
                   'module load python/3.6.0; module load cuda/80; module load intelmkl/2018; ' \
-                  + ' '.join(call) + '\n'
+                  + ' '.join(call + ['--redirect_output']) + '\n'
 
         try:
             logging.info("bsub_call: %s" % bsub_call)

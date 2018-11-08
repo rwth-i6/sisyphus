@@ -149,7 +149,7 @@ def worker(args):
     try:
         worker_helper(args)
     except Exception:
-        task_id = gs.active_engine.get_task_id(args.task_id, args.engine)
+        task_id = gs.active_engine.get_task_id(args.task_id)
         error_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.STATE_ERROR, args.task_name, task_id)
         if not os.path.isfile(error_file) and not os.path.isdir(error_file):
             # create error file
@@ -163,7 +163,7 @@ def worker_helper(args):
 
     # Redirect stdout and stderr by starting a subprocess
     if args.redirect_output:
-        task_id = gs.active_engine.get_task_id(args.task_id, args.engine)
+        task_id = gs.active_engine.get_task_id(args.task_id)
         log_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.JOB_LOG, args.task_name, task_id)
 
         argv = sys.argv[sys.argv.index('worker'):]
@@ -201,35 +201,13 @@ def worker_helper(args):
     # for some reason, this sets it back. TODO: find the real problem
     task._job = job
 
-    task_id = gs.active_engine.get_task_id(args.task_id, args.engine)
+    task_id = gs.active_engine.get_task_id(args.task_id)
     logging.debug("Task id: %s" % str(task_id))
     logging_thread = LoggingThread(job, task, task_id)
     logging_thread.start()
 
     resume_job = False
     gs.active_engine.init_worker(task)
-
-    #gs.active_engine.get_default_rqmt()
-
-    # # setup log file by linking to engine logfile
-    # logpath = os.path.relpath(task.path(gs.JOB_LOG, task_id))
-    # if os.path.isfile(logpath):
-    #     if not args.force_resume:  # skip setting the resume flag to run unresumable jobs
-    #         resume_job = True
-    #     os.unlink(logpath)
-
-    # engine_logpath = engine().get_logpath(task.path(gs.JOB_LOG_ENGINE), task.name(), task_id, args.engine)
-    # try:
-    #     if engine_logpath is None:
-    #         logging.info("Not linking logfile to since it looks like we are running in manual mode")
-    #     elif os.path.isfile(engine_logpath):
-    #         os.link(engine_logpath, logpath)
-    #     else:
-    #         # e.g. LSF engine only creates this file after job terminates
-    #         logging.warning("Could not find engine logfile: %s Create soft link anyway." % engine_logpath)
-    #         os.symlink(os.path.relpath(engine_logpath, os.path.dirname(logpath)), logpath)
-    # except FileExistsError:
-    #     pass
 
     # cleanup environment
     if hasattr(task._job, '_sis_environment'):

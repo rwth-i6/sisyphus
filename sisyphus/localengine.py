@@ -221,7 +221,7 @@ class LocalEngine(threading.Thread, EngineBase):
         # run one thread for each task id
         for task_id in task_ids:
             call_with_id = call[:] + [str(task_id)]
-            call_with_id += ['--redirect_stdout']
+            call_with_id += ['--redirect_output']
 
             task = TaskQueueInstance(call_with_id, logpath, rqmt, name, task_name, task_id)
             with self.waiting_tasks as waiting_tasks:
@@ -281,7 +281,7 @@ class LocalEngine(threading.Thread, EngineBase):
             rqmt = d['requested_resources']
             logpath = os.path.relpath(task.path(gs.JOB_LOG_ENGINE))
             call_with_id = gs.SIS_COMMAND + ['worker', os.path.relpath(task.path()), task.name(), str(task_id)]
-            call_with_id += ['--redirect_stdout']
+            call_with_id += ['--redirect_output']
             name = task.task_name()
             task_name = task.name()
             task_instance = TaskQueueInstance(call_with_id, logpath, rqmt, name, task_name, task_id)
