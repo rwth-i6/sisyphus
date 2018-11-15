@@ -320,13 +320,14 @@ def run_job(job, task_name=None, task_id=1, force_resume=False):
         traceback.print_exc()
 
 
-def remove_job_and_descendants(jobs, just_move=False):
+def remove_job_and_descendants(jobs, mode='remove'):
     """
     Remove all jobs that depend on the given jobs/paths.
 
     :param List[Job|Path] jobs: They and all jobs depended on them should be removed
-    :param bool just_move: Only move job directories aside
+    :param string mode: run mode (remove, move, dryrun)
     """
+    assert mode in ['remove', 'move', 'dryrun']
     sis_graph.update_nodes()
 
     delete_list = []
@@ -374,15 +375,16 @@ def remove_job_and_descendants(jobs, just_move=False):
         path = job._sis_path()
         if os.path.isdir(path):
             print(path)
-    input_var = input("Start deleting? (y/N): ")
-    if input_var == 'y':
-        for job in delete_list:
-            if just_move:
-                job._sis_move()
-            else:
-                job._sis_delete()
-    else:
-        print("Abort")
+    if mode != 'dryrun':
+        input_var = input("Start deleting? (y/N): ")
+        if input_var == 'y':
+            for job in delete_list:
+                if mode == 'move':
+                    job._sis_move()
+                else:
+                    job._sis_delete()
+        else:
+            print("Abort")
 
 
 def import_work_directory(directories, mode='dryrun'):
