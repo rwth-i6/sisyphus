@@ -77,10 +77,15 @@ class LoggingThread(Thread):
         def log_usage(current):
             usage_file.seek(0)
 
+            user = os.geteuid()
+            try:
+                user = pwd.getpwuid(user).pw_name,
+            except KeyError:
+                pass
             usage = {'max': max_resources,
                      'current': current,
                      'pid': os.getpid(),
-                     'user': pwd.getpwuid(os.geteuid()).pw_name,
+                     'user': user,
                      'used_time': (time.time()-start_time) / 3600.,
                      'host': socket.gethostname(),
                      'current_time': time.ctime(),
