@@ -385,8 +385,13 @@ class SISGraph(object):
                             if not task.finished():
                                 new_state = task.state(engine)
                                 break
-                        # if the whole job is not finished one of the tasked should not be finished as well
-                        assert new_state is not None
+                        # Job finished since previous check
+                        if new_state is None:
+                            # Stop here
+                            if skip_finished:
+                                return False
+                            else:
+                                new_state = gs.STATE_FINISHED
                 else:
                     new_state = gs.STATE_RUNNABLE
             else:
