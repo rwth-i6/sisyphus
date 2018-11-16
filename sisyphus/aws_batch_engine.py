@@ -139,7 +139,7 @@ class AWSBatchEngine(EngineBase):
                 "containerOverrides": {
                     "vcpus": cpu,
                     "memory": mem,
-                    "command": ['cd', os.getcwd(), '&&' + self.call_prefix + call_with_id + ['--redirect_output']
+                    "command": ['cd', os.getcwd(), '&&'] + self.call_prefix + call_with_id + ['--redirect_output']
                 }
             }
             job_id = self.json_call(['aws', 'batch', 'submit-job'], aws_call)['jobId']
@@ -156,7 +156,6 @@ class AWSBatchEngine(EngineBase):
                     # use cached value
                     return self._task_info_cache
             self._task_info_cache_last_update = time.time()
-            print(time.time() - self._task_info_cache_last_update, self.cache_result_for_x_seconds)
 
             # Find all jobs that are currently in the given state
             def get_jobs_per_state(state):
@@ -196,6 +195,26 @@ class AWSBatchEngine(EngineBase):
                     for name in jobs:
                         self._task_info_cache[name] = state
             return self._task_info_cache
+
+    def task_state(self, task, task_id):
+        """ Return task state:
+        """
+        name = task.task_name()
+        task_name = escape_name(name, task_id)
+        queue_state = self.queue_state()
+        qs = queue_state.get(task_name)
+
+        # task name should be uniq
+        if qs is None:
+            return STATE_UNKNOWN
+        if qs in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING']:
+            return STATE_QUEUE
+        if qs == 'RUNNING':
+            return STATE_RUNNING
+        if qs == 'FAILED':
+            return STATE_QUEUE_ERROR
+        logging.warning('Unknown AWS engine state %s' % qs)
+        return STATE_UNKNOWN
 
     def start_engine(self):
         """ No starting action required with the current implementation """
