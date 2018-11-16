@@ -17,6 +17,7 @@ import logging
 import getpass  # used to get username
 import math
 import threading
+from multiprocessing.pool import ThreadPool
 
 from xml.dom import minidom
 import xml.etree.cElementTree
@@ -54,10 +55,12 @@ class AWSBatchEngine(EngineBase):
     def __init__(self, default_rqmt, job_queue, job_definition,
                  ignore_failed_jobs_after_x_seconds=900,
                  ignore_succeded_jobs_after_x_seconds=10,
-                 cache_result_for_x_seconds=30):
+                 cache_result_for_x_seconds=30,
+                 call_prefix=['sudo', '-H', '-u\#%i -g \#%i' % (os.getuid(), os.getgid())]):
         self._task_info_cache_last_update = 0
         self.default_rqmt = default_rqmt
         self.job_queue = job_queue
+        self.call_prefix = call_prefix
         self.job_definition = job_definition
         self.ignore_failed_jobs_after_x_seconds = ignore_failed_jobs_after_x_seconds
         self.ignore_succeded_jobs_after_x_seconds = ignore_succeded_jobs_after_x_seconds
@@ -136,7 +139,7 @@ class AWSBatchEngine(EngineBase):
                 "containerOverrides": {
                     "vcpus": cpu,
                     "memory": mem,
-                    "command": ['cd', os.getcwd(), '&&'] + call_with_id + ['--redirect_output']
+                    "command": ['cd', os.getcwd(), '&&' + self.call_prefix + call_with_id + ['--redirect_output']
                 }
             }
             job_id = self.json_call(['aws', 'batch', 'submit-job'], aws_call)['jobId']
@@ -153,8 +156,11 @@ class AWSBatchEngine(EngineBase):
                     # use cached value
                     return self._task_info_cache
             self._task_info_cache_last_update = time.time()
+            print(time.time() - self._task_info_cache_last_update, self.cache_result_for_x_seconds)
 
-            for state in ['SUCCEEDED', 'FAILED', 'SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']:
+            # Find all jobs that are currently in the given state
+            def get_jobs_per_state(state):
+                jobs = []
                 out = subprocess.check_output(['aws', 'batch', 'list-jobs',
                                                '--output', 'json',
                                                '--job-queue', self.job_queue,
@@ -164,45 +170,32 @@ class AWSBatchEngine(EngineBase):
                     status = job['status']
                     if state == 'FAILED':
                         stopped_at = job['stoppedAt'] / 1000
-                        age = stopped_at - time.time()
+                        age = time.time() - stopped_at
                         if age > self.ignore_failed_jobs_after_x_seconds:
                             if name in self._task_info_cache:
-                                del self._task_info_cache[name]
+                                jobs.append(name)
                         else:
                             self._task_info_cache[name] = status
                     elif state == 'SUCCEEDED':
                         stopped_at = job['stoppedAt'] / 1000
-                        age = stopped_at - time.time()
+                        age = time.time() - stopped_at
                         if age > self.ignore_succeded_jobs_after_x_seconds and name in self._task_info_cache:
-                            del self._task_info_cache[name]
+                            jobs.append(name)
                     else:
-                        self._task_info_cache[name] = status
+                        jobs.append(name)
+                return state, jobs
+
+            # Check all possible states in parallel
+            possible_states = ['SUCCEEDED', 'FAILED', 'SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING']
+            thread_pool = ThreadPool(len(possible_states))
+            for state, jobs in thread_pool.map(get_jobs_per_state, possible_states):
+                if state in ['SUCCEEDED', 'FAILED']:
+                    for name in jobs:
+                        del self._task_info_cache[name]
+                else:
+                    for name in jobs:
+                        self._task_info_cache[name] = state
             return self._task_info_cache
-
-    def task_state(self, task, task_id):
-        """ Return task state:
-        'r' == STATE_RUNNING
-        'qw' == STATE_QUEUE
-        not found == STATE_UNKNOWN
-        everything else == STATE_QUEUE_ERROR
-        """
-
-        name = task.task_name()
-        task_name = escape_name(name, task_id)
-        queue_state = self.queue_state()
-        qs = queue_state.get(task_name)
-
-        # task name should be uniq
-        if qs is None:
-            return STATE_UNKNOWN
-        if qs in ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING']:
-            return STATE_QUEUE
-        if qs == 'RUNNING':
-            return STATE_RUNNING
-        if qs == 'FAILED':
-            return STATE_QUEUE_ERROR
-        logging.warning('Unknown AWS engine state %s' % qs)
-        return STATE_UNKNOWN
 
     def start_engine(self):
         """ No starting action required with the current implementation """
@@ -212,7 +205,7 @@ class AWSBatchEngine(EngineBase):
         """ No stopping action required with the current implementation """
         pass
 
-    def get_task_id(self, task_id, engine_selector):
+    def get_task_id(self, task_id):
         if task_id is not None:
             # task id passed via argument
             return task_id
