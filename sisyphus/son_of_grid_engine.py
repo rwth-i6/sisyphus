@@ -389,7 +389,7 @@ class SonOfGridEngine(EngineBase):
         pass
 
     @staticmethod
-    def get_task_id(task_id, engine_selector):
+    def get_task_id(task_id):
         assert task_id is None, "SGE task should not be started with task id, it's given via $SGE_TASK_ID"
         task_id = os.getenv('SGE_TASK_ID')
         if task_id in ['undefined', None]:

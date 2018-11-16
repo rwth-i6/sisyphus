@@ -295,7 +295,7 @@ class LoadSharingFacilityEngine(EngineBase):
         """ No stopping action required with the current implementation """
         pass
 
-    def get_task_id(self, task_id, engine_selector):
+    def get_task_id(self, task_id):
         assert task_id is None, "LSB task should not be started with task id, it's given via $LSB_JOBINDEX"
         task_id = os.getenv('LSB_JOBINDEX')
         if task_id in ['undefined', None]:
