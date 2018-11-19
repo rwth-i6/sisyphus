@@ -404,7 +404,7 @@ class SonOfGridEngine(EngineBase):
 
     def init_worker(self, task):
         # setup log file by linking to engine logfile
-        task_id = SonOfGridEngine.get_task_id(None, None)
+        task_id = SonOfGridEngine.get_task_id(None)
         logpath = os.path.relpath(task.path(gs.JOB_LOG, task_id))
         if os.path.isfile(logpath):
             os.unlink(logpath)
