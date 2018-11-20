@@ -100,14 +100,16 @@ class OutputCall(OutputTarget):
             required = required
 
         name = 'callback_%s_%i_%s_%s' % (f.__name__, id(f), gs.SIS_HASH(argv), gs.SIS_HASH(kwargs))
+        self._already_called = False
         super().__init__(name, required)
 
     def run_when_done(self, write_output=None):
         """ Runs given function if output is available """
         assert all(out.available() for out in self._required)
-        # TODO find a better way to handle this
-        f, args, kwargs = self._function_call
-        f(*args, **kwargs)
+        if not self._already_called:
+            f, args, kwargs = self._function_call
+            f(*args, **kwargs)
+            self._already_called = True
 
 
 class OutputReport(OutputTarget):
