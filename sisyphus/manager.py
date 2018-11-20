@@ -325,10 +325,11 @@ class Manager(threading.Thread):
 
         # function to submit jobs to queue, run in parallel
         def f(job):
-            # Setup job directory if not already done
-            if not job._sis_setup():
+            # Setup job directory if not already done since restart
+            if not job._sis_setup_since_restart:
                 try:
                     job._sis_setup_directory()
+                    job._sis_setup_since_restart = True
                 except RuntimeError as e:
                     logging.error('Failed to setup %s: %s' % (str(job), str(e)))
                     return
