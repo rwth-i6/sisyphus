@@ -416,8 +416,11 @@ class Task(object):
             # we don't know anything if no usage file is writen or is invalid, just reuse last rqmts
             return initial_rqmt
 
-        last_usage['mem'] = tools.str_to_GB(last_usage['mem'])
-        last_usage['time'] = tools.str_to_hours(last_usage['time'])
+        rresources = last_usage['requested_resources']
+        if 'mem' in rresources:
+            rresources['mem'] = tools.str_to_GB(rresources['mem'])
+        if 'time' in rresources:
+            rresources['time'] = tools.str_to_hours(rresources['time'])
         new_rqmt = self._update_rqmt(initial_rqmt=initial_rqmt, last_usage=last_usage)
         new_rqmt = gs.check_engine_limits(new_rqmt, self)
         return new_rqmt
