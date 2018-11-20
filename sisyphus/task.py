@@ -84,6 +84,10 @@ class Task(object):
             rqmt = self._rqmt
 
         # Ensure that the requested memory is a float representing GB
+        if 'mem' in rqmt:
+            rqmt['mem'] = tools.str_to_GB(rqmt['mem'])
+        if 'time' in rqmt:
+            rqmt['time'] = tools.str_to_hours(rqmt['time'])
         return rqmt
 
     def name(self):
@@ -412,6 +416,8 @@ class Task(object):
             # we don't know anything if no usage file is writen or is invalid, just reuse last rqmts
             return initial_rqmt
 
+        last_usage['mem'] = tools.str_to_GB(last_usage['mem'])
+        last_usage['time'] = tools.str_to_hours(last_usage['time'])
         new_rqmt = self._update_rqmt(initial_rqmt=initial_rqmt, last_usage=last_usage)
         new_rqmt = gs.check_engine_limits(new_rqmt, self)
         return new_rqmt
