@@ -179,7 +179,7 @@ def worker_helper(args):
         is_not_first = os.path.isfile(log_file)
         with open(log_file, 'a') as logfile:
             if is_not_first:
-                log_file.write('\n' + ('#'*80) + '\nRETRY OR CONTINUE TASK\n' + ('#'*80) + '\n\n')
+                logfile.write('\n' + ('#'*80) + '\nRETRY OR CONTINUE TASK\n' + ('#'*80) + '\n\n')
             subprocess.check_call(call, stdout=logfile, stderr=logfile)
         return
 
