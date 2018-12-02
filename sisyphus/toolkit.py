@@ -510,10 +510,11 @@ def cleaner(clean_job_dir=False, clean_work_dir=False, mode='dryrun', keep_value
             for i in tmp:
                 print(i)
         else:
-            command = 'du -sch %s' % (' '.join(tmp))
-            p = os.popen(command)
-            print(p.read())
-            p.close()
+            for i in range(0, len(tmp), 2500):
+                command = 'du -sch %s' % (' '.join(tmp[i:i+2500]))
+                p = os.popen(command)
+                print(p.read())
+                p.close()
         if not just_list:
             if mode == 'dryrun':
                 input_var = 'y'
