@@ -300,17 +300,17 @@ class SISGraph(object):
         :param mode(str): Select if jobs, paths or both should be returned. Possible values: all, path, job
         :return ([Job/Path, ...]): List with all matching jobs/paths
         """
-        out = []
+        out = set()
         for j in self.jobs():
             if mode in ('all', 'job'):
                 vis_name = j.get_vis_name()
                 if pattern in j._sis_path() or (vis_name is not None and pattern in vis_name):
-                    out.append(j)
+                    out.add(j)
             if mode in ('all', 'path'):
                 for p in j._sis_inputs:
                     if pattern in str(p):
-                        out.append(p)
-        return out
+                        out.add(p)
+        return list(out)
 
     def jobs_sorted(self):
         """ Yields jobs in a order so that for each jop all jobs
