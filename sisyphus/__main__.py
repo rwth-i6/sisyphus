@@ -32,7 +32,8 @@ def main():
     sys.meta_path.append(RecipeFinder)
 
     # Setup argument parser
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=gs.SISYPHUS_LOGO,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     subparsers = parser.add_subparsers()
 
     parser.add_argument('--log_level', dest='log_level', metavar='LOG_LEVEL',
