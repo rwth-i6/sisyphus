@@ -75,7 +75,7 @@ class mktemp(object):
     """ Object to be used by the with statement.
     creates temporary file that will be delete at exit. Can be used like this::
 
-        with temp_file() as temp:
+        with mktemp() as temp:
             #do stuff with temp
             f = open(temp, 'w')
             f.write('foo')

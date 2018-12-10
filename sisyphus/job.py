@@ -184,6 +184,7 @@ class Job(object, metaclass=JobSingleton):
         self._sis_work_dir = gs.WORK_DIR
         self._sis_job_lock = multiprocessing.Lock()
         self._sis_is_finished = False
+        self._sis_setup_since_restart = False
 
         if gs.CLEANUP_ENVIRONMENT:
             from sisyphus.toolkit import EnvironmentModifier
@@ -250,9 +251,8 @@ class Job(object, metaclass=JobSingleton):
                                target_is_directory=True)
 
         # export the actual job
-        if not os.path.isfile(self._sis_path(gs.JOB_SAVE)):
-            with gzip.open(self._sis_path(gs.JOB_SAVE), 'w') as f:
-                pickle.dump(self, f)
+        with gzip.open(self._sis_path(gs.JOB_SAVE), 'w') as f:
+            pickle.dump(self, f)
 
         with open(self._sis_path(gs.JOB_INFO), 'w') as f:
             for tag in self.tags:

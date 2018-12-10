@@ -190,7 +190,10 @@ class AWSBatchEngine(EngineBase):
             for state, jobs in thread_pool.map(get_jobs_per_state, possible_states):
                 if state in ['SUCCEEDED', 'FAILED']:
                     for name in jobs:
-                        del self._task_info_cache[name]
+                        try:
+                            del self._task_info_cache[name]
+                        except KeyError:
+                            pass
                 else:
                     for name in jobs:
                         self._task_info_cache[name] = state
