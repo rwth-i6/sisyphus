@@ -47,3 +47,20 @@ STATE_RETRY_ERROR = 'retry_error'  # to many failed retries
 
 # commandline parameter
 CMD_WORKER = 'worker'  # command to call the worker from commandline
+
+# Message printed ahead of Sisyphus help message
+# Credits to: http://sisyphus.ascii.uk
+SISYPHUS_LOGO = ''.join(['                                                      ,-\'"""`-.\n',
+                         "                                                    ,'         `.\n",
+                         '           _                  _                    /        `    \\\n',
+                         '          (_)                | |                  (    /          )\n',
+                         '      ___  _  ___ _   _ _ __ | |__  _   _ ___     |             " |\n',
+                         "     / __|| |/ __| | | | '_ \\| '_ \\| | | / __|    (               )\n",
+                         '     \\__ \\| |\\__ \\ |_| | |_) | | | | |_| \\__ \\   `.\\\\          \\ /\n',
+                         '     |___/|_||___/\\__, | .__/|_| |_|\\__,_|___/     `:.     , \\ ,\\ _\n',
+                         '                   __/ | |                           `:-.___,-`-.{\\)\n',
+                         '                  |___/|_|                             `.        |/ \\\n',
+                         '                                                         `.        \\ \\\n',
+                         '    git: https://github.com/rwth-i6/sisyphus/              `-.     _\\,)\n',
+                         '    docs: https://sisyphus-workflow-manager.readthedocs.org/  `.  |,-||\n',
+                         '                                                                `.|| ||\n'])
