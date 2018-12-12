@@ -312,6 +312,9 @@ class Manager(threading.Thread):
 
             # clean up
             if task.resumeable():
+                if job._sis_setup() or not job._sis_setup_since_restart:
+                    job._sis_setup_directory()
+                    job._sis_setup_since_restart = True
                 self.job_engine.submit(task)
             else:
                 logging.debug('Skip unresumable task')
@@ -326,7 +329,7 @@ class Manager(threading.Thread):
         # function to submit jobs to queue, run in parallel
         def f(job):
             # Setup job directory if not already done since restart
-            if not job._sis_setup_since_restart:
+            if job._sis_setup() or not job._sis_setup_since_restart:
                 try:
                     job._sis_setup_directory()
                     job._sis_setup_since_restart = True
