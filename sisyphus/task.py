@@ -16,7 +16,7 @@ class Task(object):
     """
 
     def __init__(self, start, resume=None, rqmt={}, args=[[]], mini_task=False,
-                 update_rqmt=None, parallel=0, tries=1):
+                 update_rqmt=None, parallel=0, tries=1, continuable=False):
         """
         :param str start: name of the function which will be executed on start
         :param str resume: name of the function which will be executed on resume, often set equal to start
@@ -31,6 +31,8 @@ class Task(object):
         :param (dict[str],dict[str])->dict[str] update_rqmt: function to update job requirements for interrupted jobs
         :param int parallel: the max. number of jobs to submit to a queue, defaults to the number of args
         :param int tries: how often this task is resubmitted after failure
+        :param bool continuable: If set to True this task will not set a finished marker, useful for tasks that can be
+                                 continued for arbitrarily long, e.g. adding more epochs to neural network training
         """
         self._start = start
         self._resume = resume
@@ -44,6 +46,7 @@ class Task(object):
         self.reset_cache()
         self.last_state = None
         self.tries = tries
+        self.continuable = continuable
 
     def __repr__(self):
         return "<Task %r job=%r>" % (self._start, getattr(self, "_job", None))
@@ -196,7 +199,8 @@ class Task(object):
         else:
             # Job finished normally
             logging_thread.stop()
-            self.finished(task_id, True)
+            if not self.continuable:
+                self.finished(task_id, True)
             sys.stdout.flush()
             sys.stderr.flush()
             logging.info("Job finished successful")
