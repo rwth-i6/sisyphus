@@ -60,7 +60,7 @@ def str_to_hours(t):
         assert(len(t) == 3)
         t = int(t[0]) * 3600 + int(t[1]) * 60 + int(t[2])
         t /= 3600
-    return t
+    return t if t > 0 else 1
 
 
 def extract_paths(args):
