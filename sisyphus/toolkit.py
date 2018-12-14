@@ -135,6 +135,12 @@ def bundle_to_str(bundle):
 
 sis_graph = graph.SISGraph()
 
+# graph macros
+def find_job(pattern):
+    return sis_graph.find(pattern, mode="job")
+
+def find_path(pattern):
+    return sis_graph.find(pattern, mode="path")
 
 def register_output(name, value, export_graph=False):
     """
