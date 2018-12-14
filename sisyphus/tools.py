@@ -54,14 +54,13 @@ def str_to_hours(t):
     :return:
     """
     try:
-        t = int(t)
+        t = float(t)
     except ValueError:
         t = t.split(':')
         assert(len(t) == 3)
         t = int(t[0]) * 3600 + int(t[1]) * 60 + int(t[2])
-        t /= 3600
-    return t if t > 0 else 1
-
+        t /= 3600.0
+    return t 
 
 def extract_paths(args):
     """
