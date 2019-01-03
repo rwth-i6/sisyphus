@@ -96,7 +96,8 @@ def manager(args):
                           link_outputs=args.run,
                           clear_once=args.clear_once,
                           start_computations=args.run,
-                          job_cleaner=job_cleaner)
+                          job_cleaner=job_cleaner,
+                          interative=args.interactive)
 
         kernel_connect_file = None
         if gs.START_KERNEL:
@@ -169,7 +170,8 @@ class Manager(threading.Thread):
                  clear_once=False,
                  start_computations=False,
                  auto_print_stat_overview=True,
-                 job_cleaner=None):
+                 job_cleaner=None,
+                 interative=False):
         """
         :param sisyphus.graph.SISGraph sis_graph:
         :param sisyphus.engine.EngineBase job_engine:
@@ -186,6 +188,8 @@ class Manager(threading.Thread):
         self.job_engine = job_engine
         self.link_outputs = link_outputs
         self.auto_print_stat_overview = auto_print_stat_overview
+        self.interactive = interative
+        self.interactive_always_skip = set()
 
         self.stop_if_done = True
         self._stop_loop = False
@@ -302,6 +306,24 @@ class Manager(threading.Thread):
                 return False
         return True
 
+    def ask_user(self, message, uid):
+        if self.interactive:
+            if uid in self.interactive_always_skip:
+                return False
+            answer = input('%s (Yes/skip/never)' % message).lower()
+            if answer in ('', 'y', 'yes'):
+                return True
+            elif answer in ('s', 'skip'):
+                return False
+            elif answer in ('n', 'never'):
+                self.interactive_always_skip.add(uid)
+                return False
+            else:
+                logging.warning('Unknown response "%s" skip once' % answer)
+                return False
+        else:
+            return True
+
     def resume_jobs(self):
         # function to resume jobs:
         def f(job):
@@ -313,9 +335,11 @@ class Manager(threading.Thread):
             # clean up
             if task.resumeable():
                 if job._sis_setup() or not job._sis_setup_since_restart:
-                    job._sis_setup_directory()
-                    job._sis_setup_since_restart = True
-                self.job_engine.submit(task)
+                    if self.ask_user("Resetup job directory (%s)?" % job, ('resetup', job)):
+                        job._sis_setup_directory()
+                        job._sis_setup_since_restart = True
+                if self.ask_user("Resubmit job (%s)?" % job, ('resubmit', job)):
+                    self.job_engine.submit(task)
             else:
                 logging.debug('Skip unresumable task')
 
@@ -344,7 +368,12 @@ class Manager(threading.Thread):
                 return
             self.job_engine.submit(task)
 
-        self.thread_pool.map(f, self.jobs.get(gs.STATE_RUNNABLE, []))
+        if self.interactive:
+            for job in self.jobs.get(gs.STATE_RUNNABLE, []):
+                if self.ask_user('Submit job (%s)?' % job, ('submit', job)):
+                    f(job)
+        else:
+            self.thread_pool.map(f, self.jobs.get(gs.STATE_RUNNABLE, []))
 
     def check_output(self, write_output=False, update_all_outputs=False):
         targets = self.sis_graph.targets if update_all_outputs else self.sis_graph.active_targets
