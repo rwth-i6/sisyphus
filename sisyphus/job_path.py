@@ -4,35 +4,12 @@ import os
 import logging
 import gzip
 import pickle
-import inspect
 
 import sisyphus.tools as tools
 import sisyphus.global_settings as gs
 
-# cache to hold all path that where created so far to ensure to only create them once
-created_path = {}
 
-
-class PathSingleton(type):
-    """
-    Meta class to ensure that every Path with the same hash value is only created once
-    """
-
-    def __call__(cls, *args, **kwargs):
-        """ Implemented to ensure that each path is created only once """
-        path = super(Path, cls).__new__(cls)
-        path.__init__(*args, **kwargs)
-        key = path.get_path()
-        if key in created_path:
-            org_path = created_path[key]
-            assert org_path == path
-            return org_path
-        else:
-            created_path[key] = path
-        return path
-
-
-class Path(object):
+class Path:
     """
     Object do hold the connecting path to files:
 
