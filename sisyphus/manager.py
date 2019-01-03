@@ -416,12 +416,17 @@ class Manager(threading.Thread):
                 create_aliases(self.sis_graph.jobs())
                 self.check_output(write_output=self.link_outputs, update_all_outputs=True)
                 break
+            elif answer.lower() == 'u':
+               self.link_outputs = True
+               create_aliases(self.sis_graph.jobs())
+               self.check_output(write_output=self.link_outputs, update_all_outputs=True)
             elif answer.lower() == 'n':
                 self.stop()
                 break
             else:
                 logging.warning('Unknown command: %s' % answer)
-            answer = input('Print verbose overview (v), start manager (y), or exit (n)? ')
+            answer = input('Print verbose overview (v), update aliases and outputs (u), '
+                           'start manager (y), or exit (n)? ')
 
         if not self._stop_loop:
             self.clear_errors()
