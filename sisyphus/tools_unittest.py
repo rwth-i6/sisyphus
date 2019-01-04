@@ -10,8 +10,7 @@ from sisyphus import job_path
 from sisyphus.tools import execute_in_dir, cache_result, sis_hash, sis_hash_helper, hardlink_or_copy
 import sisyphus.global_settings as gs
 
-TEST_DIR = 'test'
-sys.path.append(TEST_DIR)
+sys.path.append(gs.TEST_DIR)
 gs.SIS_HASH = lambda x: hashlib.md5(sis_hash_helper(x)).hexdigest()
 
 
@@ -19,7 +18,7 @@ class ExecuteInDir(unittest.TestCase):
 
     def test_f(self):
         cwd = os.getcwd()
-        recipe_test_dir = os.path.join(TEST_DIR, 'recipe/task')
+        recipe_test_dir = os.path.join(gs.TEST_DIR, 'recipe/task')
         with execute_in_dir(recipe_test_dir):
             self.assertEqual(os.path.join(cwd, recipe_test_dir), os.getcwd())
         self.assertEqual(cwd, os.getcwd())
@@ -84,7 +83,7 @@ class SisHash(unittest.TestCase):
                 (TestClass(1, 2),
                  b"(TestClass, (dict, (tuple, (str, 'a'), (int, 1)), (tuple, (str, 'b'), (int, 2))))", None),
                 (Point(3, 5),
-                 b'(Point, (tuple, (tuple, (int, 3), (int, 5)), (NoneType)))', None),
+                 b'(Point, (tuple, (tuple, (int, 3), (int, 5)), (dict)))', None),
 
                 (test.Test('foo'), b"task/test/Test.7be358a10ed713206e44d0ab965e8612", None),
                 (job_path.Path('foo/bar'), b"(Path, (tuple, (NoneType), (str, 'foo/bar')))", None),
@@ -116,8 +115,8 @@ class SisHash(unittest.TestCase):
 class HardCopy(unittest.TestCase):
 
     def test_copy(self):
-        src = 'test/recipe'
-        dst = 'test/recipe_copy_test'
+        src = '%s/recipe' % gs.TEST_DIR
+        dst = '%s/recipe_copy_test' % gs.TEST_DIR
         hardlink_or_copy(src, dst)
         for i, j in zip(os.walk(src), os.walk(dst)):
             self.assertEqual(i[1:], j[1:])

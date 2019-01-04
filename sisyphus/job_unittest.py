@@ -11,11 +11,7 @@ from sisyphus.hash import sis_hash_helper
 import sisyphus.global_settings as gs
 gs.SIS_HASH = lambda x: hashlib.md5(sis_hash_helper(x)).hexdigest()
 
-TEST_DIR = 'test'
-sys.path.append(TEST_DIR)
-
 # TODO replace fixed job hashes and compare if things changed
-
 
 class JobTest(unittest.TestCase):
 
@@ -47,29 +43,29 @@ class JobTest(unittest.TestCase):
         self.assertEqual(job._sis_id(), 'task/test/Test.f744898e46ca9452ff1889edc988d045')
 
         # test versioning
-        Test.sis_version = 1
+        Test.__sis_version__ = 1
         job = Test(text="input_text.gz")
         self.assertEqual(job._sis_id(), 'task/test/Test.4efda2530a66c6d8973f0991996ad9a7')
 
         # test versioning
-        Test.sis_version = 2
+        Test.__sis_version__ = 2
         job = Test(text="input_text.gz")
         self.assertEqual(job._sis_id(), 'task/test/Test.c7638c71725cf3e7188db454d4443614')
-        Test.sis_version = None
+        Test.__sis_version__ = None
 
         Test.sis_hash_exclude = {'text': 'input_text.gz'}
         job = Test(text="input_text.gz")
-        self.assertEqual(job._sis_id(), 'task/test/Test.43a8c463b5aa0403c1306552bf7dad10')
+        self.assertEqual(job._sis_id(), 'task/test/Test.f744898e46ca9452ff1889edc988d045')
 
         Test.sis_hash_exclude = {'text': 'input_text2.gz'}
         job = Test(text="input_text2.gz")
-        self.assertEqual(job._sis_id(), 'task/test/Test.43a8c463b5aa0403c1306552bf7dad10')
+        self.assertEqual(job._sis_id(), 'task/test/Test.36cb8075860f276698a63cbec193f025')
         job = Test(text="input_text.gz")
         self.assertEqual(job._sis_id(), 'task/test/Test.f744898e46ca9452ff1889edc988d045')
         Test.sis_hash_exclude = {}
 
     def test_run(self):
-        with execute_in_dir(TEST_DIR):
+        with execute_in_dir(gs.TEST_DIR):
             from recipe.task.test import Test
             job = Test(text=Path("input_text.gz"))
             job._sis_setup_directory()

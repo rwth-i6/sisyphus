@@ -6,9 +6,9 @@ from sisyphus import engine
 from sisyphus.job_path import Path
 from sisyphus.graph import SISGraph
 from sisyphus import http_server
+import sisyphus.global_settings as gs
 
-TEST_DIR = 'test'
-sys.path.append(TEST_DIR)
+sys.path.append(gs.TEST_DIR)
 
 
 def test_jobs():

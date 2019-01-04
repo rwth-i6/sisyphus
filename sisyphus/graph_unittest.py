@@ -2,7 +2,7 @@ import sys
 import unittest
 
 from sisyphus.job_path import Path
-from sisyphus.graph import SISGraph
+from sisyphus.graph import SISGraph, OutputPath
 
 import hashlib
 from sisyphus.hash import sis_hash_helper
@@ -10,8 +10,7 @@ import sisyphus.global_settings as gs
 # Use old hash function to avoid updating precomputed hashes
 gs.SIS_HASH = lambda x: hashlib.md5(sis_hash_helper(x)).hexdigest()
 
-TEST_DIR = 'test'
-sys.path.append(TEST_DIR)
+sys.path.append(gs.TEST_DIR)
 
 
 def get_example_graph():
@@ -21,7 +20,9 @@ def get_example_graph():
     job_merge1 = test.MergeInputs([job1.out, job2.out])
     job_merge2 = test.MergeInputs([job2.out, job1.out])
     job_merge3 = test.MergeInputs([job1.out, job2.out, job_merge1.out, job_merge2.out])
-    return SISGraph(output={'test': job_merge3.out})
+    graph = SISGraph()
+    graph.add_target(OutputPath('test', job_merge3.out))
+    return graph
 
 
 class GraphTest(unittest.TestCase):
