@@ -20,13 +20,16 @@ class Path:
     _sis_path = True
     path_type = 'Path'
 
-    def __init__(self, path, creator=None, cached=False, hash_overwrite=None, tags=None):
+    def __init__(self, path, creator=None, cached=False, hash_overwrite=None, tags=None,
+                 available=None):
         """
         :param str path: Path to file, if creator is given relative to it's output directory
         :param Job|None creator: Job that creates output file
         :param bool cached: use file caching, via gs.file_caching, e.g. using cache manager
         :param str|None hash_overwrite:
         :param set|None tags:
+        :param function|None available: Overwrite function which tests if path is available.
+                                        Gets path as input and must be pickleable
         """
         self.creator = creator
         self.users = set()
@@ -36,6 +39,8 @@ class Path:
         self.cached = cached
         self.hash_overwrite = hash_overwrite
         self._tags = tags
+
+        self._available = available
 
     def keep_value(self, value):
         if self.creator:
@@ -93,6 +98,11 @@ class Path:
         """  Returns True if the computations creating the path are completed
         :return:
         """
+
+        # Use custom set function
+        if self._available:
+            return self._available(self)
+
         path = self.get_path()
         if self.creator is None or isinstance(self.creator, str):
             return os.path.isfile(path) or os.path.isdir(path)

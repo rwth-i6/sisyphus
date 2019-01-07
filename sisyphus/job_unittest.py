@@ -1,6 +1,6 @@
 import unittest
 import os
-import sys
+import shutil
 import hashlib
 
 from sisyphus.job_path import Path
@@ -69,6 +69,7 @@ class JobTest(unittest.TestCase):
             from recipe.task.test import Test
             job = Test(text=Path("input_text.gz"))
             job._sis_setup_directory()
+            shutil.rmtree(gs.WORK_DIR)
 
 if __name__ == '__main__':
     unittest.main()
