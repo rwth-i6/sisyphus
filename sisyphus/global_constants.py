@@ -48,6 +48,9 @@ STATE_RETRY_ERROR = 'retry_error'  # to many failed retries
 # commandline parameter
 CMD_WORKER = 'worker'  # command to call the worker from commandline
 
+# Directory with unittest elements
+TEST_DIR = 'testing'
+
 # Message printed ahead of Sisyphus help message
 # Credits to: http://sisyphus.ascii.uk
 SISYPHUS_LOGO = ''.join(['                                                      ,-\'"""`-.\n',

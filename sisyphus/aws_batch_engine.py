@@ -168,7 +168,7 @@ class AWSBatchEngine(EngineBase):
                     name = job['jobName']
                     status = job['status']
                     if state == 'FAILED':
-                        stopped_at = job['stoppedAt'] / 1000
+                        stopped_at = job('stoppedAt', time.time()*1000) / 1000
                         age = time.time() - stopped_at
                         if age > self.ignore_failed_jobs_after_x_seconds:
                             if name in self._task_info_cache:
@@ -176,7 +176,7 @@ class AWSBatchEngine(EngineBase):
                         else:
                             self._task_info_cache[name] = status
                     elif state == 'SUCCEEDED':
-                        stopped_at = job['stoppedAt'] / 1000
+                        stopped_at = job('stoppedAt', time.time()*1000) / 1000
                         age = time.time() - stopped_at
                         if age > self.ignore_succeded_jobs_after_x_seconds and name in self._task_info_cache:
                             jobs.append(name)

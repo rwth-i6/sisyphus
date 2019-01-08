@@ -67,6 +67,9 @@ def main():
     parser_manager.add_argument("--fs", "--filesystem", dest="filesystem",
                                 default=None,
                                 help="Start filesystem in given directory")
+    parser_manager.add_argument("-i", "--interactive", dest="interactive",
+                                default=False, action="store_true",
+                                help="Ask before submitting jobs")
     parser_manager.add_argument('argv', metavar='ARGV', type=str,
                                 nargs='*',
                                 help='an additional way do '

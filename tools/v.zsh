@@ -1,6 +1,6 @@
 # tool with auto completion for a simple way to look though zipped work directories
 # Requires zsh
-# Usage: source this_file.zsh
+# Install: add 'source path/to/this_file.zsh' into .zshrc
 # v path/to/tar/file tar_internal_path
 
 _v() {
