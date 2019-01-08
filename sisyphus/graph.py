@@ -188,7 +188,7 @@ class SISGraph(object):
         self._targets = []  # type: list[OutputTarget]
         self._active_targets = []  # type: list[OutputTarget]
         self._pool = None
-        self.used_output_path = set()
+        self.used_output_sis_path = dict()
 
     @property
     def pool(self):
@@ -230,16 +230,20 @@ class SISGraph(object):
 
     def add_target(self, target):
         """
-        :param OutputTarget target:
+        :param OutputPath target:
         """
         self._targets.append(target)
 
         # check if output path is already used
         try:
-            path = target._output_path
-            if path in self.used_output_path:
-                logging.warning('Output path is used more than once: %s' % path)
-            self.used_output_path.add(path)
+            path = str(target._output_path)
+            if path in self.used_output_sis_path.keys() and self.used_output_sis_path[path] != target._sis_path:
+                logging.warning('Output path %s is used more than once, ' % path +
+                                'and current target %s will be overwritten with %s'
+                                % (str(self.used_output_sis_path[path]),
+                                   str(target._sis_path)))
+
+            self.used_output_sis_path[path] = target._sis_path
         except AttributeError:
             pass
 
