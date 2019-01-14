@@ -4,6 +4,7 @@ from sisyphus.job import Job
 from sisyphus.job_path import Path
 from sisyphus.block import Block
 import sisyphus.tools as tools
+import sisyphus.hash
 
 from inspect import isclass
 import logging
@@ -56,6 +57,12 @@ class OutputTarget:
             return self.required_full_list[0]
         else:
             return self.required_full_list
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.__dict__ == other.__dict__
+
+    def __hash__(self):
+        return hash(sisyphus.hash.short_hash(self, length=32))
 
 
 class OutputPath(OutputTarget):
@@ -185,7 +192,7 @@ class SISGraph(object):
     """
 
     def __init__(self):
-        self._targets = []  # type: list[OutputTarget]
+        self._targets = set()  # type: set[OutputTarget]
         self._active_targets = []  # type: list[OutputTarget]
         self._pool = None
         self.used_output_path = set()
@@ -232,7 +239,12 @@ class SISGraph(object):
         """
         :param OutputTarget target:
         """
-        self._targets.append(target)
+
+        # Avoid adding the same target multiple times
+        if target in self._targets:
+            return
+
+        self._targets.add(target)
 
         # check if output path is already used
         try:
