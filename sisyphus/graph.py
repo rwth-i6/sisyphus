@@ -62,7 +62,7 @@ class OutputTarget:
         return type(self) == type(other) and self.__dict__ == other.__dict__
 
     def __hash__(self):
-        return hash(sisyphus.hash.short_hash(self, length=32))
+        return sisyphus.hash.int_hash(self)
 
 
 class OutputPath(OutputTarget):

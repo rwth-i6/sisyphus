@@ -10,6 +10,15 @@ def md5(obj):
     return hashlib.md5(str(obj).encode()).hexdigest()
 
 
+def int_hash(obj):
+    """
+    :param object obj:
+    :rtype: int
+    """
+    h = hashlib.sha256(sis_hash_helper(obj)).digest()
+    return int.from_bytes(h, byteorder='big', signed=False)
+
+
 def short_hash(obj,
                length=12,
                chars='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'):
