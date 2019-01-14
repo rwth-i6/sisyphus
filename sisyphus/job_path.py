@@ -99,8 +99,8 @@ class Path:
         :return:
         """
 
-        # Use custom set function
-        if self._available:
+        # Use custom set function, check hasattr for backwards compatibility
+        if hasattr(self, '_available') and self._available:
             return self._available(self)
 
         path = self.get_path()
