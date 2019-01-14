@@ -188,7 +188,7 @@ class SISGraph(object):
         self._targets = []  # type: list[OutputTarget]
         self._active_targets = []  # type: list[OutputTarget]
         self._pool = None
-        self.used_output_sis_path = dict()
+        self.used_output_path = dict()
 
     @property
     def pool(self):
@@ -235,14 +235,14 @@ class SISGraph(object):
         # check if output path is already used
         try:
             path = target._output_path
-            if path in self.used_output_sis_path.keys() and self.used_output_sis_path[path] != target._sis_path:
+            if path in self.used_output_path and self.used_output_path[path] != target._sis_path:
                 logging.warning('Output path %s is used more than once, ' % path +
                                 'previous target %s will not be replaced with %s'
-                                % (str(self.used_output_sis_path[path]),
+                                % (str(self.used_output_path[path]),
                                    str(target._sis_path)))
                 return
 
-            self.used_output_sis_path[path] = target._sis_path
+            self.used_output_path[path] = target._sis_path
         except AttributeError:
             pass
 
