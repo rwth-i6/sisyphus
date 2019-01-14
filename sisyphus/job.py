@@ -168,6 +168,12 @@ class Job(object, metaclass=JobSingleton):
     # Init
     def _sis_init(self, args, kwargs, parsed_args):
 
+        for key, arg in parsed_args.items():
+            if isinstance(arg, Job):
+                logging.warning(
+                    "A Job instance was used as argument \"%s\" in \"%s\", this might result in undesired behavior" %
+                    (key, self.__class__))
+
         self._sis_aliases = None
         self._sis_alias_prefixes = set()
         self._sis_vis_name = None
