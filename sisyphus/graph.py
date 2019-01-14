@@ -230,22 +230,23 @@ class SISGraph(object):
 
     def add_target(self, target):
         """
-        :param OutputPath target:
+        :param OutputTarget target:
         """
-        self._targets.append(target)
-
         # check if output path is already used
         try:
-            path = str(target._output_path)
+            path = target._output_path
             if path in self.used_output_sis_path.keys() and self.used_output_sis_path[path] != target._sis_path:
                 logging.warning('Output path %s is used more than once, ' % path +
-                                'and current target %s will be overwritten with %s'
+                                'previous target %s will not be replaced with %s'
                                 % (str(self.used_output_sis_path[path]),
                                    str(target._sis_path)))
+                return
 
             self.used_output_sis_path[path] = target._sis_path
         except AttributeError:
             pass
+
+        self._targets.append(target)
 
         if not target.is_done():
             self._active_targets.append(target)
