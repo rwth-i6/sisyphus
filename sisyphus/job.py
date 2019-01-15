@@ -187,7 +187,6 @@ class Job(object, metaclass=JobSingleton):
         self._sis_kwargs = parsed_args
         self._sis_task_rqmt_overwrite = {}
 
-        self._sis_work_dir = gs.WORK_DIR
         self._sis_job_lock = multiprocessing.Lock()
         self._sis_is_finished = False
         self._sis_setup_since_restart = False
@@ -327,12 +326,12 @@ class Job(object, metaclass=JobSingleton):
 
         # no path type given, return base path
         if path_type is None:
-            path = os.path.join(gs.JOB_WORK_DIR, self._sis_id() + tags)
+            path = os.path.join(gs.WORK_DIR, self._sis_id() + tags)
         else:
             path = path_type
             # Absolute path needs no adjustment
             if not os.path.isabs(path):
-                path = os.path.join(gs.JOB_WORK_DIR, self._sis_id() + tags, path)
+                path = os.path.join(gs.WORK_DIR, self._sis_id() + tags, path)
 
         # Add task id as suffix
         if task_id is not None:
