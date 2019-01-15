@@ -42,11 +42,20 @@ def try_to_multiply(y, x, backup_value=None):
 
 class SonOfGridEngine(EngineBase):
 
-    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True):
+    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=[]):
+        """
+
+        :param dict default_rqmt: dictionary with the default rqmts
+        :param str gateway: ssh to that node and run all sge commands there
+        :param bool auto_clean_eqw: if True jobs in eqw will be set back to qw automatically
+        :param list[str] ignore_jobs: list of job ids that will be ignored during status updates.
+                                      Useful if a job is stuck inside of SGE and can not be deleted.
+        """
         self._task_info_cache_last_update = 0
         self.gateway = gateway
         self.default_rqmt = default_rqmt
         self.auto_clean_eqw = auto_clean_eqw
+        self.ignore_jobs = ignore_jobs
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -307,11 +316,11 @@ class SonOfGridEngine(EngineBase):
 
             name = job_info['JB_name'].strip()
             state = job_info['state'].strip()
-            tasks = job_info.get('tasks', None)
-            number = job_info['JB_job_number'].strip()
+            task_ids = job_info.get('tasks', None)
+            job_number = job_info['JB_job_number'].strip()
 
-            def parse_tasks(string):
-                """ Return one task object for each listed task """
+            def parse_task_ids(string):
+                """ Return list with all task ids of this task """
 
                 if string is None:
                     # No task id
@@ -338,8 +347,10 @@ class SonOfGridEngine(EngineBase):
                 logging.warning("Can not parse task: %s : %s : %s" % (str(name), str(tasks), str(string)))
                 return []
 
-            for task in parse_tasks(tasks):
-                task_infos[(name, task)].append((number, state))
+            for task_id in parse_task_ids(task_ids):
+                # Check if this task should be ignored
+                if "%s.%i" % (job_number, task_id) not in self.ignore_jobs:
+                    task_infos[(name, task_id)].append((job_number, state))
 
         self._task_info_cache = task_infos
         self._task_info_cache_last_update = time.time()
