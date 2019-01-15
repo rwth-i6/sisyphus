@@ -337,7 +337,7 @@ class SonOfGridEngine(EngineBase):
                     # multiple task ids
                     tasks_list = []
                     for i in string.split(','):
-                        tasks_list += parse_tasks(i)
+                        tasks_list += parse_task_ids(i)
                     return tasks_list
 
                 if ':' in string:
