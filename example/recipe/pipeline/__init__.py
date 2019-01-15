@@ -30,6 +30,9 @@ class Arguments(Job):
         self.out = self.output_path('out.gz')
 
     def run(self, num, message):
+        with tk.mktemp() as self.tmp:
+            print(self.tmp)
+            self.sh('mkdir {tmp}')
         self.num = num
         self.sh('echo "Pipe2: {message}" > tmp.{num}', message=message)
         if num == 0:

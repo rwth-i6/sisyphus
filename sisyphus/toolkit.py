@@ -86,7 +86,7 @@ class mktemp(object):
     """
 
     def __enter__(self):
-        self.temp_path = tempfile.mktemp()
+        self.temp_path = tempfile.mktemp(prefix=gs.TMP_PREFIX)
         return self.temp_path
 
     def __exit__(self, type, value, traceback):

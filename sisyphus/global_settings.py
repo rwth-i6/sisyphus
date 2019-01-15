@@ -242,6 +242,8 @@ DEFAULT_ENVIRONMENT_SET = {'LANG': 'en_US.UTF-8',
                                              '/usr/games', '/usr/local/games',
                                              '/snap/bin']),
                            'SHELL': '/bin/bash'}
+#: Directory used by tk.mktemp
+TMP_PREFIX = os.environ.get('TMPDIR', '/tmp/') + 'sis_'
 
 # Visualization
 #: For http visualization, list job input as common input if it is share between more then X*(total jobs) jobs
