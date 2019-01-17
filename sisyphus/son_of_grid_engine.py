@@ -349,8 +349,8 @@ class SonOfGridEngine(EngineBase):
                 return []
 
             for task_id in parse_task_ids(task_ids):
-                # Check if this task should be ignored
-                if "%s.%i" % (job_number, task_id) not in self.ignore_jobs:
+                # Check if this task should be ignored, all sisyphus jobs have a task id
+                if task_id is not None and "%s.%i" % (job_number, task_id) not in self.ignore_jobs:
                     task_infos[(name, task_id)].append((job_number, state))
 
         self._task_info_cache = task_infos
