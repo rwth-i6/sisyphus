@@ -76,21 +76,24 @@ class OutputPath(OutputTarget):
         """ Checks if output is computed, if yes create output link """
         assert self._sis_path.available()
         if write_output:
+            creator = self._sis_path.creator
+            prefixes = [''] if creator is None or len(creator._sis_alias_prefixes) == 0 else list(creator._sis_alias_prefixes)
             # Link output file
-            outfile_name = os.path.join(gs.OUTPUT_DIR, gs.ALIAS_AND_OUTPUT_SUBDIR, self._output_path)
-            outfile_dir = os.path.dirname(outfile_name)
-            if not os.path.isdir(outfile_dir):
-                os.makedirs(outfile_dir)
+            for prefix in prefixes:
+                outfile_name = os.path.join(gs.OUTPUT_DIR, prefix, self._output_path)
+                outfile_dir = os.path.dirname(outfile_name)
+                if not os.path.isdir(outfile_dir):
+                    os.makedirs(outfile_dir)
 
-            # Check if current link is correct
-            if os.path.islink(outfile_name) and \
-               os.path.realpath(outfile_name) != os.path.realpath(self._sis_path.get_path()):
-                os.unlink(outfile_name)
+                # Check if current link is correct
+                if os.path.islink(outfile_name) and \
+                   os.path.realpath(outfile_name) != os.path.realpath(self._sis_path.get_path()):
+                    os.unlink(outfile_name)
 
-            # Set new link if needed
-            if not os.path.islink(outfile_name):
-                logging.info("Finished output: %s" % outfile_name)
-                os.symlink(os.path.realpath(self._sis_path.get_path()), outfile_name)
+                # Set new link if needed
+                if not os.path.islink(outfile_name):
+                    logging.info("Finished output: %s" % outfile_name)
+                    os.symlink(os.path.realpath(self._sis_path.get_path()), outfile_name)
 
 
 class OutputCall(OutputTarget):
@@ -249,9 +252,13 @@ class SISGraph(object):
         # check if output path is already used
         try:
             path = target._output_path
-            if path in self.used_output_path:
-                logging.warning('Output path is used more than once: %s' % path)
-            self.used_output_path.add(path)
+            creator = self._sis_path.creator
+            prefixes = [''] if creator is None or len(creator._sis_alias_prefixes) == 0 else list(creator._sis_alias_prefixes)
+            for prefix in prefixes:
+                prefixed_path = prefix + path
+                if prefixed_path in self.used_output_path:
+                    logging.warning('Output path is used more than once: %s' % path)
+                self.used_output_path.add(prefixed_path)
         except AttributeError:
             pass
 
