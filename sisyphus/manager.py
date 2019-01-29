@@ -255,7 +255,7 @@ class Manager(threading.Thread):
                 else:
                     info_string = '%s: %s' % (state, job)
 
-                if hasattr(job, "get_vis_name") and job.get_vis_name() is not None:
+                if gs.SHOW_VIS_NAME_IN_MANAGER and hasattr(job, "get_vis_name") and job.get_vis_name() is not None:
                     info_string += " [%s]" % job.get_vis_name()
 
                 if hasattr(job, "info") and state == gs.STATE_RUNNING:

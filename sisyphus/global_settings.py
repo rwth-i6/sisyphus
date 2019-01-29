@@ -251,6 +251,7 @@ VIS_RELATIVE_MERGE_THRESHOLD = 0.25
 #: For http visualization, list job input as common input if it is share between more then X jobs
 VIS_ABSOLUTE_MERGE_THRESHOLD = 5
 
+SHOW_VIS_NAME_IN_MANAGER = True
 
 # Internal functions
 def update_global_settings_from_text(text, filename):
