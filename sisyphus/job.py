@@ -643,13 +643,11 @@ class Job(object, metaclass=JobSingleton):
     def __str__(self):
         alias = self.get_one_alias()
         if alias is not None:
-            if len(self._sis_alias_prefixes) == 0:
-                path_str = "%s %s" % (self._sis_path(), os.path.join(gs.ALIAS_DIR, alias))
-            else:
-                path_str = "%s %s" % (self._sis_path(), os.path.join(gs.ALIAS_DIR, list(self._sis_alias_prefixes)[0], alias))
+            alias_prefix = '' if len(self._sis_alias_prefixes) == 0 else list(self._sis_alias_prefixes)[0]
+            path_str = "%s %s" % (os.path.join(gs.ALIAS_DIR, alias_prefix, alias), self._sis_path())
         else:
             path_str = self._sis_path()
-        return "%s< workdir: %s>" % (self.__class__.__name__, path_str)
+        return "Job<%s>" % path_str
 
     def __repr__(self):
         return str(self)
