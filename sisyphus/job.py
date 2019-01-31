@@ -127,6 +127,13 @@ class JobSingleton(type):
         # Update alias prefixes
         job._sis_alias_prefixes.add(gs.ALIAS_AND_OUTPUT_SUBDIR)
 
+        # add stacktrace information
+        stack_depth = gs.JOB_ADD_STACKTRACE_WITH_DEPTH
+        if stack_depth > 0:
+            # add +1 for the traceback command itself, and remove it later
+            stacktrace = traceback.extract_stack(limit=(stack_depth+1))[:-1]
+            job._sis_stacktrace.append(stacktrace)
+
         return job
 
     def state_init(cls, state):
@@ -212,6 +219,8 @@ class Job(object, metaclass=JobSingleton):
         self._sis_quiet = False
         self._sis_cleanable_cache = False
         self._sis_needed_for_which_targets = set()
+
+        self._sis_stacktrace = []
 
     # Functions directly used to run the job
     def _sis_setup_directory(self):
