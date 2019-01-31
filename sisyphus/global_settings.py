@@ -254,7 +254,7 @@ VIS_ABSOLUTE_MERGE_THRESHOLD = 5
 SHOW_VIS_NAME_IN_MANAGER = True
 
 # Add stacktrace information with specified depth, 0 for deactivation
-JOB_ADD_STACKTRACE_WITH_DEPTH = 1
+JOB_ADD_STACKTRACE_WITH_DEPTH = 0
 
 # Internal functions
 def update_global_settings_from_text(text, filename):
