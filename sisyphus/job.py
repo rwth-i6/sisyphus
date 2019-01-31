@@ -118,9 +118,11 @@ class JobSingleton(type):
             for b in block.active_blocks:
                 b.add_job(job)
                 job._sis_add_block(b)
-            if gs.LOG_TRACEBACKS:
-                # 6:-1 to remove Sisyphus related traces
-                job._sis_tracebacks.add(tuple(traceback.format_stack()[6:-1]))
+
+        # Log traceback for debugging
+        if gs.LOG_TRACEBACKS:
+            # 6:-1 to remove Sisyphus related traces
+            job._sis_tracebacks.add(tuple(traceback.format_stack()[6:-1]))
 
         # Update alias prefixes
         job._sis_alias_prefixes.add(gs.ALIAS_AND_OUTPUT_SUBDIR)
