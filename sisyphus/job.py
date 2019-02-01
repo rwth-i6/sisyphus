@@ -119,19 +119,14 @@ class JobSingleton(type):
                 b.add_job(job)
                 job._sis_add_block(b)
 
-        # Log traceback for debugging
-        if gs.LOG_TRACEBACKS:
-            # 6:-1 to remove Sisyphus related traces
-            job._sis_tracebacks.add(tuple(traceback.format_stack()[6:-1]))
-
         # Update alias prefixes
         job._sis_alias_prefixes.add(gs.ALIAS_AND_OUTPUT_SUBDIR)
 
-        # add stacktrace information
-        stack_depth = gs.JOB_ADD_STACKTRACE_WITH_DEPTH
-        if stack_depth > 0:
+        # add stacktrace information, if set to None or -1 use full stack
+        stack_depth = gs.JOB_ADD_STACKTRACE_WITH_DEPTH + 1 if gs.JOB_ADD_STACKTRACE_WITH_DEPTH >= 0 else None
+        if stack_depth > 1 or None:
             # add +1 for the traceback command itself, and remove it later
-            stacktrace = traceback.extract_stack(limit=(stack_depth+1))[:-1]
+            stacktrace = traceback.extract_stack(limit=stack_depth)[:-1]
             job._sis_stacktrace.append(stacktrace)
 
         return job
@@ -191,8 +186,6 @@ class Job(object, metaclass=JobSingleton):
         self._sis_keep_value = None
 
         self._sis_blocks = set()
-        self._sis_tracebacks = set()
-
         self._sis_kwargs = parsed_args
         self._sis_task_rqmt_overwrite = {}
 
