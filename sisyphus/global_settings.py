@@ -221,9 +221,6 @@ USE_SIGNAL_HANDLERS = False
 #: Automatically set all input given to __init__  as attributes of the created job.
 #: Disabled by default since it tends to confuse new users reading the code.
 AUTO_SET_JOB_INIT_ATTRIBUTES = False
-#: Save traceback when a job is created to allow easier debugging. Disabled by default since it increases start up time
-LOG_TRACEBACKS = False
-
 
 # Job environment
 #: Remove all environment variables to ensure the same environment between different users
@@ -253,7 +250,7 @@ VIS_ABSOLUTE_MERGE_THRESHOLD = 5
 
 SHOW_VIS_NAME_IN_MANAGER = True
 
-# Add stacktrace information with specified depth, 0 for deactivation
+# Add stacktrace information with specified depth, 0 for deactivation, None or -1 for full stack
 JOB_ADD_STACKTRACE_WITH_DEPTH = 0
 
 # Internal functions
