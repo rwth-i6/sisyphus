@@ -149,6 +149,10 @@ class SonOfGridEngine(EngineBase):
 
         out.append('-l')
         out.append('h_rt=%s' % task_time)
+
+        out.append('-js')
+        out.append('%s' % rqmt.get('priority', 50))
+
         qsub_args = rqmt.get('qsub_args', [])
         if isinstance(qsub_args, str):
             qsub_args = qsub_args.split()
