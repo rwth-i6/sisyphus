@@ -241,6 +241,8 @@ class Manager(threading.Thread):
             self.update_jobs(skip_finished=False)
             self.update_state_overview()
 
+        logging.info('Experiment directory: %s        Call: %s' % (os.path.abspath(os.path.curdir), ' '.join(sys.argv)))
+
         for state in sorted(self.jobs.keys(), key=lambda j: state_overview_order.get(j, j)):
             for job in sorted(list(self.jobs[state]), key=lambda j: str(j)):
                 if hasattr(job, '_sis_needed_for_which_targets') and job._sis_needed_for_which_targets:
