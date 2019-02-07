@@ -1,4 +1,9 @@
 """ This is an experimental implementation for the aws batch engine.
+
+WARNING: After running some setups I can currently not recommend using aws batch with Sisyphus.
+AWS parallelcluster (https://aws.amazon.com/blogs/opensource/aws-parallelcluster/) looks like a easy way how
+to setup a SGE Cluster inside AWS which I would recommend.
+
 You need to setup shared file system, I used efs, a docker image which contains all needed packages and mounts
 the shared file system and a queue. The docker image must be run in privileged mode.
 An example docker image can be found under docs/aws_batch_docker.
@@ -168,15 +173,19 @@ class AWSBatchEngine(EngineBase):
                     name = job['jobName']
                     status = job['status']
                     if state == 'FAILED':
-                        stopped_at = job('stoppedAt', time.time()*1000) / 1000
-                        age = time.time() - stopped_at
+                        stopped_at = job.get('stoppedAt')
+                        if stopped_at:
+                            stopped_at /= 1000
+                            age = time.time() - stopped_at
+                        else:
+                            age = self.ignore_failed_jobs_after_x_seconds + 1
                         if age > self.ignore_failed_jobs_after_x_seconds:
                             if name in self._task_info_cache:
                                 jobs.append(name)
                         else:
                             self._task_info_cache[name] = status
                     elif state == 'SUCCEEDED':
-                        stopped_at = job('stoppedAt', time.time()*1000) / 1000
+                        stopped_at = job.get('stoppedAt', time.time()*1000) / 1000
                         age = time.time() - stopped_at
                         if age > self.ignore_succeded_jobs_after_x_seconds and name in self._task_info_cache:
                             jobs.append(name)
