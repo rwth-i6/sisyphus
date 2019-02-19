@@ -713,9 +713,13 @@ class Job(object, metaclass=JobSingleton):
             for task in self.tasks():
                 task.set_job(self)
                 task_name = task._start
-                if hasattr(self, '_sis_task_rqmt_overwrite') \
-                        and task_name in self._sis_task_rqmt_overwrite:
-                    task._rqmt = self._sis_task_rqmt_overwrite[task_name]
+                if task_name in self._sis_task_rqmt_overwrite:
+                    rqmt, replace = self._sis_task_rqmt_overwrite[task_name]
+                    if replace:
+                        task._rqmt = rqmt
+                    else:
+                        task._rqmt.update(rqmt)
+
                 cache.append(task)
             self._sis_task_cache = cache
 
@@ -1003,8 +1007,24 @@ class Job(object, metaclass=JobSingleton):
         return path
 
     def set_rqmt(self, task_name, rqmt):
+        """ Overwrites the given requirements for this job
+
+        :param str task_name: Which task will be affected
+        :param rqmt: the new requirements
+        :return:
+        """
         """ Overwrites the automatic requirements for this job """
-        self._sis_task_rqmt_overwrite[task_name] = rqmt.copy()
+        self._sis_task_rqmt_overwrite[task_name] = rqmt.copy(), True
+        return self
+
+    def update_rqmt(self, task_name, rqmt):
+        """ Updates the given requirements for this job, values not set in rqmt will not be affected.
+
+        :param str task_name: Which task will be affected
+        :param rqmt: the new requirements
+        :return:
+        """
+        self._sis_task_rqmt_overwrite[task_name] = rqmt.copy(), False
         return self
 
     def tasks(self):
