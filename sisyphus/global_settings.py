@@ -338,3 +338,5 @@ def cached_engine(cache=[]):
 
 # Parameter used for debugging or profiling
 MEMORY_PROFILE_LOG = None
+
+USE_UI = True

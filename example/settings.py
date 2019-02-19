@@ -23,3 +23,4 @@ WAIT_PERIOD_BETWEEN_CHECKS = 1  # checking for finished jobs
 WAIT_PERIOD_CACHE = 1  # stopping to wait for actionable jobs to appear
 
 JOB_AUTO_CLEANUP = False
+VERBOSE_TRACEBACK_TYPE = 'better_exchook'

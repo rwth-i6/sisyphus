@@ -46,11 +46,17 @@ class JobCleaner(threading.Thread):
 def manager(args):
     """ Manage which job should run next """
 
+
     if args.run:
         if not os.path.isdir(gs.WORK_DIR):
-            answer = input('%s does not exist, should I continue?'
-                           'The directory will be created if needed inplace (y/N)' % gs.WORK_DIR)
-            if answer.lower() != 'y':
+            prompt = '%s does not exist, should I continue? ' \
+                     'The directory will be created if needed inplace (y/N)' % gs.WORK_DIR
+            if args.ui:
+                ret = args.ui.ask_user(prompt)
+                logging.info('%s %s' % (prompt, ret))
+            else:
+                ret = input(prompt)
+            if ret.lower() != 'y':
                 logging.warning('Abort, create directory or link it to the wished work destination')
                 return
 
@@ -97,7 +103,10 @@ def manager(args):
                           clear_once=args.clear_once,
                           start_computations=args.run,
                           job_cleaner=job_cleaner,
-                          interative=args.interactive)
+                          interative=args.interactive,
+                          ui=args.ui)
+        if args.ui:
+            args.ui.manager = manager
 
         kernel_connect_file = None
         if gs.START_KERNEL:
@@ -171,7 +180,8 @@ class Manager(threading.Thread):
                  start_computations=False,
                  auto_print_stat_overview=True,
                  job_cleaner=None,
-                 interative=False):
+                 interative=False,
+                 ui=None):
         """
         :param sisyphus.graph.SISGraph sis_graph:
         :param sisyphus.engine.EngineBase job_engine:
@@ -188,6 +198,7 @@ class Manager(threading.Thread):
         self.job_engine = job_engine
         self.link_outputs = link_outputs
         self.auto_print_stat_overview = auto_print_stat_overview
+        self.ui = ui
         self.interactive = interative
         self.interactive_always_skip = set()
 
@@ -241,7 +252,10 @@ class Manager(threading.Thread):
             self.update_jobs(skip_finished=False)
             self.update_state_overview()
 
-        logging.info('Experiment directory: %s        Call: %s' % (os.path.abspath(os.path.curdir), ' '.join(sys.argv)))
+        output = []
+        if not self.ui:
+            logging.info('Experiment directory: %s        Call: %s' % (os.path.abspath(os.path.curdir),
+                                                                       ' '.join(sys.argv)))
 
         for state in sorted(self.jobs.keys(), key=lambda j: state_overview_order.get(j, j)):
             for job in sorted(list(self.jobs[state]), key=lambda j: str(j)):
@@ -259,6 +273,10 @@ class Manager(threading.Thread):
 
                 if gs.SHOW_VIS_NAME_IN_MANAGER and hasattr(job, "get_vis_name") and job.get_vis_name() is not None:
                     info_string += " [%s]" % job.get_vis_name()
+
+                if self.ui:
+                    output.append((state, job, info_string))
+                    continue
 
                 if hasattr(job, "info") and state == gs.STATE_RUNNING:
                     job_manager_info_string = job.info()
@@ -285,7 +303,10 @@ class Manager(threading.Thread):
             if verbose:
                 print()
 
-        if self.state_overview:
+        if self.ui:
+            self.ui.update_job_view(output)
+            self.ui.update_state_overview(' '.join(sorted(self.state_overview)))
+        elif self.state_overview:
             logging.info(' '.join(self.state_overview))
 
     def work_left(self):
@@ -312,7 +333,7 @@ class Manager(threading.Thread):
         if self.interactive:
             if uid in self.interactive_always_skip:
                 return False
-            answer = input('%s (Yes/skip/never)' % message).lower()
+            answer = self.input('%s (Yes/skip/never)' % message).lower()
             if answer in ('', 'y', 'yes'):
                 return True
             elif answer in ('s', 'skip'):
@@ -325,6 +346,16 @@ class Manager(threading.Thread):
                 return False
         else:
             return True
+
+    def input(self, prompt):
+        if self.ui:
+            ret = self.ui.ask_user(prompt)
+            logging.info('%s %s' % (prompt, ret))
+        else:
+            ret = input(prompt)
+        return ret
+
+
 
     def resume_jobs(self):
         # function to resume jobs:
@@ -410,7 +441,7 @@ class Manager(threading.Thread):
 
         # Skip first part if there is nothing todo
         if not self.jobs:
-            answer = input('All calculations are done, print verbose overview (v), update outputs and alias (u), '
+            answer = self.input('All calculations are done, print verbose overview (v), update outputs and alias (u), '
                            'cancel (c)? ')
             if answer.lower() in ('y', 'v'):
                 self.print_state_overview(verbose=True)
@@ -427,7 +458,7 @@ class Manager(threading.Thread):
             if self.clear_once:
                 self.clear_errors()
             else:
-                answer = input('Clear jobs in error state? [y/N] ')
+                answer = self.input('Clear jobs in error state? [y/N] ')
                 if answer.lower() == 'y':
                     self.clear_once = True
                     self.clear_errors()
@@ -456,7 +487,7 @@ class Manager(threading.Thread):
                 break
             else:
                 logging.warning('Unknown command: %s' % answer)
-            answer = input('Print verbose overview (v), update aliases and outputs (u), '
+            answer = self.input('Print verbose overview (v), update aliases and outputs (u), '
                            'start manager (y), or exit (n)? ')
 
         if not self._stop_loop:

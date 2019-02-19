@@ -23,8 +23,6 @@ import sisyphus.logging_format
 __author__ = "Jan-Thorsten Peter, Eugen Beck"
 __email__ = "peter@cs.rwth-aachen.de"
 
-sisyphus.logging_format.add_coloring_to_logging()
-
 
 def main():
     """ Parses command line arguments and executes commands """
@@ -70,6 +68,9 @@ def main():
     parser_manager.add_argument("-i", "--interactive", dest="interactive",
                                 default=False, action="store_true",
                                 help="Ask before submitting jobs")
+    parser_manager.add_argument("--ui", dest="ui",
+                                default=False, action="store_true",
+                                help="Start user interface")
     parser_manager.add_argument('argv', metavar='ARGV', type=str,
                                 nargs='*',
                                 help='an additional way do '
@@ -146,9 +147,21 @@ def main():
     if args.func in [manager, console]:
         args.config_files += args.argv
 
-    # Setup logging
-    logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s',
-                        level=args.log_level)
+    # Setup logging colors
+    sisyphus.logging_format.add_coloring_to_logging()
+
+    # Setup ui loggign to ui or to commandline
+    ui = None
+    if args.func == manager and args.ui:
+        from sisyphus.manager_ui import SisyphusDisplay
+        ui = SisyphusDisplay()
+        ui.setup()
+        logging.basicConfig(#stream=ui.get_logging_pipe(),
+                            format='[%(asctime)s] %(levelname)s: %(message)s',
+                            level=args.log_level,
+                            handlers=[ui.get_log_handler()])
+    else:
+        logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s', level=args.log_level)
 
     # Changing settings via commandline is currently not supported
     # Needs to ensure all parameters are passed correctly to worker, ignored since nobody requested it so far
@@ -176,7 +189,16 @@ def main():
         gs.JOB_AUTO_CLEANUP = False
 
     try:
-        args.func(args)
+        if ui:
+            import threading
+            ui.manager = None
+            args.ui = ui
+            t = threading.Thread(target=args.func, args=(args,))
+            t.start()
+            ui.run()
+            t.join()
+        else:
+            args.func(args)
     except BaseException as exc:
         if not isinstance(exc, SystemExit):
             logging.error("Main thread unhandled exception:")
