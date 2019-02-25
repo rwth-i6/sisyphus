@@ -12,6 +12,10 @@ Sisyphus requires a Python >=3.5 installation with the following additional libr
     pip3 install psutil
     pip3 install ipython
 
+  Optional if curse based user interface should be used:
+
+    pip3 install urwid
+
   Optional if web interface should be used:
 
     pip3 install flask

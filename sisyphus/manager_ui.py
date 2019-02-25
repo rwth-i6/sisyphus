@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import time
 import logging
 import pprint
 import urwid
@@ -8,6 +9,14 @@ from queue import Queue
 from threading import Semaphore
 import sisyphus.global_settings as gs
 from sisyphus.logging_format import color_end_marker, color_mapping
+from sisyphus.job import Job
+
+
+class RightButton(urwid.Button):
+    def keypress(self, size, key):
+        if key not in ('enter', ' ', 'right'):
+            return key
+        self._emit('click')
 
 
 # This handler should be given to the logging. It will forward all given messages to the ui and write
@@ -49,13 +58,24 @@ class UiLoggingHandler(logging.Handler):
         self.redraw()
 
 
+help_text = """Welcome to the sisyphus manager interface and its currently very short help page
+
+%s
+Quit the program by pressing esc or q
+Press enter While the log window is active to view the whole log history with less
+Press enter on selected job to see more details
+Enter object view with enter, space or right arrow key
+Go back to last object with backspace or left arrow key
+""" % gs.SISYPHUS_LOGO
+
+
 class SisyphusDisplay:
     palette = [
         ('body',         'light gray', 'black', 'standout'),
         ('note',         'black', 'light gray', 'standout'),
         ('header',       'white',      'dark red',   'bold'),
-        ('button select','white',      'dark green'),
-        ('button disabled','dark gray','dark blue'),
+        ('button normal', 'light gray', 'black', 'standout'),
+        ('button select', 'white',      'dark green'),
         ('exit',         'white',      'dark cyan'),
 
         ('question',      'dark red',      'yellow', 'bold'),
@@ -68,35 +88,67 @@ class SisyphusDisplay:
         ]
 
     def job_selected(self, w, job):
+        d = job.__dict__
+        d['____NAME__'] = job._sis_path()
+        self.obj_selected(w, job)
 
-        text = [job._sis_path()]
-        text.append(pprint.pformat(job._sis_kwargs))
-        text.append('')
+    def show_items(self, items, length=80):
+        # Empty list
+        self.obj_body.body = []
+
+        for k, v in items:
+            button = RightButton('%s %s' % (k, repr(v)[:length]), on_press=self.obj_selected, user_data=v)
+            button = urwid.AttrWrap(button, 'button normal', 'button select')
+            self.obj_body.body.append(button)
+
+        k = 'history'
+        v = self.history
+        button = RightButton('%s %s' % (k, pprint.pformat(v)), on_press=self.obj_selected, user_data=v)
+        button = urwid.AttrWrap(button, 'button normal', 'button select')
+        self.obj_body.body.append(button)
+
+    def show_job(self, job):
+        items = []
         attributes = job.__dict__
-        for name in ('_sis_aliases', '_sis_keep_value', '_sis_stacktrace',
+        for name in ('_sis_kwargs', '_sis_aliases', '_sis_keep_value', '_sis_stacktrace',
                      '_sis_blocks', '_sis_tags', '_sis_task_rqmt_overwrite', '_sis_vis_name',
                      '_sis_outputs', '_sis_environment'):
             attr = attributes[name]
             if attr:
-                text.append(name[5:]+':')
-                text.append(pprint.pformat(attr, width=120))
+                items.append((name[5:], attr))
 
-        text.append('')
         for k, v in attributes.items():
             if not k.startswith('_sis_'):
-                text.append(k + ':')
-                text.append(pprint.pformat(v, width=120))
+                items.append((k, v))
 
-        self.job_view = urwid.Frame(header=self.header, body=urwid.ListBox([urwid.Text('\n'.join(text))]))
-        self.loop.widget = self.job_view
+        self.show_items(items)
+
+        self.loop.widget = self.obj_view
         self.redraw()
-        return
+
+    def obj_selected(self, w, obj=None):
+        self.obj_header.set_text(str(type(obj)))
+        if isinstance(obj, Job):
+            self.obj_header.set_text(obj._sis_path())
+            self.show_job(obj)
+        elif isinstance(obj, (tuple, list, set)):
+            self.show_items([(str(pos), v) for pos, v in enumerate(obj)])
+        elif isinstance(obj, (dict)):
+            self.show_items(sorted((repr(k), v) for k, v in obj.items()))
+        elif hasattr(obj, '__dict__'):
+            self.show_items(sorted(obj.__dict__.items()))
+        else:
+            self.obj_body.body = [urwid.Text(repr(obj))]
+
+        self.loop.widget = self.obj_view
+        self.history.append(obj)
+        self.redraw()
 
     def setup_view(self):
         self.logger_box = urwid.Text("Logging Box", wrap='clip')
         self.logger_box = urwid.SimpleListWalker([])
 
-        self._state_overview = urwid.Text("Status")
+        self._state_overview = urwid.Text("Starting")
         # ListBox
         self.job_box = urwid.ListBox(urwid.SimpleListWalker([]))
 
@@ -104,7 +156,7 @@ class SisyphusDisplay:
              urwid.AttrWrap(self.job_box, 'body')])
 
         # Frame
-        hdr = urwid.Text("Sisyphus | CWD: %s | Call: %s | Press q to quit." % \
+        hdr = urwid.Text("Sisyphus | CWD: %s | Call: %s | Press h for help | press q or esc to quit" % \
                          (os.path.abspath('.'), ' '.join(sys.argv)), wrap='clip')
         hdr = urwid.AttrWrap(hdr, 'header')
         self.header = hdr
@@ -125,7 +177,18 @@ class SisyphusDisplay:
         self.question_view = urwid.Overlay(self.question_text, self.main_view,
                                            'center', ('relative', 80), 'middle', None)
 
-        self.main_view
+        help = urwid.Text(help_text)
+        self.help_view = urwid.Frame(header=self.header, body=urwid.ListBox([help]))
+
+        self.setup_object_view()
+
+        self.history = []
+
+    def setup_object_view(self):
+        self.obj_header = urwid.Text("Name of object")
+        hdr = urwid.Pile([self.header, self.obj_header])
+        self.obj_body = urwid.ListBox(urwid.SimpleListWalker([]))
+        self.obj_view = urwid.Frame(header=hdr, body=self.obj_body)
 
     def update_job_view(self, jobs):
         # Empty box
@@ -134,7 +197,6 @@ class SisyphusDisplay:
         for state, job, info in jobs:
             if state in (gs.STATE_WAITING, gs.STATE_INPUT_PATH):
                 continue
-
 
             if state in [gs.STATE_INPUT_MISSING,
                          gs.STATE_RETRY_ERROR,
@@ -150,8 +212,10 @@ class SisyphusDisplay:
                 attri = 'info'
             else:
                 attri = None
-            self.job_box.body.append(
-                    urwid.Button((attri, '%s %s' % (state, info)), on_press=self.job_selected, user_data=job))
+
+            button = RightButton('%s %s' % (state, info), on_press=self.obj_selected, user_data=job)
+            button = urwid.AttrWrap(button, attri, 'button select')
+            self.job_box.body.append(button)
 
         self.redraw()
 
@@ -184,8 +248,11 @@ class SisyphusDisplay:
     def redraw(self):
         os.write(self._external_event_pipe, b'redraw\n')
 
-    def get_log_handler(self, log_file='manager.log'):
+    def get_log_handler(self, log_file='log/manager.log.%s' % time.strftime('%Y%m%d%H%M%S')):
         self.log_file = log_file
+        dir = os.path.dirname(log_file)
+        if not os.path.isdir(dir):
+            os.mkdir(dir)
         return UiLoggingHandler(self.logger_box, self.redraw, log_file=open(log_file, 'w'))
 
     def run(self):
@@ -200,6 +267,10 @@ class SisyphusDisplay:
                 self.loop.widget = self.main_view
                 return True
 
+        if key in ('h', 'H'):
+            self.loop.widget = self.help_view
+            return True
+
         if self.loop.widget == self.exit_view:
             if key in ('y', 'Y', 'enter'):
                 self.question_queue.put(None)
@@ -207,6 +278,21 @@ class SisyphusDisplay:
                 raise urwid.ExitMainLoop()
             else:
                 self.loop.widget = self.main_view
+
+        if key in ('left', 'backspace'):
+            if self.history:
+                # Drop current view
+                self.history.pop()
+            if self.history:
+                obj = self.history.pop()
+            else:
+                obj = None
+
+            if obj is None:
+                self.loop.widget = self.main_view
+            else:
+                self.obj_selected(None, obj=obj)
+            return True
 
         if key in exit_keys:
             if self.loop.widget == self.main_view:
