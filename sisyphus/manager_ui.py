@@ -10,6 +10,7 @@ from threading import Semaphore
 import sisyphus.global_settings as gs
 from sisyphus.logging_format import color_end_marker, color_mapping
 from sisyphus.job import Job
+from sisyphus.job_path import Path
 
 
 class RightButton(urwid.Button):
@@ -97,15 +98,13 @@ class SisyphusDisplay:
         self.obj_body.body = []
 
         for k, v in items:
-            button = RightButton('%s %s' % (k, repr(v)[:length]), on_press=self.obj_selected, user_data=v)
+            if isinstance(v, Path):
+                label = '%s %s<%s>' % (k, type(v).__name__, repr(v))
+            else:
+                label = '%s %s' % (k, pprint.pformat(v))
+            button = RightButton(label, on_press=self.obj_selected, user_data=v)
             button = urwid.AttrWrap(button, 'button normal', 'button select')
             self.obj_body.body.append(button)
-
-        k = 'history'
-        v = self.history
-        button = RightButton('%s %s' % (k, pprint.pformat(v)), on_press=self.obj_selected, user_data=v)
-        button = urwid.AttrWrap(button, 'button normal', 'button select')
-        self.obj_body.body.append(button)
 
     def show_job(self, job):
         items = []
@@ -127,6 +126,7 @@ class SisyphusDisplay:
         self.redraw()
 
     def obj_selected(self, w, obj=None):
+        self.stop_job_view_update = True
         self.obj_header.set_text(str(type(obj)))
         if isinstance(obj, Job):
             self.obj_header.set_text(obj._sis_path())
@@ -158,8 +158,7 @@ class SisyphusDisplay:
         # Frame
         hdr = urwid.Text("Sisyphus | CWD: %s | Call: %s | Press h for help | press q or esc to quit" % \
                          (os.path.abspath('.'), ' '.join(sys.argv)), wrap='clip')
-        hdr = urwid.AttrWrap(hdr, 'header')
-        self.header = hdr
+        self.header = hdr = urwid.AttrWrap(hdr, 'header')
         hdr = urwid.Pile([hdr,
                           (10, urwid.AttrWrap(urwid.ListBox(self.logger_box), 'body')),
                           urwid.AttrWrap(self._state_overview, 'note'),
@@ -183,18 +182,30 @@ class SisyphusDisplay:
         self.setup_object_view()
 
         self.history = []
+        self.stop_job_view_update = False
+        self.current_jobs = []
 
     def setup_object_view(self):
         self.obj_header = urwid.Text("Name of object")
-        hdr = urwid.Pile([self.header, self.obj_header])
+        hdr = urwid.Pile([self.header,
+                          (10, urwid.AttrWrap(urwid.ListBox(self.logger_box), 'body')),
+                          urwid.AttrWrap(self._state_overview, 'note'),
+                          self.obj_header
+                          ])
         self.obj_body = urwid.ListBox(urwid.SimpleListWalker([]))
         self.obj_view = urwid.Frame(header=hdr, body=self.obj_body)
 
-    def update_job_view(self, jobs):
+    def update_job_view(self, jobs=None):
+        if jobs:
+            self.current_jobs = jobs
+
+        if self.stop_job_view_update:
+            return
+
         # Empty box
-        while len(self.job_box.body):
-            self.job_box.body.pop()
-        for state, job, info in jobs:
+        self.job_box.body = []
+
+        for state, job, info in self.current_jobs:
             if state in (gs.STATE_WAITING, gs.STATE_INPUT_PATH):
                 continue
 
@@ -216,8 +227,6 @@ class SisyphusDisplay:
             button = RightButton('%s %s' % (state, info), on_press=self.obj_selected, user_data=job)
             button = urwid.AttrWrap(button, attri, 'button select')
             self.job_box.body.append(button)
-
-        self.redraw()
 
     def update_state_overview(self, prompt):
         self._state_overview.set_text(prompt)
@@ -258,13 +267,18 @@ class SisyphusDisplay:
     def run(self):
         self.loop.run()
 
+    def reset_view(self):
+        self.loop.widget = self.main_view
+        self.stop_job_view_update = False
+        self.update_job_view()
+
     def unhandled_input(self, key):
         exit_keys = ('esc', 'q')
         if self.loop.widget == self.question_view:
             if isinstance(key, str) and (len(key) == 1 or key in exit_keys):
                 self.question_queue.put(key)
                 self.question_text.set_text('')
-                self.loop.widget = self.main_view
+                self.reset_view()
                 return True
 
         if key in ('h', 'H'):
@@ -277,7 +291,8 @@ class SisyphusDisplay:
                 self.manager.stop()
                 raise urwid.ExitMainLoop()
             else:
-                self.loop.widget = self.main_view
+                self.reset_view()
+                return True
 
         if key in ('left', 'backspace'):
             if self.history:
@@ -289,7 +304,7 @@ class SisyphusDisplay:
                 obj = None
 
             if obj is None:
-                self.loop.widget = self.main_view
+                self.reset_view()
             else:
                 self.obj_selected(None, obj=obj)
             return True
@@ -298,14 +313,16 @@ class SisyphusDisplay:
             if self.loop.widget == self.main_view:
                 self.loop.widget = self.exit_view
             else:
-                self.loop.widget = self.main_view
+                self.reset_view()
             return True
 
         if key == 'up':
             self.main_view.set_focus('header')
+            self.obj_view.set_focus('header')
             return True
         elif key == 'down':
             self.main_view.set_focus('body')
+            self.obj_view.set_focus('body')
             return True
         elif self.main_view.get_focus() == 'header' and key in ('up', 'enter'):
             self.loop.stop()
