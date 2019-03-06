@@ -29,6 +29,10 @@ Sisyphus requires a Python >=3.5 installation with the following additional libr
     pip3 install fusepy
     sudo addgroup $USER fuse  # depending on your system
 
+  Optional for a nicer traceback
+
+    pip3 install better_exchook
+
 ## Setup
 
 * Add `sis` to the `PATH` env, or symlink it, or call it directly.
