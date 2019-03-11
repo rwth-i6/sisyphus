@@ -392,15 +392,15 @@ class SISGraph(object):
             :rtype: bool
             """
             # job not visited in this run, need to calculate dependencies
+            if skip_finished and job._sis_finished():
+                # stop on finished
+                return False
+
             new_state = None
             if job._sis_runnable():
                 if job._sis_setup():
                     if job._sis_finished():
-                        # Stop here
-                        if skip_finished:
-                            return False
-                        else:
-                           new_state = gs.STATE_FINISHED
+                        new_state = gs.STATE_FINISHED
                     else:
                         # check state of tasks
                         for task in job._sis_tasks():
