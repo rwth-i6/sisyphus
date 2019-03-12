@@ -59,6 +59,10 @@ def main():
                                 default=False,
                                 help="Move jobs aside that are in an error "
                                      "state when the manager runs the first time")
+    parser_manager.add_argument("-io", dest="ignore_once", action="store_true",
+                                default=False,
+                                help="Ignore jobs that are in an error "
+                                     "state when the manager runs the first time")
     parser_manager.add_argument("--http", dest="http_port", default=None,
                                 type=int, help="Enables http server, takes "
                                                "port as argument")

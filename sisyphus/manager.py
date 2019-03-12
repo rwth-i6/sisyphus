@@ -101,6 +101,7 @@ def manager(args):
                           job_engine=job_engine,
                           link_outputs=args.run,
                           clear_once=args.clear_once,
+                          ignore_once=args.ignore_once,
                           start_computations=args.run,
                           job_cleaner=job_cleaner,
                           interative=args.interactive,
@@ -177,6 +178,7 @@ class Manager(threading.Thread):
     def __init__(self, sis_graph, job_engine,
                  link_outputs=True,
                  clear_once=False,
+                 ignore_once=False,
                  start_computations=False,
                  auto_print_stat_overview=True,
                  job_cleaner=None,
@@ -194,6 +196,7 @@ class Manager(threading.Thread):
         threading.Thread.__init__(self)
         self.start_computations = start_computations
         self.clear_once = clear_once
+        self.ignore_once = ignore_once
         self.sis_graph = sis_graph
         self.job_engine = job_engine
         self.link_outputs = link_outputs
@@ -204,6 +207,8 @@ class Manager(threading.Thread):
 
         self.stop_if_done = True
         self._stop_loop = False
+
+        assert not (self.clear_once and self.ignore_once), "Jobs in error state cannot be both ignored and cleared"
 
         if gs.SHOW_JOB_TARGETS:
             self.sis_graph.set_job_targets(job_engine)
@@ -457,6 +462,8 @@ class Manager(threading.Thread):
         if gs.STATE_ERROR in self.jobs:
             if self.clear_once:
                 self.clear_errors()
+            elif self.ignore_once:
+                pass
             else:
                 answer = self.input('Clear jobs in error state? [y/N] ')
                 if answer.lower() == 'y':
