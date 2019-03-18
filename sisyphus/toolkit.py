@@ -421,7 +421,7 @@ def import_work_directory(directories, mode='dryrun'):
         sis_graph.for_all_nodes(import_directory, bottom_up=True)
 
 
-def cleaner(clean_job_dir=False, clean_work_dir=False, mode='dryrun', keep_value=0):
+def cleaner(clean_job_dir=False, clean_work_dir=False, mode='dryrun', keep_value=0, only_remove_current_graph=False):
     """ Free wasted disk space.
     Creates a list of all possible path in the current setup and deletes all directories that
     are not part of the current graph.
@@ -436,6 +436,7 @@ def cleaner(clean_job_dir=False, clean_work_dir=False, mode='dryrun', keep_value
     :param clean_work_dir(bool): Scan the work directory for files and directories not part of the graph
     :param mode(str): Possible values: dryrun, move, remove
     :param keep_value(int): Delete all jobs with a lower value.
+    :param only_remove_current_graph(bool): Only remove files from the current graph.
     """
 
     assert mode in ('dryrun', 'move', 'remove')
@@ -483,7 +484,8 @@ def cleaner(clean_job_dir=False, clean_work_dir=False, mode='dryrun', keep_value
                     pass
                 elif k is None:
                     # directory is not created by current graph
-                    unused.add(n)
+                    if not only_remove_current_graph:
+                        unused.add(n)
                 elif k is True:
                     # directory has sub directories used by current graph
                     scan_work(n)
