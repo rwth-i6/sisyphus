@@ -69,6 +69,23 @@ def get_object_state(obj):
         return args, state
 
 
+def is_namedtuple_instance(x):
+    """
+    Checks if x is a namedtuple (or looks very much like it)
+    -> see https://stackoverflow.com/a/2166841 for details
+    :param object x: object to check
+    :rtype: bool
+    """
+    t = type(x)
+    b = t.__bases__
+    if len(b) != 1 or b[0] != tuple:
+        return False
+    f = getattr(t, '_fields', None)
+    if not isinstance(f, tuple):
+        return False
+    return all(type(n) == str for n in f)
+
+
 def sis_hash_helper(obj):
     """
     Takes most object and tries to convert the current state into bytes.
@@ -87,7 +104,7 @@ def sis_hash_helper(obj):
         pass
     elif type(obj) in (int, float, bool, str, complex):
         byte_list.append(repr(obj).encode())
-    elif type(obj) in (list, tuple):
+    elif type(obj) in (list, tuple) or is_namedtuple_instance(obj):
         byte_list += map(sis_hash_helper, obj)
     elif type(obj) in (set, frozenset):
         byte_list += sorted(map(sis_hash_helper, obj))
