@@ -151,21 +151,24 @@ class OutputReport(OutputTarget):
     def write_report(self):
         outfile_name = os.path.join(gs.OUTPUT_DIR, self._output_path)
         outfile_dir = os.path.dirname(outfile_name)
-        if not os.path.isdir(outfile_dir):
-            os.makedirs(outfile_dir)
+        try:
+            if not os.path.isdir(outfile_dir):
+                os.makedirs(outfile_dir)
 
-        # Remove link to avoid overwriting other files
-        if os.path.islink(outfile_name):
-            os.unlink(outfile_name)
+            # Remove link to avoid overwriting other files
+            if os.path.islink(outfile_name):
+                os.unlink(outfile_name)
 
-        # Actually write report
-        with open(outfile_name, 'w') as f:
-            if self._report_template:
-                f.write(self._report_template.format(**self._report_values))
-            elif callable(self._report_values):
-                f.write(str(self._report_values()))
-            else:
-                f.write(pprint.pformat(self._report_values, width=140)+'\n')
+            # Actually write report
+            with open(outfile_name, 'w') as f:
+                if self._report_template:
+                    f.write(self._report_template.format(**self._report_values))
+                elif callable(self._report_values):
+                    f.write(str(self._report_values()))
+                else:
+                    f.write(pprint.pformat(self._report_values, width=140)+'\n')
+        except IOError as e:
+            logging.warning('Error while updating %s:  %s' % (outfile_name, str(e)))
 
     def run_when_done(self, write_output=None):
         if write_output:
