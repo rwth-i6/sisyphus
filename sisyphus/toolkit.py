@@ -443,14 +443,19 @@ def cleaner(clean_job_dir=False, clean_work_dir=False, mode='dryrun', keep_value
     # create a dictionary with all paths in the current graph
     active_paths = {}
     # and a set containing all jobs which should not be deleted yet since they are needed to compute
-    # the output of unfinished jobs or belong to the output
+    # the output of unfinished jobs or belong to the output. Recheck targets until no new targets are added
     needed = set()
-    for target in sis_graph.targets:
-        for path in target.required:
-            active_paths[os.path.abspath(os.path.join(path.get_path()))] = path
-            if path.creator is not None:
-                needed.update(path.creator._sis_get_needed_jobs({}))
-                active_paths.update(path.creator._sis_get_all_inputs())
+    last_targets = None
+    current_targets = sis_graph.targets.copy()
+    while last_targets != current_targets:
+        for target in sis_graph.targets.copy():
+            for path in target.required:
+                active_paths[os.path.abspath(os.path.join(path.get_path()))] = path
+                if path.creator is not None:
+                    needed.update(path.creator._sis_get_needed_jobs({}))
+                    active_paths.update(path.creator._sis_get_all_inputs())
+        last_targets = current_targets
+        current_targets = sis_graph.targets.copy()
 
     needed = {job._sis_path() for job in needed}
 
