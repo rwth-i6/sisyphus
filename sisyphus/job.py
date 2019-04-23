@@ -154,6 +154,16 @@ class Job(object, metaclass=JobSingleton):
     # Hash exclude should be {'foo': 'bar'}
     __sis_hash_exclude__ = {}
 
+    _lock_storage = []
+    _lock_index = -1
+
+    @classmethod
+    def get_lock(cls):
+        Job._lock_index = (Job._lock_index + 1) % gs.JOB_MAX_NUMBER_OF_LOCKS
+        if len(Job._lock_storage) < gs.JOB_MAX_NUMBER_OF_LOCKS:
+            Job._lock_storage.append(multiprocessing.Lock())
+        return Job._lock_storage[Job._lock_index]
+
     def __new__(cls, *args, **kwargs):
         # Make sure unpickled jobs stay singeltons
         assert len(args) == 1 and len(kwargs) == 0 and isinstance(args[0], str)
@@ -189,7 +199,7 @@ class Job(object, metaclass=JobSingleton):
         self._sis_kwargs = parsed_args
         self._sis_task_rqmt_overwrite = {}
 
-        self._sis_job_lock = multiprocessing.Lock()
+        self._sis_job_lock = Job.get_lock()
         self._sis_is_finished = False
         self._sis_setup_since_restart = False
 
