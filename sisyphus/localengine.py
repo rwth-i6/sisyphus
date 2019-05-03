@@ -280,7 +280,7 @@ class LocalEngine(threading.Thread, EngineBase):
             # Recover instance
             rqmt = d['requested_resources']
             logpath = os.path.relpath(task.path(gs.JOB_LOG_ENGINE))
-            call_with_id = gs.SIS_COMMAND + ['worker', os.path.relpath(task.path()), task.name(), str(task_id)]
+            call_with_id = task.get_worker_call(task_id)
             call_with_id += ['--redirect_output']
             name = task.task_name()
             task_name = task.name()

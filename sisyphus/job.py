@@ -86,7 +86,7 @@ class JobSingleton(type):
         # create key
         sis_hash = cls._sis_hash_static(parsed_args)
         module_name = cls.__module__
-        recipe_prefix = gs.RECIPE_DIR + '.'
+        recipe_prefix = gs.RECIPE_PREFIX + '.'
         assert module_name.startswith(recipe_prefix)
         sis_name = os.path.join(module_name[len(recipe_prefix):].replace('.', os.path.sep), cls.__name__)
         sis_id = "%s.%s" % (sis_name, sis_hash)

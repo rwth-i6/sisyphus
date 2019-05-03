@@ -47,6 +47,7 @@ import pickle
 import shutil
 import tarfile
 import tempfile
+import subprocess
 
 from sisyphus.tools import sh, extract_paths
 
@@ -187,10 +188,13 @@ class Object:
 
 class RelPath:
 
-    def __init__(self, origin):
+    def __init__(self, origin, hash_overwrite=None):
         self.origin = origin
+        self.hash_overwrite = hash_overwrite
 
     def __call__(self, path, *args, **kwargs):
+        if self.hash_overwrite and 'hash_overwrite' not in kwargs and len(args) < 3:
+            kwargs['hash_overwrite'] = os.path.join(self.hash_overwrite, path)
         if not os.path.isabs(path):
             path = os.path.join(self.origin, path)
             path = os.path.relpath(path)
@@ -205,7 +209,13 @@ def setup_path(package):
     assert package, ("setup_path is used to make all path relative to the current package directory, "
                      "it only works inside of directories and not if the config file is passed directly")
 
-    return RelPath(package.replace('.', '/'))
+    path = package.replace('.', '/')
+    hash_overwrite = None
+    if package.startswith(gs.RECIPE_PREFIX):
+        if gs.RECIPE_PATH == '.':
+            hash_overwrite = path
+            path = os.path.join(gs.RECIPE_PATH, path)
+    return RelPath(path, hash_overwrite=hash_overwrite)
 
 
 def dump(obj, filename):
@@ -309,7 +319,7 @@ def run_job(job, task_name=None, task_id=1, force_resume=False):
             "'%s' is not a valid task name (Valid names: %s)" % (task_name, [t._start for t in job._sis_tasks()])
 
     try:
-        call = gs.SIS_COMMAND + ['worker', os.path.relpath(task.path()), task.name(), str(task_id)]
+        call = task.get_worker_call(task_id)
         if force_resume:
             call.append('--force_resume')
         import subprocess
@@ -878,7 +888,7 @@ def _reload_prefix(prefix):
 
 def reload_recipes():
     """ Reload all recipes """
-    _reload_prefix(gs.RECIPE_DIR)
+    _reload_prefix(gs.RECIPE_PREFIX)
 
 
 def reload_config(config_files=[]):
@@ -892,7 +902,7 @@ def reload_config(config_files=[]):
     global sis_graph
     sis_graph = graph.SISGraph()
 
-    _reload_prefix(gs.CONFIG_DIR)
+    _reload_prefix(gs.CONFIG_PREFIX)
 
     # Load new config
     load_configs(config_files)
@@ -957,3 +967,74 @@ class EnvironmentModifier:
 
     def __repr__(self):
         return repr(self.keep_vars) + ' ' + repr(self.set_vars)
+
+
+def run(obj):
+    """
+    Run and setup all jobs that are contained inside object and all jobs that are necessary.
+    
+    :param obj:
+    :return:
+    """
+
+    def run_helper(job):
+        """
+        Helper function which takes a job and runs it task until it's finished
+
+        :param job: Job to run
+        :return:
+        """
+        assert job._sis_runnable()
+        if not job._sis_finished():
+            print()
+            logging.info("Run Job: %s" % job)
+            job._sis_setup_directory()
+            for task in job._sis_tasks():
+                for task_id in task.task_ids():
+                    #print(job, task, task_id)
+                    if not task.finished(task_id):
+                        print()
+                        logging.info("Run Task: %s %s %s" % (job, task.name(), task_id))
+                        log_file = task.path(gs.JOB_LOG, task_id)
+                        env = os.environ.copy()
+                        env.update(gs.ENVIRONMENT_SETTINGS)
+                        subprocess.check_call(" ".join(task.get_worker_call(task_id)) + ' 2>&1 | tee %s' % log_file,
+                                              shell=True, env=env)
+
+    # Create fresh graph and add object as report since a report can handle all kinds of objects.
+    temp_graph = graph.SISGraph()
+    temp_graph.add_target(graph.OutputReport(output_path='tmp',
+                                             report_values=obj,
+                                             report_template=None,
+                                             required=None,
+                                             update_frequency=0))
+
+    # Update SIS_COMMAND
+    import sys
+    gs.SIS_COMMAND = [sys.executable, '-m', 'sisyphus']
+
+    def get_jobs():
+        """ Helper function to get all relevant jobs"""
+        return {k: v for k, v in temp_graph.get_jobs_by_status(skip_finished=True).items() if k in [gs.STATE_WAITING,
+                                                                                                    gs.STATE_RUNNABLE,
+                                                                                                    gs.STATE_INTERRUPTED,
+                                                                                                    gs.STATE_ERROR]}
+
+    jobs = get_jobs()
+    # Iterate over all runnable jobs until it's done
+    while jobs:
+        # Collect all jobs that can be run
+        todo_list = jobs.get(gs.STATE_RUNNABLE, set())
+        todo_list.update(jobs.get(gs.STATE_INTERRUPTED, set()))
+
+        # Stop loop if no jobs can be run
+        if not todo_list:
+            logging.error(f"Can not finish computation of {obj} some jobs are blockeding")
+            for k, v in temp_graph.get_jobs_by_status(skip_finished=True):
+                logging.error(f"Jobs in state {k} are: {v}")
+            break
+
+        # Actually run the jobs
+        for job in todo_list:
+            run_helper(job)
+        jobs = get_jobs()

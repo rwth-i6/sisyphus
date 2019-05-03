@@ -5,7 +5,6 @@ import pickle
 import pprint
 import psutil
 import pwd
-import signal
 import socket
 import sys
 import subprocess
@@ -99,7 +98,11 @@ class LoggingThread(Thread):
         last_log_time = 0
         max_resources = resources = gs.active_engine.get_job_used_resources(current_process)
         while not self.__stop:
-            resources = gs.active_engine.get_job_used_resources(current_process)
+            try:
+                resources = gs.active_engine.get_job_used_resources(current_process)
+            except psutil.AccessDenied as e:
+                logging.warning('Logging thread got psutil.AccessDenied Exception, subprocess probably ended %s' % str(e))
+                continue
             # Only print log if rss changed at least bey PLOGGING_MIN_CHANGE
             if last_rss is None or abs(last_rss - resources['rss'])/last_rss > gs.PLOGGING_MIN_CHANGE:
                 if not gs.PLOGGING_QUIET:
@@ -180,6 +183,8 @@ def worker_helper(args):
         with open(log_file, 'a') as logfile:
             if is_not_first:
                 logfile.write('\n' + ('#'*80) + '\nRETRY OR CONTINUE TASK\n' + ('#'*80) + '\n\n')
+            # There is probably a better way to redirect the output without starting a subprocess, but all others
+            # that I tried did not catch all of the output
             subprocess.check_call(call, stdout=logfile, stderr=logfile)
         return
 

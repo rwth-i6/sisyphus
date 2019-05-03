@@ -21,8 +21,8 @@ PLOGGING_FILE = 'usage'
 
 # base directories
 BASE_DIR = os.getcwd()
-RECIPE_DIR = "recipe"
-WORK_DIR = 'work'
+CONFIG_PREFIX = "config"
+RECIPE_PREFIX = "recipe"
 
 # settings file
 GLOBAL_SETTINGS_FILE_DEFAULT = "settings.py"

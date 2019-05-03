@@ -1,11 +1,9 @@
-import collections
 import os
 import logging
 
-from importlib.abc import MetaPathFinder
 from importlib.machinery import PathFinder
 
-from sisyphus.global_settings import RECIPE_DIR, CONFIG_DIR, CONFIG_FILE_DEFAULT, CONFIG_FUNCTION_DEFAULT
+import sisyphus.global_settings as gs
 
 
 def load_config_file(filename):
@@ -60,10 +58,10 @@ def load_configs(filenames=None):
     :return: a dict containing all output paths registered in this config
     """
     if not filenames:
-        if os.path.isfile(CONFIG_FILE_DEFAULT):
-            filenames = [CONFIG_FILE_DEFAULT]
-        elif os.path.isdir(CONFIG_DIR):
-            filenames = [CONFIG_FUNCTION_DEFAULT]
+        if os.path.isfile(gs.CONFIG_FILE_DEFAULT):
+            filenames = [gs.CONFIG_FILE_DEFAULT]
+        elif os.path.isdir(gs.CONFIG_PREFIX):
+            filenames = [gs.CONFIG_FUNCTION_DEFAULT]
     assert filenames, "Neither config file nor config directory exists"
 
     if isinstance(filenames, str):
@@ -77,13 +75,14 @@ class RecipeFinder:
 
     @classmethod
     def find_spec(cls, fullname, path, target=None):
-        if any(fullname.startswith(rdir) for rdir in (RECIPE_DIR, CONFIG_DIR)):
-            if path is None:
-                path = [os.path.abspath('.')]
-            elif isinstance(path, str):
-                path = [os.path.abspath(os.path.join('.', path))]
-            spec = PathFinder.find_spec(fullname, path, target)
-            return spec
+        for rprefix, rdir in ((gs.RECIPE_PREFIX, gs.RECIPE_PATH), (gs.CONFIG_PREFIX, gs.CONFIG_PATH)):
+            if fullname.startswith(rprefix):
+                if path is None:
+                    path = [os.path.abspath(rdir)]
+                elif isinstance(path, str):
+                    path = [os.path.abspath(os.path.join(rdir, path))]
+                spec = PathFinder.find_spec(fullname, path, target)
+                return spec
 
     @classmethod
     def invalidate_caches(cls):

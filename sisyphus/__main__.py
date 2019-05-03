@@ -12,8 +12,6 @@ import sys
 from sisyphus.worker import worker
 from sisyphus.manager import manager
 from sisyphus.helper import console
-from sisyphus.loader import RecipeFinder
-from sisyphus.global_settings import update_global_settings_from_file, update_global_settings_from_list
 import sisyphus.global_settings as gs
 
 # Setup logging
@@ -26,9 +24,6 @@ __email__ = "peter@cs.rwth-aachen.de"
 
 def main():
     """ Parses command line arguments and executes commands """
-    # Setup recipe importer
-    sys.meta_path.append(RecipeFinder)
-
     # Setup argument parser
     parser = argparse.ArgumentParser(description=gs.SISYPHUS_LOGO,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -172,7 +167,6 @@ def main():
     # update_global_settings_from_file(args.settings_file)
     # update_global_settings_from_list(args.commandline_settings)
 
-    update_global_settings_from_file(gs.GLOBAL_SETTINGS_FILE_DEFAULT)
     if gs.USE_VERBOSE_TRACEBACK:
         if gs.VERBOSE_TRACEBACK_TYPE == "ipython":
             from IPython.core import ultratb

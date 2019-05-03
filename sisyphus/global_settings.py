@@ -150,12 +150,20 @@ JOB_MAX_NUMBER_OF_LOCKS = 5000
 #: Default function to hash jobs and objects
 SIS_HASH = sisyphus.hash.short_hash
 
-#: Name of config directory
-CONFIG_DIR = "config"
+#: Path to the config directory, not including the directory name 'config'
+CONFIG_PATH = '.'
+
+#: Path to the recipe directory, not including the directory name 'recipe'
+RECIPE_PATH = '.'
+
+#: The work directory
+WORK_DIR = 'work'
+
 # Name default config file if no config directory is found
 CONFIG_FILE_DEFAULT = "config.py"
+
 #: Name of default fuction to call in config directory
-CONFIG_FUNCTION_DEFAULT = "%s.main" % CONFIG_DIR
+CONFIG_FUNCTION_DEFAULT = "%s.main" % CONFIG_PREFIX
 
 #: Name alias directory
 ALIAS_DIR = 'alias'
@@ -199,6 +207,9 @@ PRINT_ERROR_LINES = 40
 
 #: Which command should be called to start sisyphus, can be used to replace the python binary
 SIS_COMMAND = [sys.executable, sys.argv[0]]
+# if this first argument is -m it's missing the module name
+if sys.argv[0] == '-m':
+    SIS_COMMAND += ['sisyphus']
 
 # Parameter to log used resources by each task
 #: Seconds between checks how much memory and cpu a process is using
@@ -311,17 +322,26 @@ def update_global_settings_from_file(filename):
     globals()['GLOBAL_SETTINGS_FILE_CONTENT'] = content
     update_global_settings_from_text(content, filename)
 
+GLOBAL_SETTINGS_COMMANDLINE = []
+ENVIRONMENT_SETTINGS = {}
+ENVIRONMENT_SETTINGS_PREFIX = 'SIS_'
 
-def update_global_settings_from_list(settings_list):
+
+def update_global_settings_from_env():
     """
-    :param list settings_list:
     :return: nothing
     """
-    # skip if no options are given is empty
-    content = '\n'.join(settings_list)
-    globals()['GLOBAL_SETTINGS_COMMANDLINE'] = content
-    if settings_list:
-        update_global_settings_from_text(content, 'COMMANDLINE_SETTINGS')
+    from ast import literal_eval
+    for k, v in os.environ.items():
+        if k.startswith(ENVIRONMENT_SETTINGS_PREFIX):
+            ENVIRONMENT_SETTINGS[k] = v
+            k = k[len(ENVIRONMENT_SETTINGS_PREFIX):]
+            # Try to eval parameter, if not possible use as string
+            try:
+                v = literal_eval(v)
+            except Exception:
+                pass
+            globals()[k] = v
 
 
 # noinspection PyDefaultArgument
@@ -339,8 +359,10 @@ def cached_engine(cache=[]):
         return e  # for better type hinting
     return cache[0]
 
-
 # Parameter used for debugging or profiling
 MEMORY_PROFILE_LOG = None
 
 USE_UI = True
+
+update_global_settings_from_env()
+update_global_settings_from_file(GLOBAL_SETTINGS_FILE_DEFAULT)

@@ -20,6 +20,7 @@ class Path:
     _sis_path = True
     path_type = 'Path'
 
+    # Update RelPath in toolkit if position of hash_overwrite is changed
     def __init__(self, path, creator=None, cached=False, hash_overwrite=None, tags=None,
                  available=None):
         """
@@ -31,6 +32,7 @@ class Path:
         :param function|None available: Overwrite function which tests if path is available.
                                         Gets path as input and must be pickleable
         """
+
         self.creator = creator
         self.users = set()
 

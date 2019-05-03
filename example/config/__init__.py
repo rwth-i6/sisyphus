@@ -1,8 +1,6 @@
+from sisyphus import *
 from recipe import parallel
 from recipe import pipeline
-
-from sisyphus import *
-
 
 @tk.block(cache=True)
 def init(input_file):
@@ -16,3 +14,10 @@ def init(input_file):
 def main():
     input_data = tk.Path('data/5lines.txt', tags={'5lines'})
     tk.register_output('result', init(input_data).out, export_graph=True)
+
+
+if __name__ == '__main__':
+    input_data = tk.Path('data/5lines.txt', tags={'5lines'})
+    output = init(input_data).out
+    tk.run(output)
+    tk.sh(f'cp {output} myoutput')

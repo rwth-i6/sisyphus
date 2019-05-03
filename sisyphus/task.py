@@ -435,3 +435,13 @@ class Task(object):
     def __str__(self):
         return "Task < workdir(%s) name(%s) ids(%s) >" % (
             self.path(), self.name(), ','.join(str(i) for i in self.task_ids()))
+
+    def get_worker_call(self, task_id=None):
+        if isinstance(gs.SIS_COMMAND, list):
+            call = gs.SIS_COMMAND[:]
+        else:
+            call = gs.SIS_COMMAND.split()
+        call += [gs.CMD_WORKER, os.path.relpath(self.path()), self.name()]
+        if task_id is not None:
+            call.append(str(task_id))
+        return call

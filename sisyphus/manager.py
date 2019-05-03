@@ -46,7 +46,6 @@ class JobCleaner(threading.Thread):
 def manager(args):
     """ Manage which job should run next """
 
-
     if args.run:
         if not os.path.isdir(gs.WORK_DIR):
             prompt = '%s does not exist, should I continue? ' \
