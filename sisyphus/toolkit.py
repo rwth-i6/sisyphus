@@ -1029,9 +1029,9 @@ def run(obj):
 
         # Stop loop if no jobs can be run
         if not todo_list:
-            logging.error(f"Can not finish computation of {obj} some jobs are blockeding")
+            logging.error("Can not finish computation of %s some jobs are blockeding" % obj)
             for k, v in temp_graph.get_jobs_by_status(skip_finished=True):
-                logging.error(f"Jobs in state {k} are: {v}")
+                logging.error("Jobs in state %s are: %s" % (k, v))
             break
 
         # Actually run the jobs
