@@ -25,7 +25,7 @@ manager = sisyphus.manager.Manager(sis_graph=sis_graph,
                                    job_engine=job_engine,
                                    callbacks={},
                                    link_outputs=False,
-                                   clear_once=False,
+                                   clear_errors_once=False,
                                    start_computations=True,
                                    auto_print_stat_overview=True)
 
