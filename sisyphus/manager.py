@@ -99,7 +99,8 @@ def manager(args):
         manager = Manager(sis_graph=sis_graph,
                           job_engine=job_engine,
                           link_outputs=args.run,
-                          clear_once=args.clear_once,
+                          clear_errors_once=args.clear_errors_once,
+                          clear_interrupts_once=args.clear_interrupts_once,
                           ignore_once=args.ignore_once,
                           start_computations=args.run,
                           job_cleaner=job_cleaner,
@@ -176,7 +177,8 @@ for pos, state in enumerate([gs.STATE_INPUT_PATH,
 class Manager(threading.Thread):
     def __init__(self, sis_graph, job_engine,
                  link_outputs=True,
-                 clear_once=False,
+                 clear_errors_once=False,
+                 clear_interrupts_once=False,
                  ignore_once=False,
                  start_computations=False,
                  auto_print_stat_overview=True,
@@ -187,14 +189,15 @@ class Manager(threading.Thread):
         :param sisyphus.graph.SISGraph sis_graph:
         :param sisyphus.engine.EngineBase job_engine:
         :param bool link_outputs:
-        :param bool clear_once:
+        :param bool clear_errors_once:
         :param bool start_computations:
         :param bool auto_print_stat_overview:
         :param JobCleaner|None job_cleaner:
         """
         threading.Thread.__init__(self)
         self.start_computations = start_computations
-        self.clear_once = clear_once
+        self.clear_errors_once = clear_errors_once
+        self.clear_interrupts_once = clear_interrupts_once
         self.ignore_once = ignore_once
         self.sis_graph = sis_graph
         self.job_engine = job_engine
@@ -207,7 +210,7 @@ class Manager(threading.Thread):
         self.stop_if_done = True
         self._stop_loop = False
 
-        assert not (self.clear_once and self.ignore_once), "Jobs in error state cannot be both ignored and cleared"
+        assert not (self.clear_errors_once and self.ignore_once), "Jobs in error state cannot be both ignored and cleared"
 
         if gs.SHOW_JOB_TARGETS:
             self.sis_graph.set_job_targets(job_engine)
@@ -226,19 +229,15 @@ class Manager(threading.Thread):
         self.jobs = self.sis_graph.get_jobs_by_status(engine=self.job_engine, skip_finished=skip_finished)
         return self.jobs
 
-    def clear_errors(self):
-        # List errors
-        if (gs.CLEAR_ERROR or self.clear_once) and gs.STATE_ERROR in self.jobs:
-            job_cleared = False
-            for job in self.jobs[gs.STATE_ERROR]:
-                logging.warning('Clearing: %s' % job)
-                job._sis_move()
-                job_cleared = True
-            self.update_jobs()
-            if job_cleared:
-                return True
-        self.clear_once = False
-        return False
+    def clear_states(self, state=gs.STATE_ERROR):
+        # List errors/ interrupts
+        job_cleared = False
+        for job in self.jobs[state]:
+            logging.warning('Clearing: %s' % job)
+            job._sis_move()
+            job_cleared = True
+        self.update_jobs()
+        return job_cleared
 
     def update_state_overview(self):
         self.state_overview = []
@@ -459,17 +458,21 @@ class Manager(threading.Thread):
 
         answer = None
         if gs.STATE_ERROR in self.jobs:
-            if self.clear_once:
-                self.clear_errors()
+            if self.clear_errors_once:
+                self.clear_states(state=gs.STATE_ERROR)
+                self.clear_errors_once = False
             elif self.ignore_once:
                 pass
             else:
                 answer = self.input('Clear jobs in error state? [y/N] ')
                 if answer.lower() == 'y':
-                    self.clear_once = True
-                    self.clear_errors()
+                    self.clear_states(state=gs.STATE_ERROR)
+                    self.clear_errors_once = False
                     self.print_state_overview(verbose=False)
                 answer = None
+        if (gs.STATE_INTERRUPTED in self.jobs) and self.clear_interrupts_once:
+            self.clear_states(state=gs.STATE_INTERRUPTED)
+            self.clear_interrupts_once = False
 
         if self.start_computations:
             answer = 'y'
@@ -496,8 +499,9 @@ class Manager(threading.Thread):
             answer = self.input('Print verbose overview (v), update aliases and outputs (u), '
                            'start manager (y), or exit (n)? ')
 
-        if not self._stop_loop:
-            self.clear_errors()
+        if (not self._stop_loop) and (gs.CLEAR_ERROR or self.clear_errors_once):
+            self.clear_states(state=gs.STATE_ERROR)
+            self.clear_errors_once = False
 
     @tools.default_handle_exception_interrupt_main_thread
     def run(self):
@@ -513,8 +517,10 @@ class Manager(threading.Thread):
 
             self.update_jobs()
 
-            if self.clear_errors():
-                continue
+            if (gs.CLEAR_ERROR or self.clear_errors_once):
+                self.clear_errors_once = False
+                if self.clear_states(state=gs.STATE_ERROR):
+                   continue
 
             if self.auto_print_stat_overview:
                 self.update_state_overview()
@@ -600,7 +606,8 @@ def unittest(args):
         job_engine = engine.Engine()
         m = Manager(sis_graph, job_engine,
                     link_outputs=False,
-                    clear_once=args.clear_once,
+                    clear_errors_once=args.clear_errors_once,
+                    clear_interrupts_once=args.clear_interrupts_once,
                     start_computations=args.run)
         m.run()
 

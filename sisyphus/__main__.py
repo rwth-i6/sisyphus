@@ -50,9 +50,13 @@ def main():
     parser_manager.set_defaults(func=manager)
     parser_manager.add_argument("-r", dest="run", default=False,
                                 action='store_true', help="Run the given task")
-    parser_manager.add_argument("-co", dest="clear_once", action="store_true",
+    parser_manager.add_argument("-co", dest="clear_errors_once", action="store_true",
                                 default=False,
                                 help="Move jobs aside that are in an error "
+                                     "state when the manager runs the first time")
+    parser_manager.add_argument("-cio", dest="clear_interrupts_once", action="store_true",
+                                default=False,
+                                help="Move jobs aside that are in an interrupt "
                                      "state when the manager runs the first time")
     parser_manager.add_argument("-io", dest="ignore_once", action="store_true",
                                 default=False,

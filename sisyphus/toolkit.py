@@ -617,7 +617,7 @@ def start_manager(job_engine=None, start_computations=False):
     return sisyphus.manager.Manager(sis_graph=sis_graph,
                                     job_engine=job_engine,
                                     link_outputs=False,
-                                    clear_once=False,
+                                    clear_errors_once=False,
                                     start_computations=start_computations,
                                     auto_print_stat_overview=False)
 
