@@ -13,6 +13,7 @@ import os
 import time
 import pprint
 import threading
+from typing import DefaultDict, Optional, List
 from multiprocessing.pool import ThreadPool
 
 
@@ -374,7 +375,9 @@ class SISGraph(object):
             for i in recursive_depth(node):
                 yield i
 
-    def get_jobs_by_status(self, nodes=None, engine=None, skip_finished=False):
+    def get_jobs_by_status(self, nodes:Optional[List]=None,
+                           engine: Optional=None,
+                           skip_finished: bool=False) -> DefaultDict[str, List[Job]]:
         """ Return all jobs needed to finish output in dictionary with current status as key
 
         :param nodes: all nodes that will be checked, defaults to all output nodes in graph

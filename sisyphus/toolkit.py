@@ -62,6 +62,10 @@ import sisyphus.global_settings as gs
 from sisyphus import graph
 
 
+class BlockedWorkflow(Exception):
+    pass
+
+
 # Functions mainly useful in Job definitions
 def zipped(filename):
     """ Check if given file is zipped
@@ -991,7 +995,6 @@ def run(obj):
             job._sis_setup_directory()
             for task in job._sis_tasks():
                 for task_id in task.task_ids():
-                    #print(job, task, task_id)
                     if not task.finished(task_id):
                         print()
                         logging.info("Run Task: %s %s %s" % (job, task.name(), task_id))
@@ -1015,10 +1018,8 @@ def run(obj):
 
     def get_jobs():
         """ Helper function to get all relevant jobs"""
-        return {k: v for k, v in temp_graph.get_jobs_by_status(skip_finished=True).items() if k in [gs.STATE_WAITING,
-                                                                                                    gs.STATE_RUNNABLE,
-                                                                                                    gs.STATE_INTERRUPTED,
-                                                                                                    gs.STATE_ERROR]}
+        filter_list = (gs.STATE_WAITING, gs.STATE_RUNNABLE, gs.STATE_INTERRUPTED, gs.STATE_ERROR)
+        return {k: v for k, v in temp_graph.get_jobs_by_status(skip_finished=True).items() if k in filter_list}
 
     jobs = get_jobs()
     # Iterate over all runnable jobs until it's done
@@ -1029,10 +1030,11 @@ def run(obj):
 
         # Stop loop if no jobs can be run
         if not todo_list:
-            logging.error(f"Can not finish computation of {obj} some jobs are blockeding")
-            for k, v in temp_graph.get_jobs_by_status(skip_finished=True):
-                logging.error(f"Jobs in state {k} are: {v}")
-            break
+            logging.error(f"Can not finish computation of {obj} some jobs are blocking")
+            for k, v in temp_graph.get_jobs_by_status(skip_finished=True).items():
+                if k != gs.STATE_INPUT_PATH:
+                    logging.warning(f"Jobs in state {k} are: {v}")
+            raise BlockedWorkflow(f"Can not finish computation of {obj} some jobs are blocking")
 
         # Actually run the jobs
         for job in todo_list:
