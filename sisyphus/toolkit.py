@@ -38,7 +38,6 @@ Useful examples::
     tk.cleaner(clean_job_dir=True, clean_work_dir=True, mode='remove')
 """
 
-import collections
 import glob
 import gzip
 import logging
@@ -47,19 +46,17 @@ import pickle
 import shutil
 import tarfile
 import tempfile
+from typing import Union, Any, List, Optional
 import subprocess
 
 from sisyphus.tools import sh, extract_paths
-
 from sisyphus.block import block, sub_block, set_root_block
+
 from sisyphus.job_path import Path, Variable
 from sisyphus.job import Job
 from sisyphus.loader import load_configs
-
-from sisyphus.global_settings import STATE_ERROR, STATE_INTERRUPTED, STATE_RUNNING, STATE_FINISHED
-import sisyphus.global_settings as gs
-
 from sisyphus import graph
+import sisyphus.global_settings as gs
 
 
 class BlockedWorkflow(Exception):
@@ -67,16 +64,16 @@ class BlockedWorkflow(Exception):
 
 
 # Functions mainly useful in Job definitions
-def zipped(filename):
+def zipped(filename: Union[Path, str]) -> bool:
     """ Check if given file is zipped
 
-    :param (Path/str): File to be checked
+    :param filename (Path/str): File to be checked
     :return (bool): True if input file is zipped"""
     with open(str(filename), 'rb') as f:
         return f.read(2) == b'\x1f\x8b'
 
 
-class mktemp(object):
+class mktemp:
     """ Object to be used by the with statement.
     creates temporary file that will be delete at exit. Can be used like this::
 
@@ -102,7 +99,7 @@ class mktemp(object):
                 os.unlink(self.temp_path)
 
 
-def input_path(path):
+def input_path(path: Union[Path, str]) -> Path:
     """Ensures a given input is a Path. Strings are automatically converted into Path objects
 
     :param path: path that should be checked
@@ -140,12 +137,15 @@ def bundle_to_str(bundle):
 
 sis_graph = graph.SISGraph()
 
+
 # graph macros
 def find_job(pattern):
     return sis_graph.find(pattern, mode="job")
 
+
 def find_path(pattern):
     return sis_graph.find(pattern, mode="path")
+
 
 def register_output(name, value, export_graph=False):
     """
@@ -191,12 +191,14 @@ class Object:
 
 
 class RelPath:
-
+    """
+    Creates an object that will create a Path object relative to the current module if called
+    """
     def __init__(self, origin, hash_overwrite=None):
         self.origin = origin
         self.hash_overwrite = hash_overwrite
 
-    def __call__(self, path, *args, **kwargs):
+    def __call__(self, path: str, *args, **kwargs) -> Path:
         if self.hash_overwrite and 'hash_overwrite' not in kwargs and len(args) < 3:
             kwargs['hash_overwrite'] = os.path.join(self.hash_overwrite, path)
         if not os.path.isabs(path):
@@ -205,8 +207,11 @@ class RelPath:
         return Path(path, *args, **kwargs)
 
 
-def setup_path(package):
+def setup_path(package: str) -> RelPath:
     """
+    Should be called like ```rel_path = setup_path(__package__)``` which setups RelPath to create Path objects
+    relative to the current module.
+
     :param str package:
     :rtype: RelPath
     """
@@ -222,7 +227,7 @@ def setup_path(package):
     return RelPath(path, hash_overwrite=hash_overwrite)
 
 
-def dump(obj, filename):
+def dump(obj: Any, filename: str):
     """ Dumps object using pickle in zipped file, creates directory if needed
 
     :param obj: Object to pickle
@@ -235,7 +240,7 @@ def dump(obj, filename):
         pickle.dump(obj, f)
 
 
-def load_file(path):
+def load_file(path: str) -> Any:
     """ Load object from pickled file, works with zipped and unzipped files
 
     :param str path: Path to pickled file
@@ -247,7 +252,7 @@ def load_file(path):
 
 
 # Helper functions mainly used in the console
-def load_job(path):
+def load_job(path: str) -> Job:
     """ Load job from job directory even if it is already cleaned up
 
     :param path(str): Path to job directory
@@ -274,7 +279,7 @@ def load_job(path):
     return graph
 
 
-def setup_job_directory(job):
+def setup_job_directory(job: Job):
     """ Setup the work directory of the given job.
 
     :param Job|Path job: Job which needs work directory
@@ -296,7 +301,7 @@ def setup_job_directory(job):
         print(type(job))
 
 
-def run_job(job, task_name=None, task_id=1, force_resume=False):
+def run_job(job: Job, task_name: str=None, task_id: int=1, force_resume: bool=False):
     """
     Run job directly in console window.
 
@@ -340,7 +345,7 @@ def run_job(job, task_name=None, task_id=1, force_resume=False):
         traceback.print_exc()
 
 
-def remove_job_and_descendants(jobs, mode='remove'):
+def remove_job_and_descendants(jobs: Union[str, Path, Job, List[Union[str, Path, Job]]], mode: str='remove') -> bool:
     """
     Remove all jobs that depend on the given jobs/paths.
 
@@ -407,7 +412,7 @@ def remove_job_and_descendants(jobs, mode='remove'):
             print("Abort")
 
 
-def import_work_directory(directories, mode='dryrun'):
+def import_work_directory(directories: Union[str, List[str]], mode='dryrun'):
     """
     Link or copy finished jobs from other work directories.
 
@@ -435,7 +440,11 @@ def import_work_directory(directories, mode='dryrun'):
         sis_graph.for_all_nodes(import_directory, bottom_up=True)
 
 
-def cleaner(clean_job_dir=False, clean_work_dir=False, mode='dryrun', keep_value=0, only_remove_current_graph=False):
+def cleaner(clean_job_dir: bool=False,
+            clean_work_dir: bool=False,
+            mode: str='dryrun',
+            keep_value: int=0,
+            only_remove_current_graph: bool=False):
     """ Free wasted disk space.
     Creates a list of all possible path in the current setup and deletes all directories that
     are not part of the current graph.
@@ -605,7 +614,7 @@ def start_manager(job_engine=None, start_computations=False):
                                     auto_print_stat_overview=False)
 
 
-def job_info(job):
+def job_info(job: Job):
     """ Prints information about given job to stdout
 
     :param job(Job):
@@ -689,7 +698,7 @@ def print_graph(targets=None, required_inputs=None):
             print()
 
 
-def export_graph(output_file=None):
+def export_graph(output_file: Optional[str]=None):
     """
     Needs more testing
 
@@ -895,7 +904,7 @@ def reload_recipes():
     _reload_prefix(gs.RECIPE_PREFIX)
 
 
-def reload_config(config_files=[]):
+def reload_config(config_files: List[str]=[]):
     """ Reset state, reload old config files, and load given config_files
 
     :param config_files([str, ...]):
@@ -973,7 +982,7 @@ class EnvironmentModifier:
         return repr(self.keep_vars) + ' ' + repr(self.set_vars)
 
 
-def run(obj):
+def run(obj: Any):
     """
     Run and setup all jobs that are contained inside object and all jobs that are necessary.
     
