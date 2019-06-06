@@ -995,11 +995,11 @@ def run(obj: Any):
 
         # Stop loop if no jobs can be run
         if not todo_list:
-            logging.error(f"Can not finish computation of {obj} some jobs are blocking")
+            logging.error("Can not finish computation of %s some jobs are blocking" % obj)
             for k, v in temp_graph.get_jobs_by_status(skip_finished=True).items():
                 if k != gs.STATE_INPUT_PATH:
-                    logging.warning(f"Jobs in state {k} are: {v}")
-            raise BlockedWorkflow(f"Can not finish computation of {obj} some jobs are blocking")
+                    logging.error("Jobs in state %s are: %s" % (k, v))
+            raise BlockedWorkflow("Can not finish computation of %s some jobs are blocking" % obj)
 
         # Actually run the jobs
         for job in todo_list:

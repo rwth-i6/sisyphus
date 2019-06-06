@@ -2,7 +2,7 @@
 # encoding: utf-8
 
 """
-Framework to setup complex work flows
+Framework to setup complex workflows
 
 """
 from sisyphus.__main__ import main
