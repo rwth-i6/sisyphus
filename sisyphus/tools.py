@@ -442,3 +442,46 @@ class MemoryProfiler:
             self.log_stream.write("%s other: %.1f KiB\n" % (len(other), size / 1024))
         self.log_stream.write("Total allocated size: %.1f KiB\n\n" % (total / 1024))
         self.log_stream.flush()
+
+
+class EnvironmentModifier:
+    """
+    A class to cleanup the environment before a job starts
+    """
+
+    def __init__(self):
+        self.keep_vars = set()
+        self.set_vars = {}
+
+    def keep(self, var):
+        if type(var) == str:
+            self.keep_vars.add(var)
+        else:
+            self.keep_vars.update(var)
+
+    def set(self, var, value=None):
+        if type(var) == dict:
+            self.set_vars.update(var)
+        else:
+            self.set_vars[var] = value
+
+    def modify_environment(self):
+        import os
+        import string
+
+        orig_env = dict(os.environ)
+        keys = list(os.environ.keys())
+        for k in keys:
+            if k not in self.keep_vars:
+                del os.environ[k]
+        for k, v in self.set_vars.items():
+            if type(v) == str:
+                os.environ[k] = string.Template(v).substitute(orig_env)
+            else:
+                os.environ[k] = str(v)
+
+        for k, v in os.environ.items():
+            logging.debug('environment var %s=%s' % (k, v))
+
+    def __repr__(self):
+        return repr(self.keep_vars) + ' ' + repr(self.set_vars)

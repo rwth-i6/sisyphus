@@ -203,9 +203,9 @@ class Job(object, metaclass=JobSingleton):
         self._sis_is_finished = False
         self._sis_setup_since_restart = False
 
+        self._sis_environment = None
         if gs.CLEANUP_ENVIRONMENT:
-            from sisyphus.toolkit import EnvironmentModifier
-            self._sis_environment = EnvironmentModifier()
+            self._sis_environment = tools.EnvironmentModifier()
             self._sis_environment.keep(gs.DEFAULT_ENVIRONMENT_KEEP)
             self._sis_environment.set(gs.DEFAULT_ENVIRONMENT_SET)
 

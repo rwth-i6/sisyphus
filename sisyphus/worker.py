@@ -220,7 +220,7 @@ def worker_helper(args):
     gs.active_engine.init_worker(task)
 
     # cleanup environment
-    if hasattr(task._job, '_sis_environment'):
+    if hasattr(task._job, '_sis_environment') and task._job._sis_environment:
         task._job._sis_environment.modify_environment()
 
     # run task
