@@ -140,7 +140,15 @@ sis_graph = graph.SISGraph()
 
 # graph macros
 def find_job(pattern):
-    return sis_graph.find(pattern, mode="job")
+    jobs = sis_graph.find(pattern, mode="job")
+    if len(jobs) == 0:
+        print("No job found")
+        return None
+    else:
+        print("Jobs found:")
+        for i, job in enumerate(jobs):
+            print("%i: %s" % (i, str(job)))
+        return jobs
 
 
 def find_path(pattern):
