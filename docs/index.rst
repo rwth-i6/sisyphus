@@ -27,6 +27,7 @@ Sisyphus requires a Python 3.5 installation with the following additional librar
 
   Optional to compile documentation:
    - sudo pip3 install Sphinx
+   - sudo pip3 install sphinx_rtd_theme
 
   Optional if virtual file system should be used:
    - sudo pip3 install fusepy
