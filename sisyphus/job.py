@@ -18,9 +18,9 @@ import subprocess
 import sys
 import time
 import traceback
+from typing import List
 
-from sisyphus import block, tools
-
+from sisyphus import block, tools, Task
 from sisyphus.job_path import Path, Variable
 
 # Definition of constants
@@ -708,7 +708,7 @@ class Job(metaclass=JobSingleton):
                 tasks -= 1
                 task.print_error(lines)
 
-    def _sis_move(self):
+    def _sis_move(self) -> None:
         """ Move job directory a side and set up a new one """
         path = self._sis_path()
         i = 1
@@ -721,7 +721,7 @@ class Job(metaclass=JobSingleton):
         for t in self._sis_tasks():
             t.reset_cache()
 
-    def _sis_delete(self):
+    def _sis_delete(self) -> None:
         """ Delete job directory """
         path = self._sis_path()
         logging.info('Delete: %s' % path)
@@ -733,7 +733,7 @@ class Job(metaclass=JobSingleton):
         except FileNotFoundError:
             logging.warning('File not Found: %s' % path)
 
-    def _sis_tasks(self):
+    def _sis_tasks(self) -> List[Task]:
         """
         :return: all tasks of this job
         :rtype: list[sisyphus.task.Task]

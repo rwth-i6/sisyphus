@@ -232,7 +232,7 @@ class Task(object):
                                                     combine=combine, minimal_file_age=minimal_time_since_change)
         return current_state
 
-    def finished(self, task_id=None, update=None):
+    def finished(self, task_id=None, update=None) -> bool:
         minimal_time_since_change = 0
         if not gs.SKIP_IS_FINISHED_TIMEOUT:
             minimal_time_since_change = gs.WAIT_PERIOD_JOB_FS_SYNC + gs.WAIT_PERIOD_JOB_CLEANUP
