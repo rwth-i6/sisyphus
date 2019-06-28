@@ -976,6 +976,7 @@ def run(obj: Any):
                         env.update(gs.ENVIRONMENT_SETTINGS)
                         subprocess.check_call(" ".join(task.get_worker_call(task_id)) + ' 2>&1 | tee %s' % log_file,
                                               shell=True, env=env)
+                        assert task.finished(task_id), "Failed to run task %s %s %s" % (job, task.name(), task_id)
 
     # Create fresh graph and add object as report since a report can handle all kinds of objects.
     temp_graph = graph.SISGraph()
