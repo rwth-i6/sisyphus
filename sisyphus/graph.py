@@ -523,7 +523,7 @@ class SISGraph(object):
         # recursive function to run through tree
         def runner(obj, path, only_check):
             if id(obj) in visited:
-                raise StopIteration
+                return
             else:
                 visited[id(obj)] = obj
 
@@ -531,7 +531,7 @@ class SISGraph(object):
                 try:
                     sis_id = obj._sis_id()
                     if sis_id in visited:
-                        raise StopIteration
+                        return
                     else:
                         visited[sis_id] = obj
                         if only_check:
@@ -557,7 +557,7 @@ class SISGraph(object):
                         check_later[id(obj)][1].append(path)
                     else:
                         check_later[id(obj)] = (obj, [path])
-                    raise StopIteration
+                    return
             elif isinstance(obj, list):
                 for name, value in enumerate(obj):
                     yield from runner(value, path+[name], only_check=only_check)
