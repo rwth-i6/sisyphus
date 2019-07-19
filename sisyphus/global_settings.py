@@ -145,7 +145,7 @@ MANAGER_SUBMIT_WORKER = 10
 
 #: How many locks can be used by all jobs (one lock per job). If there are more jobs than locks, locks are reused
 #: This could lead to a slowdown, but the number of locks per process is limited
-JOB_MAX_NUMBER_OF_LOCKS = 5000
+JOB_MAX_NUMBER_OF_LOCKS = 100
 
 #: Default function to hash jobs and objects
 SIS_HASH = sisyphus.hash.short_hash

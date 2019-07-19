@@ -300,7 +300,7 @@ class Job(object, metaclass=JobSingleton):
         if '_sis_alias' in state:
             self._sis_aliases = {state['_sis_alias']}
         if not hasattr(self, '_sis_job_lock'):
-            self._sis_job_lock = multiprocessing.Lock()
+            self._sis_job_lock = self.get_lock()
         self._sis_blocks = set()
         self._sis_cleanable_cache = False
         for i in self._sis_inputs:
@@ -311,16 +311,25 @@ class Job(object, metaclass=JobSingleton):
         logging.debug('Pickle: %s' % self._sis_id())
         return self._sis_id(),
 
+    def _sis_update_possible(self):
+        """
+        True if it's possible that the job requirements change which is true if the update method is overwritten
+        :return:
+        """
+        return self.update.__code__ is Job.update.__code__
+
     def _sis_update_inputs(self):
         """ Checks for new inputs
         returns true if inputs changed
         """
-        previous_blocks = block.active_blocks
-        block.active_blocks = self._sis_blocks
-        previous = self._sis_inputs.copy()
-        self.update()
-        block.active_blocks = previous_blocks
-        return previous != self._sis_inputs
+        with self._sis_job_lock:
+            # TODO active blocks is currently not thread save, but it's not critical since it doesn't effect the graph
+            previous_blocks = block.active_blocks
+            block.active_blocks = self._sis_blocks
+            previous = self._sis_inputs.copy()
+            self.update()
+            block.active_blocks = previous_blocks
+            return previous != self._sis_inputs
 
     # Helper functions
     def _sis_path(self, path_type=None, task_id=None, abspath=False):
@@ -583,22 +592,26 @@ class Job(object, metaclass=JobSingleton):
         else:
             return gs.STATE_WAITING
 
-    def _sis_runnable(self):
-        """ True if all inputs are available """
-        with self._sis_job_lock:
-            return self._sis_runnable_helper()
-
-    def _sis_runnable_helper(self):
-        """ True if all inputs are available """
-        for path in self._sis_inputs:
+    def _sis_all_path_available(self):
+        """ True if all current inputs are available no update of the inputs is done """
+        for path in list(self._sis_inputs):
             if not path.available(debug_info=self):
                 return False
+        return True
+
+    def _sis_runnable(self):
+        """ True if all inputs are available, also checks if new inputs are requested """
+
+        if not self._sis_update_possible():
+            # Short cut used for most jobs
+            return self._sis_all_path_available()
 
         # Recursively check for new inputs
-        if self._sis_update_inputs():
-            return self._sis_runnable_helper()
-        else:
-            return True
+        while self._sis_all_path_available() and self._sis_update_inputs():
+            pass
+
+        # One last check in case sis_update_inputs was run in a parallel thread
+        return self._sis_all_path_available()
 
     def _sis_migrate_directory(self, src, mode='link'):
         """ Migrate from previously finished directory
