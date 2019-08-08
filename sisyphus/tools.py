@@ -180,6 +180,7 @@ def sh(command,
        except_return_codes=(0,),
        sis_quiet=False,
        sis_replace={},
+       include_stderr=False,
        **kwargs):
     """ Calls a external shell and
     replaces {args} with job inputs, outputs, args
@@ -208,7 +209,8 @@ def sh(command,
 
     try:
         if capture_output:
-            return subprocess.check_output(command, shell=True, executable=executable).decode()
+            return subprocess.check_output(command, shell=True, executable=executable,
+                                           stderr=subprocess.STDOUT if include_stderr else subprocess.DEVNULL).decode()
         else:
             subprocess.check_call(command, shell=True, executable=executable)
     except subprocess.CalledProcessError as e:
