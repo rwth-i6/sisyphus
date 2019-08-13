@@ -316,7 +316,7 @@ class Job(object, metaclass=JobSingleton):
         True if it's possible that the job requirements change which is true if the update method is overwritten
         :return:
         """
-        return self.update.__code__ is Job.update.__code__
+        return self.update.__code__ is not Job.update.__code__
 
     def _sis_update_inputs(self):
         """ Checks for new inputs
