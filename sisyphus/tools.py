@@ -210,7 +210,7 @@ def sh(command,
     try:
         if capture_output:
             return subprocess.check_output(command, shell=True, executable=executable,
-                                           stderr=subprocess.STDOUT if include_stderr else subprocess.DEVNULL).decode()
+                                           stderr=subprocess.STDOUT if include_stderr else None).decode()
         else:
             subprocess.check_call(command, shell=True, executable=executable)
     except subprocess.CalledProcessError as e:
