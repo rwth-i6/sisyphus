@@ -720,7 +720,10 @@ class Job(object, metaclass=JobSingleton):
         path = self._sis_path()
         logging.info('Delete: %s' % path)
         try:
-            shutil.rmtree(path)
+            if os.path.islink(path):
+                os.unlink(path)
+            else:
+                shutil.rmtree(path)
         except FileNotFoundError:
             logging.warning('File not Found: %s' % path)
 
