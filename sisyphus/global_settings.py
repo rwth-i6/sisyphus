@@ -41,7 +41,10 @@ def engine():
     """
     import psutil
     cpu_count = psutil.cpu_count()
-    logging.info('No custom engine setup, using default engine: LocalEngine(cpu=%i, gpu=0)' % cpu_count)
+
+    if ENGINE_NOT_SETUP_WARNING:
+        logging.info('No custom engine setup, using default engine: LocalEngine(cpu=%i, gpu=0)' % cpu_count)
+
     from sisyphus.localengine import LocalEngine
     return LocalEngine(cpu=cpu_count, gpu=0)
 
@@ -363,6 +366,9 @@ def cached_engine(cache=[]):
 MEMORY_PROFILE_LOG = None
 
 USE_UI = True
+
+# Set to False to disable Warning of unset engine
+ENGINE_NOT_SETUP_WARNING = True
 
 update_global_settings_from_env()
 update_global_settings_from_file(GLOBAL_SETTINGS_FILE_DEFAULT)
