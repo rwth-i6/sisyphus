@@ -724,11 +724,11 @@ def export_graph(output_file: Optional[str]=None):
 
 def migrate_graph(input_file=None, work_source=None, mode='dryrun'):
     """
-    Needs more testing
+    migrate the graph from the provided graph file to the current graph
 
-    :param input_file:
-    :param work_source:
-    :param mode:
+    :param str input_file: path to the graph file
+    :param str|None work_source: path to the work folder, if None use the local work folder
+    :param str mode: dryrun, link, copy, move, move_and_link, hardlink_or_copy, hardlink_or_link, the default is dryrun
     :return:
     """
     sis_graph.update_nodes()
