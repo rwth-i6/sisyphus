@@ -620,6 +620,9 @@ class Job(object, metaclass=JobSingleton):
         """
 
         dst = self._sis_path()
+        if dst.startswith("./"):
+            dst = dst[2:]
+
         # don't do anything if it's the same directory
         if src == dst:
             return False
