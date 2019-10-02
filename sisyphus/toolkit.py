@@ -582,7 +582,10 @@ def cleaner(clean_job_dir: bool=False,
                         if os.path.islink(k):
                             os.unlink(k)
                         else:
-                            shutil.rmtree(k)
+                            try:
+                                shutil.rmtree(k)
+                            except OSError as error:
+                                print(error)
                     else:
                         assert False
             else:
