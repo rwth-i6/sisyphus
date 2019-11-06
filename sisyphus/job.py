@@ -273,13 +273,16 @@ class Job(object, metaclass=JobSingleton):
         with gzip.open(self._sis_path(gs.JOB_SAVE), 'w') as f:
             pickle.dump(self, f)
 
-        with open(self._sis_path(gs.JOB_INFO), 'w') as f:
+        with open(self._sis_path(gs.JOB_INFO), 'w', encoding='utf-8') as f:
             for tag in self.tags:
                 f.write('TAG: %s\n' % tag)
             for i in self._sis_inputs:
                 f.write('INPUT: %s\n' % i)
             for key, value in self._sis_kwargs.items():
-                f.write('PARAMETER: %s: %s\n' % (key, value))
+                try:
+                    f.write('PARAMETER: %s: %s\n' % (key, value))
+                except UnicodeEncodeError as e:
+                    f.write('PARAMETER: %s: <UnicodeEncodeError: %s>\n' % (key, e))
 
     def __getstate__(self):
         d = self.__dict__.copy()
