@@ -1,8 +1,8 @@
 import os
 import logging
-
+import importlib
+from ast import literal_eval
 from importlib.machinery import PathFinder
-
 import sisyphus.global_settings as gs
 
 
@@ -18,30 +18,24 @@ def load_config_file(filename):
             '__package__': None,
             '__doc__': None,
         }
-        try:
-            with open(filename, encoding='utf-8') as f:
-                code = f.read() + "\n"
-        except IOError as e:
-            if e.errno != 2:
-                raise e
 
-            # hack to load function directly if file doesn't exist
-            if '(' in filename:
-                filename, parameters = filename.split('(', 1)
-                parameters = '(' + parameters
-            else:
-                parameters = '()'
+        # Check if file parameters are given
+        if '(' in filename:
+            filename, parameters = filename.split('(', 1)
+            parameters, _ = parameters.rsplit(')', 1)
+            parameters = literal_eval('(%s,)' % parameters)
+        else:
+            parameters = None
 
-            filename = filename.replace(os.path.sep, '.')  # allows to use tab completion for file selection
-
-            import_path, function_name = filename.rsplit('.', 1)
-
-            code = "import %s\n%s.%s%s\n" % (import_path, import_path, function_name, parameters)
-            logging.debug("Code created on the fly:\n%s" % code)
-
-        # compile is needed for a nice trace back
-        # TODO switch to use importlib
-        exec(compile(code, filename, "exec"), globals_)
+        filename = filename.replace(os.path.sep, '.')  # allows to use tab completion for file selection
+        assert all(part.isidentifier() for part in filename.split('.')), "Config name is invalid: %s" % filename
+        module_name, function_name = filename.rsplit('.', 1)
+        config = importlib.import_module(module_name)
+        if parameters is not None:
+            getattr(config, function_name)(*parameters)
+        elif function_name != 'py':
+            # If filename ends on py and no parameters are given we assume we should only read the config file
+            getattr(config, function_name)()
 
     except AttributeError as e:
         # TODO needs to be updated or removed
