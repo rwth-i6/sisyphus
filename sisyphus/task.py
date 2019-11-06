@@ -366,7 +366,7 @@ class Task(object):
                         elif self.running(task_id):
                             return gs.STATE_RUNNING
                         history = [] if engine is None else engine.get_submit_history(self)
-                        if history and len(history[task_id]) > 3:  # TODO make it an global setting
+                        if history and len(history[task_id]) > gs.MAX_SUBMIT_RETRIES:
                             # More then three tries to run this task, something is wrong
                             return gs.STATE_RETRY_ERROR
                         else:

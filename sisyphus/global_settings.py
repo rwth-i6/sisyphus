@@ -150,6 +150,9 @@ MANAGER_SUBMIT_WORKER = 10
 #: This could lead to a slowdown, but the number of locks per process is limited
 JOB_MAX_NUMBER_OF_LOCKS = 100
 
+#: How often sisyphus will try to resubmit a task to the engine before returning a RETRY_ERROR
+MAX_SUBMIT_RETRIES = 3
+
 #: Default function to hash jobs and objects
 SIS_HASH = sisyphus.hash.short_hash
 
