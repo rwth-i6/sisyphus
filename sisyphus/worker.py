@@ -12,6 +12,7 @@ import time
 from threading import Thread, Condition
 
 import sisyphus.global_settings as gs
+import sisyphus.job_path
 
 
 def format_time(t):
@@ -198,6 +199,11 @@ def worker_helper(args):
             else:
                 logging.error("Path not available: %s" % path)
         assert False, "Job isn't runnable, probably some inputs are not ready"
+
+    # Make sure that the own job outputs are not cached
+    for name, path in job._sis_outputs.items():
+        path.cached = False
+
     # find task
     task = None
     for task_check in job._sis_tasks():
@@ -216,6 +222,7 @@ def worker_helper(args):
     logging_thread = LoggingThread(job, task, task_id)
     logging_thread.start()
 
+    sisyphus.job_path.Path.cacheing_enabled = True
     resume_job = False
     gs.active_engine.init_worker(task)
 

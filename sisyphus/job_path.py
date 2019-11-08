@@ -19,6 +19,7 @@ class Path:
 
     _sis_path = True
     path_type = 'Path'
+    cacheing_enabled = False
 
     # Update RelPath in toolkit if position of hash_overwrite is changed
     def __init__(self, path, creator=None, cached=False, hash_overwrite=None, tags=None,
@@ -154,7 +155,7 @@ class Path:
             return os.path.join(gs.BASE_DIR, path)
 
     def __str__(self):
-        if self.cached:
+        if Path.cacheing_enabled and self.cached:
             return gs.file_caching(self.get_path())
         else:
             return self.get_path()
