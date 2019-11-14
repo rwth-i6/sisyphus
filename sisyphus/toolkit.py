@@ -1038,7 +1038,7 @@ def run(obj: Any, quiet: bool = False):
                         if quiet:
                             call += ' --redirect_output'
                         else:
-                            call += ' 2>&1 %s' % log_file
+                            call += ' 2>&1 > %s' % log_file
                         subprocess.check_call(call, shell=True, env=env)
                         assert task.finished(task_id), "Failed to run task %s %s %s" % (job, task.name(), task_id)
 
@@ -1053,6 +1053,7 @@ def run(obj: Any, quiet: bool = False):
     # Update SIS_COMMAND
     import sys
     gs.SIS_COMMAND = [sys.executable, '-m', 'sisyphus']
+    gs.SKIP_IS_FINISHED_TIMEOUT = True
 
     def get_jobs():
         """ Helper function to get all relevant jobs"""
@@ -1078,3 +1079,5 @@ def run(obj: Any, quiet: bool = False):
         for job in todo_list:
             run_helper(job)
         jobs = get_jobs()
+
+    gs.SKIP_IS_FINISHED_TIMEOUT = False
