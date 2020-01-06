@@ -189,8 +189,22 @@ def worker_helper(args):
             subprocess.check_call(call, stdout=logfile, stderr=logfile)
         return
 
-    with gzip.open(os.path.join(args.jobdir, gs.JOB_SAVE)) as f:
-        job = pickle.load(f)
+    try:
+        with gzip.open(os.path.join(args.jobdir, gs.JOB_SAVE)) as f:
+            job = pickle.load(f)
+    except FileNotFoundError as e:
+        answer = input('Job does not exists, try to create? (y/N) ').lower()
+        if answer in ('y'):
+            from sisyphus.loader import load_configs
+            from sisyphus import toolkit as tk
+            load_configs()
+            job_list = tk.find_job(os.path.basename(args.jobdir))
+            assert len(job_list) == 1, "none or multiple Jobs were found"
+            tk.setup_job_directory(job_list[0])
+            job = job_list[0]
+        else:
+            raise e
+
 
     if not job._sis_runnable():
         for path in job._sis_inputs:
