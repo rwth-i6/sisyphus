@@ -7,9 +7,10 @@ import pickle
 
 import sisyphus.tools as tools
 import sisyphus.global_settings as gs
+from sisyphus.delayed_ops import DelayedBase
 
 
-class Path:
+class Path(DelayedBase):
     """
     Object do hold the connecting path to files:
 
@@ -153,6 +154,9 @@ class Path:
             return path
         else:
             return os.path.join(gs.BASE_DIR, path)
+
+    def get(self):
+        return self.get_path()
 
     def __str__(self):
         if Path.cacheing_enabled and self.cached:

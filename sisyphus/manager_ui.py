@@ -63,7 +63,7 @@ help_text = """Welcome to the sisyphus manager interface and its currently very 
 
 %s
 Quit the program by pressing esc or q
-Press enter While the log window is active to view the whole log history with less
+Press enter while the log window is active to view the whole log history with less
 Press enter on selected job to see more details
 Enter object view with enter, space or right arrow key
 Go back to last object with backspace or left arrow key

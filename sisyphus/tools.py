@@ -107,6 +107,17 @@ def sis_hash(obj):
     return gs.SIS_HASH(obj)
 
 
+def try_get(v):
+    """ Tries to call the get method, if an attribute error is raise return the original value.
+    Useful to convert a sisyphus path or variable into the stored object
+    """
+
+    try:
+        return v.get()
+    except AttributeError:
+        return v
+
+
 class execute_in_dir(object):
 
     """ Object to be used by the with statement.

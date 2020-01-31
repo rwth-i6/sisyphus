@@ -105,5 +105,21 @@ class PathTest(unittest.TestCase):
         path = Path('lm.gz', mjob, available=path_available_true)
         self.assertEqual(path.available(), True)
 
+    def check_only_get_eq(self, a, b):
+        """ Check that a and b are normally not equal, but are equal after calling get """
+        self.assertNotEqual(a, b)
+        self.assertEqual(a.get(), b)
+
+    def test_path_delay(self):
+        mjob = MockJob('test/me.1234')
+        path = Path('lm.gz', mjob)
+
+        self.check_only_get_eq(path, str(path))
+        self.check_only_get_eq(path + '.foo', str(path) + '.foo')
+        self.check_only_get_eq(path[:-3], str(path)[:-3])
+        self.check_only_get_eq(path[-2], str(path)[-2])
+        self.check_only_get_eq(path[:-3] + '.foo', str(path)[:-3] + '.foo')
+
+
 if __name__ == '__main__':
     unittest.main()
