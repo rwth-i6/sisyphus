@@ -1067,10 +1067,17 @@ class Job(object, metaclass=JobSingleton):
         raise NotImplementedError("%s needs to have the tasks function explicitly defined" % self)
 
     def keep_value(self, value=None):
+        """ Return keep_value, if value is given also set keep value """
         if value is not None:
             assert 0 <= value < 100
             self._sis_keep_value = value
         return self._sis_keep_value
+
+    def set_keep_value(self, value):
+        """ Set keep value and return self """
+        assert 0 <= value < 100
+        self._sis_keep_value = value
+        return self
 
     def sh(self, command, *args, **kwargs):
         """ Calls a external shell and
