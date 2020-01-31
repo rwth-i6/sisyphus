@@ -51,6 +51,7 @@ import subprocess
 
 from sisyphus.tools import sh, extract_paths
 from sisyphus.block import block, sub_block, set_root_block
+from sisyphus.delayed_ops import Delayed
 
 from sisyphus.job_path import Path, Variable
 from sisyphus.job import Job
