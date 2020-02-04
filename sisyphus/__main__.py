@@ -79,7 +79,7 @@ def main():
                                 help='an additional way do '
                                      'define config files')
 
-    parser_console = subparsers.add_parser('console',  aliases=['c'],
+    parser_console = subparsers.add_parser('console', aliases=['c'],
                                            usage='sis console [-h] [--load LOAD_SIS_GRAPH] [ARGV [ARGV ...]]\n\n'
                                                  'Open console to debug sisyphus graph or job',
                                            help="Start console to interactively work on sis graph. Things like: "
@@ -159,8 +159,7 @@ def main():
         from sisyphus.manager_ui import SisyphusDisplay
         ui = SisyphusDisplay()
         ui.setup()
-        logging.basicConfig(#stream=ui.get_logging_pipe(),
-                            format='[%(asctime)s] %(levelname)s: %(message)s',
+        logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s',
                             level=args.log_level,
                             handlers=[ui.get_log_handler()])
     else:
@@ -195,6 +194,7 @@ def main():
             import threading
             ui.manager = None
             args.ui = ui
+            ui.args = args
             t = threading.Thread(target=args.func, args=(args,))
             t.start()
             ui.run()

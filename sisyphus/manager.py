@@ -108,6 +108,7 @@ def manager(args):
                           ui=args.ui)
         if args.ui:
             args.ui.manager = manager
+            args.ui.update_menu()
 
         kernel_connect_file = None
         if gs.START_KERNEL:
@@ -402,7 +403,7 @@ class Manager(threading.Thread):
                     logging.error('Failed to setup %s: %s' % (str(job), str(e)))
                     return
 
-            # run first runable task
+            # run first runnable task
             task = job._sis_next_task()
             if task is None:
                 # job finished in the meantime
@@ -448,7 +449,7 @@ class Manager(threading.Thread):
         self.update_state_overview()
 
         # Skip first part if there is nothing todo
-        if not self.jobs:
+        if not self.jobs and not self.ui:
             answer = self.input('All calculations are done, print verbose overview (v), update outputs and alias (u), '
                                 'cancel (c)? ')
             if answer.lower() in ('y', 'v'):
@@ -482,7 +483,7 @@ class Manager(threading.Thread):
         if self.start_computations:
             answer = 'y'
 
-        while True:
+        while True and not self.ui:
             if answer is None:
                 pass
             elif answer.lower() == 'v':
@@ -552,7 +553,6 @@ class Manager(threading.Thread):
         self.job_engine.stop_engine()
         if self.job_cleaner:
             self.job_cleaner.close()
-        self.thread_pool.close()
 
 
 def create_aliases(jobs):

@@ -11,6 +11,7 @@ import sisyphus.global_settings as gs
 from sisyphus.logging_format import color_end_marker, color_mapping
 from sisyphus.job import Job
 from sisyphus.job_path import Path
+from sisyphus.manager import create_aliases
 
 
 class RightButton(urwid.Button):
@@ -19,9 +20,9 @@ class RightButton(urwid.Button):
             return key
         self._emit('click')
 
-
 # This handler should be given to the logging. It will forward all given messages to the ui and write
 # them into a log file.
+
 
 class UiLoggingHandler(logging.Handler):
     def __init__(self, logger_box, redraw, log_file=None):
@@ -31,7 +32,6 @@ class UiLoggingHandler(logging.Handler):
         self.log_file = log_file
 
     def emit(self, record):
-
         levelno = record.levelno
         self.format(record)  # to create asctime
 
@@ -55,7 +55,7 @@ class UiLoggingHandler(logging.Handler):
         while len(self.logger_box) > 40:
             del self.logger_box[0]
 
-        self.logger_box.set_focus(len(self.logger_box)-1)
+        self.logger_box.set_focus(len(self.logger_box) - 1)
         self.redraw()
 
 
@@ -72,21 +72,21 @@ Go back to last object with backspace or left arrow key
 
 class SisyphusDisplay:
     palette = [
-        ('body',         'light gray', 'black', 'standout'),
-        ('note',         'black', 'light gray', 'standout'),
-        ('header',       'white',      'dark red',   'bold'),
+        ('body', 'light gray', 'black', 'standout'),
+        ('note', 'black', 'light gray', 'standout'),
+        ('header', 'white', 'dark red', 'bold'),
         ('button normal', 'light gray', 'black', 'standout'),
-        ('button select', 'white',      'dark green'),
-        ('exit',         'white',      'dark cyan'),
+        ('button select', 'white', 'dark green'),
+        ('exit', 'white', 'dark cyan'),
 
-        ('question',      'dark red',      'yellow', 'bold'),
+        ('question', 'dark red', 'yellow', 'bold'),
 
-        ('error',         'dark red',      'black', 'standout'),
-        ('warning',       'yellow',      'black', 'standout'),
-        ('info',          'dark green',      'black', 'standout'),
-        ('debug',         'light magenta',      'black', 'standout'),
-        ('logger',        'light gray',      'black', 'standout'),
-        ]
+        ('error', 'dark red', 'black', 'standout'),
+        ('warning', 'yellow', 'black', 'standout'),
+        ('info', 'dark green', 'black', 'standout'),
+        ('debug', 'light magenta', 'black', 'standout'),
+        ('logger', 'light gray', 'black', 'standout'),
+    ]
 
     def job_selected(self, w, job):
         d = job.__dict__
@@ -144,30 +144,67 @@ class SisyphusDisplay:
         self.history.append(obj)
         self.redraw()
 
+    def show_job_view(self):
+        self.loop.widget = self.job_view
+        self.history.append(self.job_view)
+
+    def show_active_jobs(self, w):
+        self.stop_job_view_update = False
+        self.update_job_view(self.manager.get_job_states())
+        self.update_state_overview(' '.join(sorted(self.manager.state_overview)))
+        self.show_job_view()
+        self.redraw()
+
+    def show_all_jobs(self, w):
+        self.stop_job_view_update = True
+        self.update_job_view(self.manager.get_job_states(all_jobs=True), overwrite_update_stop=True, list_all_jobs=True)
+        self.update_state_overview(' '.join(sorted(self.manager.state_overview)))
+        self.show_job_view()
+        self.redraw()
+
+    def exit(self, w):
+        self.loop.widget = self.exit_view
+        self.redraw()
+
+    def update_alias_and_outputs(self, w):
+        self.manager.link_outputs = True
+        create_aliases(self.manager.sis_graph.jobs())
+        logging.info('Updated aliases and outputs')
+
+    def stop_manager(self, w):
+        logging.info('Stopping the manager')
+        self.manager.stop()
+        self.update_menu()
+
+    def start_manager(self, w):
+        logging.info('Starting the manager')
+        self.manager.start()
+        self.update_menu()
+
     def setup_view(self):
-        self.logger_box = urwid.Text("Logging Box", wrap='clip')
         self.logger_box = urwid.SimpleListWalker([])
 
         self._state_overview = urwid.Text("Starting")
         # ListBox
         self.job_box = urwid.ListBox(urwid.SimpleListWalker([]))
 
-        w = urwid.Pile([
-             urwid.AttrWrap(self.job_box, 'body')])
+        w = urwid.Pile([urwid.AttrWrap(self.job_box, 'body')])
 
         # Frame
-        hdr = urwid.Text("Sisyphus | CWD: %s | Call: %s | Press h for help | press q or esc to quit" % \
+        hdr = urwid.Text("Sisyphus | CWD: %s | Call: %s | Press h for help | press q or esc to quit" %
                          (os.path.abspath('.'), ' '.join(sys.argv)), wrap='clip')
         self.header = hdr = urwid.AttrWrap(hdr, 'header')
         hdr = urwid.Pile([hdr,
                           (10, urwid.AttrWrap(urwid.ListBox(self.logger_box), 'body')),
                           urwid.AttrWrap(self._state_overview, 'note'),
-                                ])
+                          ])
 
-        self.main_view = urwid.Frame(header=hdr, body=w)
+        self.setup_menu_view()
+        self.main_view = self.menu_view
+        self.job_view = urwid.Frame(header=hdr, body=w)
 
         # Exit message
-        exit = urwid.BigText(('exit'," Quit? "), font=urwid.Thin6x6Font())
+        exit = urwid.BigText(('exit', " Quit? "), font=urwid.Thin6x6Font())
         self.exit_view = urwid.Overlay(exit, w, 'center', None, 'middle', None)
 
         self.question_text = urwid.Text("  ")
@@ -195,18 +232,44 @@ class SisyphusDisplay:
         self.obj_body = urwid.ListBox(urwid.SimpleListWalker([]))
         self.obj_view = urwid.Frame(header=hdr, body=self.obj_body)
 
-    def update_job_view(self, jobs=None):
+    def setup_menu_view(self):
+        hdr = urwid.Pile([self.header,
+                          (10, urwid.AttrWrap(urwid.ListBox(self.logger_box), 'body')),
+                          urwid.AttrWrap(self._state_overview, 'note'),
+                          ])
+        self.menu_box = urwid.ListBox(urwid.SimpleListWalker([]))
+        self.menu_view = urwid.Frame(header=hdr, body=self.menu_box)
+
+    def update_menu(self):
+        self.menu_box.body = []
+
+        def add_button(label, action):
+            button = RightButton(label, on_press=action)
+            button = urwid.AttrWrap(button, 'button normal', 'button select')
+            self.menu_box.body.append(button)
+
+        if not self.manager.is_alive() and not self.manager._stop_loop:
+            add_button('start manager', self.start_manager)
+        add_button('show active jobs', self.show_active_jobs)
+        add_button('show all jobs', self.show_all_jobs)
+        add_button('open console', self.open_console)
+        add_button('update aliases and outputs', self.update_alias_and_outputs)
+        if self.manager.is_alive() and not self.manager._stop_loop:
+            add_button('stop manager', self.stop_manager)
+        add_button('exit', self.exit)
+
+    def update_job_view(self, jobs=None, overwrite_update_stop=False, list_all_jobs=False):
         if jobs:
             self.current_jobs = jobs
 
-        if self.stop_job_view_update:
+        if self.stop_job_view_update and not overwrite_update_stop:
             return
 
         # Empty box
         self.job_box.body = []
 
         for state, job, info in self.current_jobs:
-            if state in (gs.STATE_WAITING, gs.STATE_INPUT_PATH):
+            if not list_all_jobs and state in (gs.STATE_WAITING, gs.STATE_INPUT_PATH):
                 continue
 
             if state in [gs.STATE_INPUT_MISSING,
@@ -221,6 +284,8 @@ class SisyphusDisplay:
                            gs.STATE_FINISHED
                            ]:
                 attri = 'info'
+            elif list_all_jobs:
+                attri = 'logging'
             else:
                 attri = None
 
@@ -305,6 +370,8 @@ class SisyphusDisplay:
 
             if obj is None:
                 self.reset_view()
+            elif obj == self.job_view:
+                self.show_job_view()
             else:
                 self.obj_selected(None, obj=obj)
             return True
@@ -331,3 +398,28 @@ class SisyphusDisplay:
             return True
 
         logging.debug("Unhandled input: %s" % str(key))
+
+    def open_console(self, w):
+        """ Start an interactive ipython console """
+        import sisyphus
+
+        user_ns = {'tk': sisyphus.toolkit,
+                   'config_files': self.args.config_files,
+                   }
+
+        # TODO Update welcome message
+        welcome_msg = """
+    Info: IPCompleter.greedy = True is set to True.
+    This allows to auto complete lists and dictionaries entries, but may evaluates functions on tab.
+
+    Enter tk? for help"""
+
+        import IPython
+        from traitlets.config.loader import Config
+        c = Config()
+        c.InteractiveShellApp.exec_lines = ['%rehashx',
+                                            '%config IPCompleter.greedy = True',
+                                            'print(%s)' % repr(welcome_msg)]
+        self.loop.stop()
+        IPython.start_ipython(config=c, argv=[], user_ns=user_ns)
+        self.loop.start()
