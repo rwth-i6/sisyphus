@@ -221,13 +221,17 @@ class Manager(threading.Thread):
         self.thread_pool = ThreadPool(gs.MANAGER_SUBMIT_WORKER)
         self.job_cleaner = job_cleaner
 
+        # Cached states of jobs
+        self.jobs = None
+        self.state_overview = None
+
     def stop(self):
         self._stop_loop = True
 
     def update_jobs(self, skip_finished=True):
         """ Return all jobs needed to finish output """
-        self.jobs = self.sis_graph.get_jobs_by_status(engine=self.job_engine, skip_finished=skip_finished)
-        return self.jobs
+        self.jobs = jobs = self.sis_graph.get_jobs_by_status(engine=self.job_engine, skip_finished=skip_finished)
+        return jobs
 
     def clear_states(self, state=gs.STATE_ERROR):
         # List errors/ interrupts
@@ -250,66 +254,69 @@ class Manager(threading.Thread):
         self.state_overview.sort()
         return self.state_overview
 
-    def print_state_overview(self, verbose=False):
-        if verbose:
-            self.update_jobs(skip_finished=False)
+    @staticmethod
+    def get_job_info_string(state, job, verbose=False):
+        if hasattr(job, '_sis_needed_for_which_targets') and job._sis_needed_for_which_targets:
+            if verbose:
+                info_string = '%s: %s <target: %s>' % (state,
+                                                       job,
+                                                       sorted(list(job._sis_needed_for_which_targets)))
+            else:
+                info_string = '%s: %s <target: %s>' % (state,
+                                                       job,
+                                                       sorted(list(job._sis_needed_for_which_targets))[0])
+        else:
+            info_string = '%s: %s' % (state, job)
+
+        if gs.SHOW_VIS_NAME_IN_MANAGER and hasattr(job, "get_vis_name") and job.get_vis_name() is not None:
+            info_string += " [%s]" % job.get_vis_name()
+        return info_string
+
+    @staticmethod
+    def print_job_state(state, job, info_string, verbose=False):
+        if hasattr(job, "info") and state == gs.STATE_RUNNING:
+            job_manager_info_string = job.info()
+            if job_manager_info_string is not None:
+                info_string += " {%s} " % job_manager_info_string
+
+        if state in [gs.STATE_INPUT_MISSING,
+                     gs.STATE_RETRY_ERROR,
+                     gs.STATE_ERROR]:
+            logging.error(info_string)
+            if state == gs.STATE_ERROR and gs.PRINT_ERROR:
+                job._sis_print_error(gs.PRINT_ERROR_TASKS,
+                                     gs.PRINT_ERROR_LINES)
+        elif state in [gs.STATE_INTERRUPTED, gs.STATE_UNKNOWN]:
+            logging.warning(info_string)
+        elif state in [gs.STATE_QUEUE,
+                       gs.STATE_RUNNING,
+                       gs.STATE_RUNNABLE]:
+            logging.info(info_string)
+        elif verbose:
+            logging.info(info_string)
+        else:
+            logging.debug(info_string)
+
+    def get_job_states(self, all_jobs=False, verbose=False):
+        if all_jobs:
+            jobs = self.update_jobs(skip_finished=False)
             self.update_state_overview()
+        else:
+            jobs = self.jobs
 
         output = []
-        if not self.ui:
-            logging.info('Experiment directory: %s        Call: %s' % (os.path.abspath(os.path.curdir),
-                                                                       ' '.join(sys.argv)))
+        for state in sorted(jobs.keys(), key=lambda j: state_overview_order.get(j, j)):
+            for job in sorted(list(jobs[state]), key=lambda j: str(j)):
+                info_string = self.get_job_info_string(state, job, verbose)
+                output.append((state, job, info_string))
+        return output
 
-        for state in sorted(self.jobs.keys(), key=lambda j: state_overview_order.get(j, j)):
-            for job in sorted(list(self.jobs[state]), key=lambda j: str(j)):
-                if hasattr(job, '_sis_needed_for_which_targets') and job._sis_needed_for_which_targets:
-                    if verbose:
-                        info_string = '%s: %s <target: %s>' % (state,
-                                                               job,
-                                                               sorted(list(job._sis_needed_for_which_targets)))
-                    else:
-                        info_string = '%s: %s <target: %s>' % (state,
-                                                               job,
-                                                               sorted(list(job._sis_needed_for_which_targets))[0])
-                else:
-                    info_string = '%s: %s' % (state, job)
-
-                if gs.SHOW_VIS_NAME_IN_MANAGER and hasattr(job, "get_vis_name") and job.get_vis_name() is not None:
-                    info_string += " [%s]" % job.get_vis_name()
-
-                if self.ui:
-                    output.append((state, job, info_string))
-                    continue
-
-                if hasattr(job, "info") and state == gs.STATE_RUNNING:
-                    job_manager_info_string = job.info()
-                    if job_manager_info_string is not None:
-                        info_string += " {%s} " % job_manager_info_string
-
-                if state in [gs.STATE_INPUT_MISSING,
-                             gs.STATE_RETRY_ERROR,
-                             gs.STATE_ERROR]:
-                    logging.error(info_string)
-                    if state == gs.STATE_ERROR and gs.PRINT_ERROR:
-                        job._sis_print_error(gs.PRINT_ERROR_TASKS,
-                                             gs.PRINT_ERROR_LINES)
-                elif state in [gs.STATE_INTERRUPTED, gs.STATE_UNKNOWN]:
-                    logging.warning(info_string)
-                elif state in [gs.STATE_QUEUE,
-                               gs.STATE_RUNNING,
-                               gs.STATE_RUNNABLE]:
-                    logging.info(info_string)
-                elif verbose:
-                    logging.info(info_string)
-                else:
-                    logging.debug(info_string)
-            if verbose:
-                print()
-
-        if self.ui:
-            self.ui.update_job_view(output)
-            self.ui.update_state_overview(' '.join(sorted(self.state_overview)))
-        elif self.state_overview:
+    def print_state_overview(self, verbose=False):
+        states = self.get_job_states(all_jobs=verbose, verbose=verbose)
+        logging.info('Experiment directory: %s      Call: %s' % (os.path.abspath(os.path.curdir), ' '.join(sys.argv)))
+        for state, job, info_string in states:
+            self.print_job_state(state, job, info_string, verbose=verbose)
+        if self.state_overview:
             logging.info(' '.join(self.state_overview))
 
     def work_left(self):
@@ -524,7 +531,11 @@ class Manager(threading.Thread):
             if self.auto_print_stat_overview:
                 self.update_state_overview()
                 if last_state_overview != self.state_overview:
-                    self.print_state_overview()
+                    if self.ui:
+                        self.ui.update_job_view(self.get_job_states())
+                        self.ui.update_state_overview(' '.join(sorted(self.state_overview)))
+                    else:
+                        self.print_state_overview()
                     last_state_overview = self.state_overview
 
             if gs.STATE_RUNNABLE not in self.jobs:
