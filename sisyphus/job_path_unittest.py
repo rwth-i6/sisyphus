@@ -96,7 +96,7 @@ class PathTest(unittest.TestCase):
         with tk.mktemp() as test_path:
             path = Path(test_path)
             self.assertEqual(path.available(), False)
-            with open(test_path, 'wb') as f:
+            with open(test_path, 'wb') as _:
                 pass
             self.assertEqual(path.available(), True)
 
@@ -119,6 +119,14 @@ class PathTest(unittest.TestCase):
         self.check_only_get_eq(path[:-3], str(path)[:-3])
         self.check_only_get_eq(path[-2], str(path)[-2])
         self.check_only_get_eq(path[:-3] + '.foo', str(path)[:-3] + '.foo')
+
+        with tk.mktemp() as t:
+            var = Variable(t)
+            var.set(3)
+            self.check_only_get_eq(var + 4, 7)
+            self.check_only_get_eq(4 + var, 7)
+            self.check_only_get_eq(var * 4, 12)
+            self.check_only_get_eq(4 * var, 12)
 
 
 if __name__ == '__main__':
