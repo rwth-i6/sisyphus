@@ -210,7 +210,8 @@ class Manager(threading.Thread):
         self.stop_if_done = True
         self._stop_loop = False
 
-        assert not (self.clear_errors_once and self.ignore_once), "Jobs in error state cannot be both ignored and cleared"
+        assert not (self.clear_errors_once and self.ignore_once), \
+            "Jobs in error state cannot be both ignored and cleared"
 
         if gs.SHOW_JOB_TARGETS:
             self.sis_graph.set_job_targets(job_engine)
@@ -222,7 +223,6 @@ class Manager(threading.Thread):
 
     def stop(self):
         self._stop_loop = True
-        self.thread_pool.close()
 
     def update_jobs(self, skip_finished=True):
         """ Return all jobs needed to finish output """
@@ -358,8 +358,6 @@ class Manager(threading.Thread):
             ret = input(prompt)
         return ret
 
-
-
     def resume_jobs(self):
         # function to resume jobs:
         def f(job):
@@ -445,7 +443,7 @@ class Manager(threading.Thread):
         # Skip first part if there is nothing todo
         if not self.jobs:
             answer = self.input('All calculations are done, print verbose overview (v), update outputs and alias (u), '
-                           'cancel (c)? ')
+                                'cancel (c)? ')
             if answer.lower() in ('y', 'v'):
                 self.print_state_overview(verbose=True)
             elif answer.lower() in ('u'):
@@ -488,16 +486,16 @@ class Manager(threading.Thread):
                 self.check_output(write_output=self.link_outputs, update_all_outputs=True)
                 break
             elif answer.lower() == 'u':
-               self.link_outputs = True
-               create_aliases(self.sis_graph.jobs())
-               self.check_output(write_output=self.link_outputs, update_all_outputs=True)
+                self.link_outputs = True
+                create_aliases(self.sis_graph.jobs())
+                self.check_output(write_output=self.link_outputs, update_all_outputs=True)
             elif answer.lower() == 'n':
                 self.stop()
                 break
             else:
                 logging.warning('Unknown command: %s' % answer)
             answer = self.input('Print verbose overview (v), update aliases and outputs (u), '
-                           'start manager (y), or exit (n)? ')
+                                'start manager (y), or exit (n)? ')
 
         if (not self._stop_loop) and (gs.CLEAR_ERROR or self.clear_errors_once):
             self.clear_states(state=gs.STATE_ERROR)
@@ -511,7 +509,8 @@ class Manager(threading.Thread):
             # check if finished
             logging.debug('Begin of manager loop')
 
-            if self.mem_profile: self.mem_profile.snapshot()
+            if self.mem_profile:
+                self.mem_profile.snapshot()
             self.job_engine.reset_cache()
             self.check_output(write_output=self.link_outputs)
 
@@ -520,7 +519,7 @@ class Manager(threading.Thread):
             if (gs.CLEAR_ERROR or self.clear_errors_once):
                 self.clear_errors_once = False
                 if self.clear_states(state=gs.STATE_ERROR):
-                   continue
+                    continue
 
             if self.auto_print_stat_overview:
                 self.update_state_overview()
@@ -595,21 +594,6 @@ def start_http_server(sis_graph, sis_engine, port, thread=True):
                              sis_engine=sis_engine,
                              port=port,
                              thread=thread)
-
-
-def unittest(args):
-    from sisyphus.job_path import Path, Variable
-    for filename in args.argv:
-        config = load_config_file(filename)
-        sis_graph = toolkit.sis_graph
-        Block.sis_graph = sis_graph
-        job_engine = engine.Engine()
-        m = Manager(sis_graph, job_engine,
-                    link_outputs=False,
-                    clear_errors_once=args.clear_errors_once,
-                    clear_interrupts_once=args.clear_interrupts_once,
-                    start_computations=args.run)
-        m.run()
 
 
 def init_IPython_kernel(user_ns={}):
