@@ -42,20 +42,9 @@ Enter tk? for help"""
     import IPython
     from traitlets.config.loader import Config
     c = Config()
-    c.InteractiveShellApp.exec_lines = [
-                                        # register load_job and load_configs as magic
-                                        # 'import IPython.core.magic\n'
-                                        # 'shut_up=IPython.core.magic.register_line_magic(tk.load_job)\n'
-                                        # 'shut_up=IPython.core.magic.register_line_magic(tk.load_configs)\n',
-
-                                        # settings that make the ipython console behave more like a system console
-                                        # 'del shut_up',  # shut_up is used to silence the return value
-                                        # 'initialize()',
-                                        '%rehashx',
-                                        # '%autocall',
-                                        '%config IPCompleter.greedy = True',
-                                        'print(%s)' % repr(welcome_msg)] + args.commands
-
+    c.InteractiveShell.banner2 = welcome_msg
+    c.IPCompleter.greedy = True
+    c.InteractiveShellApp.exec_lines = ['%rehashx'] + args.commands
     IPython.start_ipython(config=c, argv=[], user_ns=user_ns)
 
 

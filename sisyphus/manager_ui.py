@@ -242,9 +242,10 @@ class SisyphusDisplay:
 
     def update_menu(self):
         self.menu_box.body = []
+        from sisyphus import toolkit as tk
 
-        def add_button(label, action):
-            button = RightButton(label, on_press=action)
+        def add_button(label, on_press=None, user_data=None):
+            button = RightButton(label, on_press=on_press, user_data=user_data)
             button = urwid.AttrWrap(button, 'button normal', 'button select')
             self.menu_box.body.append(button)
 
@@ -257,6 +258,15 @@ class SisyphusDisplay:
         if self.manager.is_alive() and not self.manager._stop_loop:
             add_button('stop manager', self.stop_manager)
         add_button('exit', self.exit)
+        self.menu_box.body.append(urwid.Text("------------------------"))
+        add_button('cleanup work directory (keep value=0)', self.run_commands,
+                   [(tk.cleaner, [], {'clean_work_dir': True, 'mode': "remove", 'keep_value': 0})])
+        add_button('cleanup work directory (keep value=40)', self.run_commands,
+                   [(tk.cleaner, [], {'clean_work_dir': True, 'mode': "remove", 'keep_value': 40})])
+        add_button('cleanup work directory (keep value=60)', self.run_commands,
+                   [(tk.cleaner, [], {'clean_work_dir': True, 'mode': "remove", 'keep_value': 40})])
+        add_button('cleanup job directories', self.run_commands,
+                   [(tk.cleaner, [], {'clean_job_dir': True})])
 
     def update_job_view(self, jobs=None, overwrite_update_stop=False, list_all_jobs=False):
         if jobs:
@@ -399,7 +409,7 @@ class SisyphusDisplay:
 
         logging.debug("Unhandled input: %s" % str(key))
 
-    def open_console(self, w):
+    def open_console(self, w, given_commands=None):
         """ Start an interactive ipython console """
         import sisyphus
 
@@ -414,12 +424,26 @@ class SisyphusDisplay:
 
     Enter tk? for help"""
 
+        run_commands = []
+        if given_commands:
+            for c in given_commands:
+                run_commands.append('print("Run command:", %s)' % repr(c))
+                run_commands.append(c)
+
         import IPython
         from traitlets.config.loader import Config
         c = Config()
-        c.InteractiveShellApp.exec_lines = ['%rehashx',
-                                            '%config IPCompleter.greedy = True',
-                                            'print(%s)' % repr(welcome_msg)]
+        c.InteractiveShellApp.exec_lines = ['%rehashx'] + run_commands
+        c.InteractiveShell.confirm_exit = False
+        c.IPCompleter.greedy = True
+        c.InteractiveShell.banner2 = welcome_msg
         self.loop.stop()
         IPython.start_ipython(config=c, argv=[], user_ns=user_ns)
         self.loop.start()
+
+    def run_commands(self, w, commands):
+        for command_and_args in commands:
+            command, args, kwargs = command_and_args
+            self.loop.stop()
+            command(*args, **kwargs)
+            self.loop.start()
