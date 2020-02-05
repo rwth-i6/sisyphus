@@ -1021,7 +1021,9 @@ class Job(metaclass=JobSingleton):
         :rtype: Path
         """
         path = Path(filename, self, cached)
-        assert path.get_path() not in self._sis_outputs
+        if path.get_path() in self._sis_outputs:
+            logging.warning('Added output %s more than once to %s' % (filename, self))
+            return self._sis_outputs[path.get_path()]
         self._sis_outputs[path.get_path()] = path
         if directory:
             self._sis_output_dirs.add(path)
