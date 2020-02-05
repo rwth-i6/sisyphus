@@ -54,8 +54,8 @@ def job_finished(path):
     :param path: path to directory
     :return:
     """
-    return os.path.isfile(os.path.join(path, gs.JOB_FINISHED_MARKER)) or os.path.isfile(
-            os.path.join(path, gs.JOB_FINISHED_ARCHIVE))
+    return os.path.isfile(os.path.join(path, gs.JOB_FINISHED_MARKER)) or \
+        os.path.isfile(os.path.join(path, gs.JOB_FINISHED_ARCHIVE))
 
 
 class JobSingleton(type):
@@ -76,7 +76,7 @@ class JobSingleton(type):
             else:
                 tags = None
             parsed_args = get_args(cls.__init__, args, kwargs)
-        except TypeError as e:
+        except TypeError:
             logging.error(
                 'Wrong input arguments or missing __init__ function?\n'
                 'Class: %s\nArguments: %s %s' %
@@ -139,7 +139,7 @@ class JobSingleton(type):
         return obj
 
 
-class Job(object, metaclass=JobSingleton):
+class Job(metaclass=JobSingleton):
     """
     Object do hold the job descriptions.
     You derive your own job classes from this base class.
@@ -796,7 +796,7 @@ class Job(object, metaclass=JobSingleton):
         self._sis_runnable()
         inputs = {i.get_path(): i for i in self._sis_inputs}
         if include_job_path:
-            job_path = os.path.join(gs.BASE_DIR,  self._sis_path())
+            job_path = os.path.join(gs.BASE_DIR, self._sis_path())
             inputs[job_path] = self
         for i in self._sis_inputs:
             if i.creator:
@@ -809,8 +809,8 @@ class Job(object, metaclass=JobSingleton):
         :param include_job_path:
         :return:
         """
-        return all([i in self._sis_get_all_inputs(include_job_path=include_job_path) or
-                    i in self._sis_outputs for i in required_inputs])
+        return all([i in self._sis_get_all_inputs(include_job_path=include_job_path) or i in self._sis_outputs
+                    for i in required_inputs])
 
     def _sis_print_tree(self,
                         visited,
@@ -855,9 +855,7 @@ class Job(object, metaclass=JobSingleton):
             visited[self._sis_id()] = len(visited)
             inputs = list(self._sis_inputs)
 
-            inputs.sort(
-                key=lambda x: x.creator._sis_id() if x.creator else " " +
-                x.path)
+            inputs.sort(key=lambda x: x.creator._sis_id() if x.creator else " " + x.path)
             for pos, path in enumerate(inputs):
                 if pos + 1 == len(inputs):
                     # last job, change prefix
