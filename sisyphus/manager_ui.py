@@ -2,9 +2,11 @@ import os
 import sys
 import subprocess
 import time
+import threading
 import logging
 import pprint
 import urwid
+from datetime import datetime
 from queue import Queue
 from threading import Semaphore
 import sisyphus.global_settings as gs
@@ -38,8 +40,7 @@ class UiLoggingHandler(logging.Handler):
         msg = record.getMessage()
         if self.log_file:
             color = color_mapping(levelno)
-            self.log_file.write('%s %s %s%s%s\n' % (record.asctime, record.levelname, color, msg, color_end_marker))
-            self.log_file.flush()
+            self.write_to_file('%s %s %s%s%s\n' % (record.asctime, record.levelname, color, msg, color_end_marker))
 
         if(levelno >= 40):
             color = 'error'
@@ -49,14 +50,49 @@ class UiLoggingHandler(logging.Handler):
             color = 'info'
         else:
             color = 'debug'
-        self.logger_box.append(urwid.Text([record.asctime, ' ', record.levelname, ' ',
-                                           (color, record.getMessage())], wrap='clip'))
+
+        self.add_to_logger_box(urwid.Text([record.asctime, ' ', record.levelname, ' ', (color, record.getMessage())],
+                                          wrap='clip'))
+
+    def write_to_file(self, s):
+        self.log_file.write(s)
+        self.log_file.flush()
+
+    def flush(self):
+        self.log_file.flush()
+
+    def add_to_logger_box(self, urwid_text):
+        self.logger_box.append(urwid_text)
         # Keep a small buffer, everything else should be handled via the logfile
         while len(self.logger_box) > 40:
             del self.logger_box[0]
 
         self.logger_box.set_focus(len(self.logger_box) - 1)
         self.redraw()
+
+    def add_event(self, s, tag='STDOUT'):
+        if not s:
+            return
+        if s[-1] == '\n':
+            s = s[:-1]
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
+        if self.log_file:
+            self.write_to_file('%s %s %s\n' % (now, tag, s))
+
+        color = 'logging'
+        self.add_to_logger_box(urwid.Text([now, ' ', tag, ' ', (color, s)], wrap='clip'))
+
+
+class OutCatcher:
+    def __init__(self, log_handler, tag):
+        self.log_handler = log_handler
+        self.tag = tag
+
+    def write(self, s):
+        self.log_handler.add_event(s, self.tag)
+
+    def flush(self):
+        self.log_handler.flush()
 
 
 help_text = """Welcome to the sisyphus manager interface and its currently very short help page
@@ -88,10 +124,25 @@ class SisyphusDisplay:
         ('logger', 'light gray', 'black', 'standout'),
     ]
 
+    def __init__(self):
+        self.save_stdout_stderr()
+
     def job_selected(self, w, job):
         d = job.__dict__
         d['____NAME__'] = job._sis_path()
         self.obj_selected(w, job)
+
+    def save_stdout_stderr(self):
+        self._stdout_org = sys.stdout
+        self._stderr_org = sys.stderr
+
+    def redirect_stdout_stderr(self):
+        sys.stdout = self.get_stdout_target()
+        sys.stderr = self.get_stderr_target()
+
+    def reset_stdout_stderr(self):
+        sys.stdout = self._stdout_org
+        sys.stderr = self._stderr_org
 
     def show_items(self, items, length=80):
         # Empty list
@@ -316,6 +367,7 @@ class SisyphusDisplay:
 
     def setup(self):
         self.logs = []
+        self.log_handler = None
         self.setup_view()
         self.loop = urwid.MainLoop(self.main_view, self.palette, unhandled_input=self.unhandled_input)
         self._external_event_pipe = self.loop.watch_pipe(self.external_event_handler)
@@ -333,11 +385,31 @@ class SisyphusDisplay:
         os.write(self._external_event_pipe, b'redraw\n')
 
     def get_log_handler(self, log_file='log/manager.log.%s' % time.strftime('%Y%m%d%H%M%S')):
-        self.log_file = log_file
-        dir = os.path.dirname(log_file)
-        if not os.path.isdir(dir):
-            os.mkdir(dir)
-        return UiLoggingHandler(self.logger_box, self.redraw, log_file=open(log_file, 'w'))
+        if self.log_handler is None:
+            self.log_file = log_file
+            log_message = None
+            try:
+                dir = os.path.dirname(log_file)
+                if not os.path.isdir(dir):
+                    os.mkdir(dir)
+                open_lf = open(log_file, 'w')
+            except OSError:
+                import tempfile
+                open_lf = tempfile.NamedTemporaryFile('w')
+                log_message = f'Could not create default log file at {log_file}, use fallback to ' \
+                              f'temporary file at {open_lf.name}.'
+                self.log_file = open_lf.name
+
+            self.log_handler = UiLoggingHandler(self.logger_box, self.redraw, log_file=open_lf)
+            if log_message:
+                self.log_handler.add_event(log_message, 'STARTUP')
+        return self.log_handler
+
+    def get_stdout_target(self):
+        return OutCatcher(self.get_log_handler(), 'STDOUT')
+
+    def get_stderr_target(self):
+        return OutCatcher(self.get_log_handler(), 'STDERR')
 
     def run(self):
         self.loop.run()
@@ -402,9 +474,8 @@ class SisyphusDisplay:
             self.obj_view.set_focus('body')
             return True
         elif self.main_view.get_focus() == 'header' and key in ('up', 'enter'):
-            self.loop.stop()
-            subprocess.call(['less', '-r', '+G', self.log_file])
-            self.loop.start()
+            with self.pause():
+                subprocess.call(['less', '-r', '+G', self.log_file])
             return True
 
         logging.debug("Unhandled input: %s" % str(key))
@@ -437,13 +508,27 @@ class SisyphusDisplay:
         c.InteractiveShell.confirm_exit = False
         c.IPCompleter.greedy = True
         c.InteractiveShell.banner2 = welcome_msg
-        self.loop.stop()
-        IPython.start_ipython(config=c, argv=[], user_ns=user_ns)
-        self.loop.start()
+        with self.pause():
+            IPython.start_ipython(config=c, argv=[], user_ns=user_ns)
 
     def run_commands(self, w, commands):
         for command_and_args in commands:
             command, args, kwargs = command_and_args
-            self.loop.stop()
-            command(*args, **kwargs)
-            self.loop.start()
+            with self.pause():
+                command(*args, **kwargs)
+
+    def pause(self):
+        return Pause(self)
+
+
+class Pause:
+    def __init__(self, ui):
+        self.ui = ui
+
+    def __enter__(self):
+        self.ui.loop.stop()
+        self.ui.reset_stdout_stderr()
+
+    def __exit__(self, type, value, traceback):
+        self.ui.redirect_stdout_stderr()
+        self.ui.loop.start()

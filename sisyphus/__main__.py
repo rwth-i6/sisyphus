@@ -195,9 +195,11 @@ def main():
             ui.manager = None
             args.ui = ui
             ui.args = args
+            ui.redirect_stdout_stderr()
             t = threading.Thread(target=args.func, args=(args,))
             t.start()
             ui.run()
+            ui.reset_stdout_stderr()
             t.join()
         else:
             args.func(args)
