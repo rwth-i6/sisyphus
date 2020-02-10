@@ -5,3 +5,10 @@ docs/_build
 example/output
 example/work
 *.swo
+.coverage
+htmlcov
+.tox
+.python-version
+sisyphus.egg-info/
+sis.sh
+no_git
