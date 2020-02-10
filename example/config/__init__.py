@@ -2,6 +2,7 @@ from sisyphus import *
 from recipe import parallel
 from recipe import pipeline
 
+
 @tk.block(cache=True)
 def init(input_file):
     input_file = tk.input_path(input_file)

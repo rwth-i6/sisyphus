@@ -277,6 +277,7 @@ JOB_ADD_STACKTRACE_WITH_DEPTH = 0
 # Is enabled if tk.run is called
 SKIP_IS_FINISHED_TIMEOUT = False
 
+
 # Internal functions
 def update_global_settings_from_text(text, filename):
     """
@@ -331,6 +332,7 @@ def update_global_settings_from_file(filename):
     globals()['GLOBAL_SETTINGS_FILE_CONTENT'] = content
     update_global_settings_from_text(content, filename)
 
+
 GLOBAL_SETTINGS_COMMANDLINE = []
 ENVIRONMENT_SETTINGS = {}
 ENVIRONMENT_SETTINGS_PREFIX = 'SIS_'
@@ -367,6 +369,7 @@ def cached_engine(cache=[]):
         cache.append(e)
         return e  # for better type hinting
     return cache[0]
+
 
 # Parameter used for debugging or profiling
 MEMORY_PROFILE_LOG = None

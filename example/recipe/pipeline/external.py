@@ -31,4 +31,3 @@ class CheckState(Job):
 
     def tasks(self):
         yield Task('run', mini_task=True)
-

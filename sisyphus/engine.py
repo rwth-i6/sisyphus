@@ -123,6 +123,7 @@ class EngineBase:
     def get_job_used_resources(self, current_process):
         """
         Should be overwritten by subclass if a better way to measure the used resources is available, e.g. cgroups.
+        This function should only be used by the worker.
 
         :param psutil.Process current_process:
         :param engine_selector:
@@ -239,9 +240,7 @@ class EngineSelector(EngineBase):
         return self.get_used_engine(engine_selector)
 
     def get_job_used_resources(self, current_process):
-        # This function should only be used while the worker
         assert NotImplementedError, "Used active engine first via get_used_engine first"
-        return self.get_used_engine(engine_selector).get_job_used_resources(current_process, engine_selector)
 
     def task_state(self, task, task_id):
         """ Return state of task """

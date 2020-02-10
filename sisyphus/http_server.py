@@ -199,8 +199,8 @@ def list_outputs():
 @keepalive(2)
 def show_job_informations(sis_id):
     if not sis_id:
-        logging.warning("No sis id given: " + str(parameters))
-        return "No sis id given: " + str(parameters)
+        logging.warning("No sis id given: " + str(parameters))  # noqa F821
+        return "No sis id given: " + str(parameters)  # noqa F821
 
     job = g_sis_graph.job_by_id(sis_id)
     if job is None:
@@ -318,32 +318,3 @@ def start(sis_graph=None, sis_engine=None, port=0, debug=False, thread=True):
     else:
         t.run()
     return t
-
-if __name__ == '__main__':
-    from recipe import get_recipe
-    from job_path import Path
-    from graph import SISGraph
-
-    test_recipe = get_recipe('task/test')
-    job1 = test_recipe.Test(text=Path("input_text1.gz"))
-    job2 = test_recipe.Test(text=Path("input_text2.gz"))
-    job_merge1 = test_recipe.MergeInputs([job1.out, job2.out])
-    job_merge2 = test_recipe.MergeInputs([job2.out, job1.out])
-    job_merge3 = test_recipe.MergeInputs([job1.out, job2.out, job_merge1.out, job_merge2.out])
-    sis_graph = SISGraph(output={'test': job_merge3.out})
-    import engine
-    sis_engine = engine.Engine()
-
-    port = int(sys.argv[1])
-    try:
-        server = start(sis_graph=sis_graph,
-                       sis_engine=sis_engine,
-                       debug=True,
-                       port=port,
-                       thread=False)
-    except OSError:
-        server = start(sis_graph=sis_graph,
-                       sis_engine=sis_engine,
-                       debug=True,
-                       port=0,
-                       thread=False)

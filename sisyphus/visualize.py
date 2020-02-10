@@ -54,10 +54,8 @@ def visualize_block(block, engine, vis_url_prefix):
             input_to_node.update((o.rel_path(), job_id) for o in child._sis_outputs.values())
 
     merge_inputs_mapping = dict()
-    merged_inputs = dict()
     merged_labels = dict()
     merged_creators = dict()
-    merged_counts = dict()
 
     for i in inputs:
         creator = input_to_node[i] if i in input_to_node else ''
@@ -84,7 +82,7 @@ def visualize_block(block, engine, vis_url_prefix):
     common_inputs = set()
     for l in merged_links:
         if merged_counts[l[0]] <= gs.VIS_RELATIVE_MERGE_THRESHOLD * len(block.filtered_children()) or \
-                        merged_counts[l[0]] <= gs.VIS_ABSOLUTE_MERGE_THRESHOLD:
+           merged_counts[l[0]] <= gs.VIS_ABSOLUTE_MERGE_THRESHOLD:
             result.append('"%s" -> "%s";\n' % l)
         else:
             common_inputs.add(l[0])
@@ -98,8 +96,8 @@ def visualize_block(block, engine, vis_url_prefix):
     result.append('}\n')
     return ''.join(result)
 
-# -------------------- Internal --------------------
 
+# -------------------- Internal --------------------
 # List of all colors: https://www.graphviz.org/doc/info/colors.html
 color_map = collections.defaultdict(lambda: 'gray')
 color_map.update({gs.STATE_UNKNOWN: 'gray',

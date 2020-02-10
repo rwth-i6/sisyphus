@@ -8,6 +8,8 @@ import logging
 __author__ = "Jan-Thorsten Peter"
 __email__ = "peter@cs.rwth-aachen.de"
 
+color_end_marker = '\x1b[0m'
+
 
 def color_mapping(levelno):
     if(levelno >= 50):
@@ -23,7 +25,6 @@ def color_mapping(levelno):
     else:
         return '\x1b[0m'  # normal
 
-color_end_marker = '\x1b[0m'
 
 def add_coloring_to_emit_ansi(func):
     """

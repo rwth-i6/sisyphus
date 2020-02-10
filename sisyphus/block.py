@@ -44,15 +44,13 @@ class Block(object):
     def filtered_children(self):
         if self.sis_graph:
             jobs_in_graph = self.sis_graph.id_to_job_dict()
-            return [child for child in self.children
-                    if (isinstance(child, Block) and not child.empty()) or
-                    (not isinstance(child, Block) and child._sis_id() in jobs_in_graph)]
+            return [child for child in self.children if (isinstance(child, Block) and not child.empty()) or (
+                not isinstance(child, Block) and child._sis_id() in jobs_in_graph)]
         else:
             return self.children
 
     def get_sub_blocks(self):
-         return [child for child in self.children
-                if (isinstance(child, Block) and not child.empty())]
+        return [child for child in self.children if (isinstance(child, Block) and not child.empty())]
 
     def empty(self):
         return not bool(self.filtered_children())
@@ -80,7 +78,7 @@ class Block(object):
 
         yield '_name_%s' % self.name
 
-        integer_length = str(len(str(len(self.filtered_children())-1)))
+        integer_length = str(len(str(len(self.filtered_children()) - 1)))
         name_template = '%0' + integer_length + 'i_%s'
 
         for pos, child in enumerate(self.filtered_children()):

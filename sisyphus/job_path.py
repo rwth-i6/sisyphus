@@ -187,8 +187,9 @@ class Path(DelayedBase):
             else:
                 assert False, "User of path is not a job"
 
-        return ("%s %s" % (creator_to_str(self.creator), self.path) <
-                "%s %s" % (creator_to_str(other.creator), other.path))
+        s = "%s %s" % (creator_to_str(self.creator), self.path)
+        o = "%s %s" % (creator_to_str(other.creator), other.path)
+        return s < o
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -244,7 +245,8 @@ class Path(DelayedBase):
         if 'file'.startswith(step):
             return 'symlink', self.get_path()
         elif self.creator and \
-                ('creator'.startswith(step) or ('_'+self.creator._sis_id().replace(os.path.sep, '_')).startswith(step)):
+                ('creator'.startswith(step) or (
+                    '_' + self.creator._sis_id().replace(os.path.sep, '_')).startswith(step)):
             return None, self.creator
         elif 'users'.startswith(step):
             return None, self.users

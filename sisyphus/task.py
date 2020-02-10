@@ -120,7 +120,7 @@ class Task(object):
             # if an input file is too young it's may not synced in a network filesystem yet
             try:
                 input_age = time.time() - os.stat(i.get_path()).st_mtime
-                time.sleep(max(0, gs.WAIT_PERIOD_MTIME_OF_INPUTS-input_age))
+                time.sleep(max(0, gs.WAIT_PERIOD_MTIME_OF_INPUTS - input_age))
             except FileNotFoundError:
                 logging.warning('Input path does not exist: %s' % i.get_path())
 
@@ -189,7 +189,7 @@ class Task(object):
                 logging.error("Return-Code: %s" % e.returncode)
                 logging_thread.stop()
                 self.error(task_id, True)
-        except Exception as e:
+        except Exception:
             # Job failed
             logging.error("Job failed, traceback:")
             sys.excepthook(*sys.exc_info())

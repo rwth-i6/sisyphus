@@ -310,7 +310,7 @@ def setup_job_directory(job: Job):
         print(type(job))
 
 
-def run_job(job: Job, task_name: str=None, task_id: int=1, force_resume: bool=False):
+def run_job(job: Job, task_name: str = None, task_id: int = 1, force_resume: bool = False):
     """
     Run job directly in console window.
 
@@ -354,7 +354,7 @@ def run_job(job: Job, task_name: str=None, task_id: int=1, force_resume: bool=Fa
         traceback.print_exc()
 
 
-def remove_job_and_descendants(jobs: Union[str, Path, Job, List[Union[str, Path, Job]]], mode: str='remove') -> bool:
+def remove_job_and_descendants(jobs: Union[str, Path, Job, List[Union[str, Path, Job]]], mode: str = 'remove') -> bool:
     """
     Remove all jobs that depend on the given jobs/paths.
 
@@ -375,7 +375,7 @@ def remove_job_and_descendants(jobs: Union[str, Path, Job, List[Union[str, Path,
         if isinstance(source, Path):
             source = str(source)
         elif isinstance(source, Job):
-            source = os.path.join(gs.BASE_DIR,  source._sis_path())
+            source = os.path.join(gs.BASE_DIR, source._sis_path())
 
         assert isinstance(source, str), "Source is not string, Path, or Job it is: %s" % type(source)
         print("Check for %s" % source)
@@ -449,11 +449,11 @@ def import_work_directory(directories: Union[str, List[str]], mode='dryrun'):
         sis_graph.for_all_nodes(import_directory, bottom_up=True)
 
 
-def cleaner(clean_job_dir: bool=False,
-            clean_work_dir: bool=False,
-            mode: str='dryrun',
-            keep_value: int=0,
-            only_remove_current_graph: bool=False):
+def cleaner(clean_job_dir: bool = False,
+            clean_work_dir: bool = False,
+            mode: str = 'dryrun',
+            keep_value: int = 0,
+            only_remove_current_graph: bool = False):
     """ Free wasted disk space.
     Creates a list of all possible path in the current setup and deletes all directories that
     are not part of the current graph.
@@ -669,7 +669,7 @@ def print_graph(targets=None, required_inputs=None):
             if isinstance(i, Path):
                 required_inputs_str.add(i.get_path())
             elif isinstance(i, Job):
-                required_inputs_str.add(os.path.join(gs.BASE_DIR,  i._sis_path()))
+                required_inputs_str.add(os.path.join(gs.BASE_DIR, i._sis_path()))
             elif isinstance(i, str):
                 required_inputs_str.add(str(i))
             else:
@@ -710,7 +710,7 @@ def print_graph(targets=None, required_inputs=None):
             print()
 
 
-def export_graph(output_file: Optional[str]=None):
+def export_graph(output_file: Optional[str] = None):
     """
     Needs more testing
 
@@ -916,7 +916,7 @@ def reload_recipes():
     _reload_prefix(gs.RECIPE_PREFIX)
 
 
-def reload_config(config_files: List[str]=[]):
+def reload_config(config_files: List[str] = []):
     """ Reset state, reload old config files, and load given config_files
 
     :param config_files([str, ...]):
@@ -1009,7 +1009,7 @@ An example for the recipe::
 def run(obj: Any, quiet: bool = False):
     """
     Run and setup all jobs that are contained inside object and all jobs that are necessary.
-    
+
     :param obj:
     :param quiet: Do not forward job output do stdout
     :return:

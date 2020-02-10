@@ -109,11 +109,11 @@ class Directory(FilesystemObject):
                             break
             elif isinstance(obj, (tuple, list, set, frozenset)):
                 if isinstance(obj, (set, frozenset)):
-                    l = sorted(obj)
+                    obj_list = sorted(obj)
                 else:
-                    l = obj
+                    obj_list = obj
                 try:
-                    obj = l[int(step)]
+                    obj = obj_list[int(step)]
                 except ValueError:
                     raise FileNotFoundError("[Errno 2] No such file or directory: '%s'" % full_path)
             else:

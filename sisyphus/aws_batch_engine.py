@@ -61,7 +61,7 @@ class AWSBatchEngine(EngineBase):
                  ignore_failed_jobs_after_x_seconds=900,
                  ignore_succeded_jobs_after_x_seconds=10,
                  cache_result_for_x_seconds=30,
-                 call_prefix=['sudo', '-H', '-u\#%i -g \#%i' % (os.getuid(), os.getgid())]):
+                 call_prefix=['sudo', '-H', '-u\\#%i -g \\#%i' % (os.getuid(), os.getgid())]):
         self._task_info_cache_last_update = 0
         self.default_rqmt = default_rqmt
         self.job_queue = job_queue
@@ -70,7 +70,6 @@ class AWSBatchEngine(EngineBase):
         self.ignore_failed_jobs_after_x_seconds = ignore_failed_jobs_after_x_seconds
         self.ignore_succeded_jobs_after_x_seconds = ignore_succeded_jobs_after_x_seconds
         self.cache_result_for_x_seconds = cache_result_for_x_seconds
-
 
         self.lock = threading.Lock()
         self._task_info_cache = {}
@@ -130,12 +129,11 @@ class AWSBatchEngine(EngineBase):
 
         submitted = []
         cpu = rqmt.get('cpu', 1)
-        mem = int(rqmt.get('mem', 1) * 1024) # AWS uses MiB
+        mem = int(rqmt.get('mem', 1) * 1024)  # AWS uses MiB
         # TODO time
         # time = rqmt.get('mem', 1)
         for task_id in task_ids:
             call_with_id = call[:] + [str(task_id)]
-            logfile = self.get_logpath(logpath, task_name, task_id)
 
             aws_call = {
                 "jobName": escape_name(name, task_id),
@@ -158,8 +156,8 @@ class AWSBatchEngine(EngineBase):
     def queue_state(self):
         with self.lock:
             if time.time() - self._task_info_cache_last_update < self.cache_result_for_x_seconds:
-                    # use cached value
-                    return self._task_info_cache
+                # use cached value
+                return self._task_info_cache
             self._task_info_cache_last_update = time.time()
 
             # Find all jobs that are currently in the given state
@@ -185,7 +183,7 @@ class AWSBatchEngine(EngineBase):
                         else:
                             self._task_info_cache[name] = status
                     elif state == 'SUCCEEDED':
-                        stopped_at = job.get('stoppedAt', time.time()*1000) / 1000
+                        stopped_at = job.get('stoppedAt', time.time() * 1000) / 1000
                         age = time.time() - stopped_at
                         if age > self.ignore_succeded_jobs_after_x_seconds and name in self._task_info_cache:
                             jobs.append(name)

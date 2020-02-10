@@ -11,14 +11,6 @@ def load_config_file(filename):
     toolkit.current_config_ = os.path.abspath(filename)
     toolkit.set_root_block(filename)
     try:
-        globals_ = {
-            '__builtins__': globals()['__builtins__'],
-            '__file__': filename,
-            '__name__': filename,
-            '__package__': None,
-            '__doc__': None,
-        }
-
         # Check if file parameters are given
         if '(' in filename:
             filename, parameters = filename.split('(', 1)

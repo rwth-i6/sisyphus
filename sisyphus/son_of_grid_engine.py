@@ -106,7 +106,7 @@ class SonOfGridEngine(EngineBase):
                 try:
                     os.unlink(ssh_file)
                     logging.info('Delete file %s' % ssh_file)
-                except:
+                except OSError:
                     logging.warning('Could not delete %s' % ssh_file)
             else:
                 err_.append(raw_line)
@@ -345,7 +345,7 @@ class SonOfGridEngine(EngineBase):
                     start_end, step_size = string.split(':')
                     start, end = start_end.split('-')
                     return list(range(int(start), int(end) + 1, int(step_size)))
-                logging.warning("Can not parse task: %s : %s : %s" % (str(name), str(tasks), str(string)))
+                logging.warning("Can not parse task: %s : %s" % (str(name), str(string)))
                 return []
 
             for task_id in parse_task_ids(task_ids):

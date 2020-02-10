@@ -78,7 +78,10 @@ class OutputPath(OutputTarget):
         assert self._sis_path.available()
         if write_output:
             creator = self._sis_path.creator
-            prefixes = [''] if creator is None or len(creator._sis_alias_prefixes) == 0 else list(creator._sis_alias_prefixes)
+            if creator is None or len(creator._sis_alias_prefixes) == 0:
+                prefixes = ['']
+            else:
+                prefixes = list(creator._sis_alias_prefixes)
             # Link output file
             for prefix in prefixes:
                 outfile_name = os.path.join(gs.OUTPUT_DIR, prefix, self._output_path)
@@ -167,7 +170,7 @@ class OutputReport(OutputTarget):
                 elif callable(self._report_values):
                     f.write(str(self._report_values()))
                 else:
-                    f.write(pprint.pformat(self._report_values, width=140)+'\n')
+                    f.write(pprint.pformat(self._report_values, width=140) + '\n')
         except IOError as e:
             logging.warning('Error while updating %s:  %s' % (outfile_name, str(e)))
 
@@ -257,7 +260,10 @@ class SISGraph(object):
         try:
             path = target._output_path
             creator = self._sis_path.creator
-            prefixes = [''] if creator is None or len(creator._sis_alias_prefixes) == 0 else list(creator._sis_alias_prefixes)
+            if creator is None or len(creator._sis_alias_prefixes) == 0:
+                prefixes = ['']
+            else:
+                prefixes = list(creator._sis_alias_prefixes)
             for prefix in prefixes:
                 prefixed_path = prefix + path
                 if prefixed_path in self.used_output_path:
@@ -328,7 +334,8 @@ class SISGraph(object):
             if mode in ('all', 'job'):
                 vis_name = j.get_vis_name()
                 aliases = j._sis_aliases if j._sis_aliases is not None else set()
-                if pattern in j._sis_path() or (vis_name is not None and pattern in vis_name) or any(pattern in a for a in aliases):
+                if pattern in j._sis_path() or (vis_name is not None and pattern in vis_name) or \
+                   any(pattern in a for a in aliases):
                     out.add(j)
             if mode in ('all', 'path'):
                 for p in j._sis_inputs:
@@ -356,7 +363,7 @@ class SISGraph(object):
             for i in job._sis_inputs:
                 if i.creator:
                     node.inputs.add(i.creator._sis_id())
-                    other = get_job(i.creator._sis_id()).outputs.add(job._sis_id())
+                    get_job(i.creator._sis_id()).outputs.add(job._sis_id())
             id_to_job[node.sis_id] = node
             if not node.inputs:
                 stack.append(node)
@@ -375,15 +382,16 @@ class SISGraph(object):
             for i in recursive_depth(node):
                 yield i
 
-    def get_jobs_by_status(self, nodes:Optional[List]=None,
-                           engine: Optional=None,
-                           skip_finished: bool=False) -> DefaultDict[str, List[Job]]:
+    def get_jobs_by_status(self, nodes: Optional[List] = None,
+                           engine: Optional = None,
+                           skip_finished: bool = False) -> DefaultDict[str, List[Job]]:
         """ Return all jobs needed to finish output in dictionary with current status as key
 
         :param nodes: all nodes that will be checked, defaults to all output nodes in graph
-        :param sisyphus.engine.EngineBase engine: Use status job status of engine, ignore engine status if set to None (default: None)
+        :param sisyphus.engine.EngineBase engine: Use status job status of engine, ignore engine status if set to None
+               (default: None)
         :param bool skip_finished: Stop checking subtrees of finished nodes to save time
-        :return ({status1\: [Job, ...], status2\: ...}): Dictionary with all jobs sorted by current state
+        :return ({status1\\: [Job, ...], status2\\: ...}): Dictionary with all jobs sorted by current state
         :rtype: dict[str,list[Job]]
         """
 
@@ -569,11 +577,11 @@ class SISGraph(object):
             if isinstance(obj, set):
                 if len(obj) == 1:
                     for name, value in enumerate(obj):
-                        yield from runner(value, path+[name], only_check=only_check)
+                        yield from runner(value, path + [name], only_check=only_check)
                 elif only_check:
                     # check all values in the given set
                     for name, value in enumerate(obj):
-                        yield from runner(value, path+[name], only_check=only_check)
+                        yield from runner(value, path + [name], only_check=only_check)
                 else:
                     # we can not handle this case since a set can be sorted different every time
                     # check later if we have any jobs we could not map in the end
@@ -584,18 +592,18 @@ class SISGraph(object):
                     return
             elif isinstance(obj, list):
                 for name, value in enumerate(obj):
-                    yield from runner(value, path+[name], only_check=only_check)
+                    yield from runner(value, path + [name], only_check=only_check)
             elif isinstance(obj, dict):
                 for name, value in obj.items():
                     assert is_literal(name), "Can not export %s (type: %s) as directory key" % (name, type(name))
-                    yield from runner(value, path+[name], only_check=only_check)
+                    yield from runner(value, path + [name], only_check=only_check)
             elif isinstance(obj, Path):
-                yield from runner(obj.creator, path+['creator'], only_check=only_check)
+                yield from runner(obj.creator, path + ['creator'], only_check=only_check)
             else:
                 try:
                     for name, value in obj.__dict__.items():
                         if not name.startswith('_sis') and not isinstance(obj, Block):
-                            yield from runner(value, path+[name], only_check=only_check)
+                            yield from runner(value, path + [name], only_check=only_check)
                 except AttributeError:
                     pass
 
@@ -658,6 +666,7 @@ class SISGraph(object):
                 if out.creator is not None:
                     logging.info('Add target %s to jobs (used for more informativ output, '
                                  'disable with SHOW_JOB_TARGETS=False)' % name)
+
                     def f(job):
                         if gs.SHOW_JOB_TARGETS is True or len(job._sis_needed_for_which_targets) < gs.SHOW_JOB_TARGETS:
                             job._sis_needed_for_which_targets.add(name)

@@ -60,7 +60,7 @@ def str_to_hours(t):
         assert(len(t) == 3)
         t = int(t[0]) * 3600 + int(t[1]) * 60 + int(t[2])
         t /= 3600.0
-    return t 
+    return t
 
 
 def extract_paths(args):
@@ -243,7 +243,7 @@ def hardlink_or_copy(src, dst, use_symlink_instead_of_copy=False):
 
     for dirpath, dirnames, filenames in os.walk(src):
         # get relative path to given to source directory
-        relpath = dirpath[len(src)+1:]
+        relpath = dirpath[len(src) + 1:]
 
         # create directory if it doesn't exist
         try:
@@ -443,8 +443,7 @@ class MemoryProfiler:
             frame = stat.traceback[0]
             # replace "/path/to/module/file.py" with "module/file.py"
             filename = os.sep.join(frame.filename.split(os.sep)[-2:])
-            self.log_stream.write("#%s: %s:%s: %.1f KiB\n"
-                  % (index, filename, frame.lineno, stat.size / 1024))
+            self.log_stream.write("#%s: %s:%s: %.1f KiB\n" % (index, filename, frame.lineno, stat.size / 1024))
             line = linecache.getline(frame.filename, frame.lineno).strip()
             if line:
                 self.log_stream.write('    %s\n' % line)

@@ -13,6 +13,7 @@ def init(input_file):
     spliter.set_rqmt('run', rqmt={'cpu': 3, 'mem': 2})
     return parallel.Parallel(spliter.out, pipeline.pipeline)
 
+
 def starter(path, tags, output):
     input_data = RelPath(path, tags=tags)
     tk.register_output(output, init(input_data).out, export_graph=True)

@@ -106,7 +106,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 try:
                     os.unlink(ssh_file)
                     logging.info('Delete file %s' % ssh_file)
-                except:
+                except OSError:
                     logging.warning('Could not delete %s' % ssh_file)
             else:
                 err_.append(raw_line)
@@ -122,9 +122,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
 
         out.append('--mem-per-cpu=%s' % mem)
 
-
         if 'rss' in rqmt:
-            pass # there is no option in SLURM?
+            pass  # there is no option in SLURM?
 
         if rqmt.get('gpu', 0) > 0:
             out.append('--gres=gpu:%s' % rqmt.get('gpu', 0))
@@ -134,7 +133,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         # Try to convert time to float, calculate minutes from it
         # and convert it back to an rounded string
         # If it fails use string directly
-        task_time = try_to_multiply(rqmt['time'], 60 )  # convert to minutes if possible
+        task_time = try_to_multiply(rqmt['time'], 60)  # convert to minutes if possible
 
         out.append('--time=%s' % task_time)
         out.append('--export=all')
@@ -200,7 +199,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             '-J',
             name,
             '-o',
-            logpath+'/%x.%A.%a',
+            logpath + '/%x.%A.%a',
             '--mail-type=None']
         sbatch_call += self.options(rqmt)
 
@@ -260,7 +259,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             return self._task_info_cache
 
         # get bjobs output
-        system_command = ['squeue', '-h', '--array', '-u', getpass.getuser(), '-O', 'arrayjobid,arraytaskid,state,name:1000']
+        system_command = ['squeue', '-h', '--array', '-u', getpass.getuser(),
+                          '-O', 'arrayjobid,arraytaskid,state,name:1000']
         try:
             out, err, retval = self.system_call(system_command)
         except subprocess.TimeoutExpired:
@@ -278,7 +278,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 task = 1 if field[1] == "N/A" else int(field[1])
                 number = field[0]
                 task_infos[(name, task)].append((number, state))
-            except:
+            except Exception:
                 logging.warning("Failed to parse squeue output: %s" % line)
 
         self._task_info_cache = task_infos
@@ -308,9 +308,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         if qs == []:
             return STATE_UNKNOWN
         state = qs[0][1]
-        if state in ['RUNNING','COMPLETING']:
+        if state in ['RUNNING', 'COMPLETING']:
             return STATE_RUNNING
-        elif state in ['PENDING', 'CONFIGURING' ]:
+        elif state in ['PENDING', 'CONFIGURING']:
             return STATE_QUEUE
         else:
             return STATE_UNKNOWN
@@ -344,7 +344,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         if os.path.isfile(logpath):
             os.unlink(logpath)
 
-        engine_logpath = os.path.dirname(logpath)+'/engine/'+os.getenv('SLURM_JOB_NAME')+'.'+os.getenv('SLURM_ARRAY_JOB_ID')+'.'+os.getenv('SLURM_ARRAY_TASK_ID')
+        engine_logpath = os.path.dirname(logpath) + '/engine/' + os.getenv('SLURM_JOB_NAME') + \
+            '.' + os.getenv('SLURM_ARRAY_JOB_ID') + '.' + os.getenv('SLURM_ARRAY_TASK_ID')
         try:
             if os.path.isfile(engine_logpath):
                 os.link(engine_logpath, logpath)
@@ -353,7 +354,6 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 os.symlink(os.path.relpath(engine_logpath, os.path.dirname(logpath)), logpath)
         except FileExistsError:
             pass
-
 
     def get_logpath(self, logpath_base, task_name, task_id):
         """ Returns log file for the currently running task """

@@ -16,7 +16,7 @@ class Add(Job):
         b = self.b
         if isinstance(b, tk.Variable):
             b = b.get()
-        self.out.set(a+b)
+        self.out.set(a + b)
 
     def tasks(self):
         yield Task('run', mini_task=True)
@@ -37,7 +37,7 @@ class Multiply(Job):
         b = self.b
         if isinstance(b, tk.Variable):
             b = b.get()
-        self.out.set(a*b)
+        self.out.set(a * b)
 
     def tasks(self):
         yield Task('run', mini_task=True)

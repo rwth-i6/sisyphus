@@ -27,6 +27,7 @@ def run_task(call, logpath):
     with open(logpath, 'a') as logfile:
         subprocess.check_call(call, stdout=logfile, stderr=logfile)
 
+
 # name is the unique name combined of job id and task name, task_name is only the task name
 TaskQueueInstance = namedtuple('TaskQueueInstance', ['call', 'logpath', 'rqmt', 'name', 'task_name', 'task_id'])
 
@@ -113,8 +114,6 @@ class LocalEngine(threading.Thread, EngineBase):
         :param TaskQueueInstance task:
         :rtype: psutil.Process
         """
-        task_id = task.task_id
-
         # Start new task
         call = task.call[:]
         sp = subprocess.Popen(call, start_new_session=True)
@@ -154,13 +153,13 @@ class LocalEngine(threading.Thread, EngineBase):
         return True
 
     def reserve_resources(self, rqmt):
-        self.free_resources = {key: free-rqmt.get(key, 0) for key, free in self.free_resources.items()}
+        self.free_resources = {key: free - rqmt.get(key, 0) for key, free in self.free_resources.items()}
         for key, max_available in self.max_resources.items():
             free = self.free_resources[key]
             assert 0 <= free <= max_available
 
     def release_resources(self, rqmt):
-        self.free_resources = {key: free+rqmt.get(key, 0) for key, free in self.free_resources.items()}
+        self.free_resources = {key: free + rqmt.get(key, 0) for key, free in self.free_resources.items()}
         for key, max_available in self.max_resources.items():
             free = self.free_resources[key]
             assert 0 <= free <= max_available
@@ -203,8 +202,8 @@ class LocalEngine(threading.Thread, EngineBase):
                     # check only once per second for new jobs
                     # if no job has been started
                     time.sleep(1)
-        except KeyboardInterrupt as e:
-            #  KeyboardInterrupt is handled in manger
+        except KeyboardInterrupt:
+            #  KeyboardInterrupt is handled in manager
             pass
 
     def stop_engine(self):

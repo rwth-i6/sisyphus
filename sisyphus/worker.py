@@ -43,7 +43,7 @@ def format_number(number,
     if count < use_decimal_after:
         return "%i%s" % (result, mapping[count])
     else:
-        return "%.2f%s" % ((result*factor+residual)/factor, mapping[count])
+        return "%.2f%s" % ((result * factor + residual) / factor, mapping[count])
 
 
 class LoggingThread(Thread):
@@ -86,7 +86,7 @@ class LoggingThread(Thread):
                      'current': current,
                      'pid': os.getpid(),
                      'user': user,
-                     'used_time': (time.time()-start_time) / 3600.,
+                     'used_time': (time.time() - start_time) / 3600.,
                      'host': socket.gethostname(),
                      'current_time': time.ctime(),
                      'out_of_memory': self.out_of_memory,
@@ -102,16 +102,17 @@ class LoggingThread(Thread):
             try:
                 resources = gs.active_engine.get_job_used_resources(current_process)
             except psutil.AccessDenied as e:
-                logging.warning('Logging thread got psutil.AccessDenied Exception, subprocess probably ended %s' % str(e))
+                logging.warning('Logging thread got psutil.AccessDenied Exception, subprocess probably ended %s' %
+                                str(e))
                 continue
             # Only print log if rss changed at least bey PLOGGING_MIN_CHANGE
-            if last_rss is None or abs(last_rss - resources['rss'])/last_rss > gs.PLOGGING_MIN_CHANGE:
+            if last_rss is None or abs(last_rss - resources['rss']) / last_rss > gs.PLOGGING_MIN_CHANGE:
                 if not gs.PLOGGING_QUIET:
                     logging.info("Run time: {time} CPU: {cpu:.2f}% RSS: {rss} VMS: {vms}".format(
-                                 time=format_time(time.time()-start_time),
+                                 time=format_time(time.time() - start_time),
                                  cpu=resources['cpu'],
-                                 rss=format_bytes(resources['rss']*1024**3),
-                                 vms=format_bytes(resources['vms']*1024**3)))
+                                 rss=format_bytes(resources['rss'] * 1024 ** 3),
+                                 vms=format_bytes(resources['vms'] * 1024 ** 3)))
                 last_rss = resources['rss']
 
             # store max used resources
@@ -125,7 +126,7 @@ class LoggingThread(Thread):
             # if rss usage grow relative more then PLOGGING_MIN_CHANGE
             # if (max_resources['rss'] > last_log_value and time.time() - last_log_time > 30) or \
             if time.time() - last_log_time > gs.PLOGGING_UPDATE_FILE_PERIOD or\
-                    (max_resources['rss'] - last_log_value)/last_log_value > gs.PLOGGING_MIN_CHANGE:
+                    (max_resources['rss'] - last_log_value) / last_log_value > gs.PLOGGING_MIN_CHANGE:
                 log_usage(resources)
                 last_log_value = max_resources['rss']
                 last_log_time = time.time()
@@ -140,10 +141,10 @@ class LoggingThread(Thread):
 
         log_usage(resources)
         logging.info("Max resources: Run time: {time} CPU: {cpu}% RSS: {rss} VMS: {vms}"
-                     "".format(time=format_time(time.time()-start_time),
+                     "".format(time=format_time(time.time() - start_time),
                                cpu=max_resources['cpu'],
-                               rss=format_bytes(max_resources['rss']*1024**3),
-                               vms=format_bytes(max_resources['vms']*1024**3)))
+                               rss=format_bytes(max_resources['rss'] * 1024 ** 3),
+                               vms=format_bytes(max_resources['vms'] * 1024 ** 3)))
 
     def stop(self):
         with self._cond:
@@ -162,7 +163,7 @@ def worker(args):
         error_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.STATE_ERROR, args.task_name, task_id)
         if not os.path.isfile(error_file) and not os.path.isdir(error_file):
             # create error file
-            with open(error_file, 'w') as f:
+            with open(error_file, 'w'):
                 pass
         raise
 
@@ -183,7 +184,7 @@ def worker_helper(args):
         is_not_first = os.path.isfile(log_file)
         with open(log_file, 'a') as logfile:
             if is_not_first:
-                logfile.write('\n' + ('#'*80) + '\nRETRY OR CONTINUE TASK\n' + ('#'*80) + '\n\n')
+                logfile.write('\n' + ('#' * 80) + '\nRETRY OR CONTINUE TASK\n' + ('#' * 80) + '\n\n')
             # There is probably a better way to redirect the output without starting a subprocess, but all others
             # that I tried did not catch all of the output
             subprocess.check_call(call, stdout=logfile, stderr=logfile)

@@ -83,7 +83,7 @@ class LoadSharingFacilityEngine(EngineBase):
                 try:
                     os.unlink(ssh_file)
                     logging.info('Delete file %s' % ssh_file)
-                except:
+                except OSError:
                     logging.warning('Could not delete %s' % ssh_file)
             else:
                 err_.append(raw_line)
@@ -140,7 +140,7 @@ class LoadSharingFacilityEngine(EngineBase):
                     start_id = task_id
                 else:
                     submitstring += '%i-%i,' % (start_id, end_id)
-                    submitlist += list(range(start_id, end_id+1))
+                    submitlist += list(range(start_id, end_id + 1))
                     start_id, end_id = (task_id, None)
                 entrycounter += 1
                 # The submitstring must not get longer than 255 chars. Assume job_id's are 4 digit numbers at max
@@ -152,7 +152,7 @@ class LoadSharingFacilityEngine(EngineBase):
         if end_id is None:
             end_id = start_id
         submitstring += '%i-%i,' % (start_id, end_id)
-        submitlist += list(range(start_id, end_id+1))
+        submitlist += list(range(start_id, end_id + 1))
         job_id = self.submit_helper(call, logpath, rqmt, name, task_name, submitstring[:-1])
         submitted.append((submitlist, job_id))
         return (ENGINE_NAME, submitted)
@@ -179,7 +179,7 @@ class LoadSharingFacilityEngine(EngineBase):
         except subprocess.TimeoutExpired:
             logging.warning('SSH command timeout %s' % str(command))
             time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
-            return self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
+            return self.submit_helper(call, logpath, rqmt, name, task_name, rangestring)
 
         ref_output = ['Job', 'is', 'submitted', 'to', 'queue']
         ref_output = [i.encode() for i in ref_output]
@@ -204,7 +204,7 @@ class LoadSharingFacilityEngine(EngineBase):
                 for entry in rangestring.split(','):
                     if '-' in entry:
                         start_id, end_id = entry.split('-')
-                        for task_id in range(int(start_id), int(end_id)+1):
+                        for task_id in range(int(start_id), int(end_id) + 1):
                             self._task_info_cache[(name, task_id)].append((job_id, 'PEND'))
                     else:
                         self._task_info_cache[(name, int(entry))].append((job_id, 'PEND'))
@@ -250,7 +250,7 @@ class LoadSharingFacilityEngine(EngineBase):
                 task = int(field[6].split('[')[-1].split(']')[0])
                 number = field[0]
                 task_infos[(name, task)].append((number, state))
-            except:
+            except Exception:
                 logging.warning("Failed to parse bjobs -w output: %s" % line)
 
         self._task_info_cache = task_infos
