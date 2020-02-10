@@ -17,7 +17,7 @@ class HashTest(unittest.TestCase):
             pass
 
         self.assertEqual(sis_hash_helper(b),
-                         b"(function, (tuple, (str, 'tests.hash_unittest'), (str, 'b')))")
+                         b"(function, (tuple, (str, '" + __name__.encode() + b"'), (str, 'b')))")
         self.assertRaises(AssertionError, sis_hash_helper, c)
 
 

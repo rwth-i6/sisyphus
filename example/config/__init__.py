@@ -21,4 +21,4 @@ if __name__ == '__main__':
     input_data = tk.Path('data/5lines.txt', tags={'5lines'})
     output = init(input_data).out
     tk.run(output)
-    tk.sh(f'cp {output} myoutput')
+    tk.sh('cp %s myoutput' % output)

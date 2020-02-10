@@ -396,8 +396,8 @@ class SisyphusDisplay:
             except OSError:
                 import tempfile
                 open_lf = tempfile.NamedTemporaryFile('w')
-                log_message = f'Could not create default log file at {log_file}, use fallback to ' \
-                              f'temporary file at {open_lf.name}.'
+                log_message = 'Could not create default log file at %s, use fallback to ' \
+                              'temporary file at %s.' % (log_file, open_lf.name)
                 self.log_file = open_lf.name
 
             self.log_handler = UiLoggingHandler(self.logger_box, self.redraw, log_file=open_lf)
