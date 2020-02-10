@@ -52,5 +52,6 @@ class GraphTest(unittest.TestCase):
                           'task/test/MergeInputs.fff2af28cc087c94d5c44357e142f574',
                           'task/test/MergeInputs.699d06d9fcfb871889cc2d3cd6623a6c'])
 
+
 if __name__ == '__main__':
     unittest.main()

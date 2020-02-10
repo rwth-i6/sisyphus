@@ -23,5 +23,6 @@ class MkTemp(unittest.TestCase):
             assert(len(glob.glob(temp)) == 1)
         assert(len(glob.glob(temp)) == 0)
 
+
 if __name__ == '__main__':
     unittest.main()

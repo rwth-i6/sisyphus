@@ -1,6 +1,6 @@
 import os
-
 from sisyphus import *
+
 
 class Test(Job):
 
@@ -16,11 +16,11 @@ class Test(Job):
         print(pos)
         print(os.getcwd())
 
-        print("In:",  str(self.text))
+        print("In:", str(self.text))
         print("Out:", self.out)
         self.sh("echo SHELL COMMAND")
         print(pos)
-        self.sh("echo $$ > test.file.{job}",job=pos)
+        self.sh("echo $$ > test.file.{job}", job=pos)
 
         self.sh('zcat -f {text}')
         self.sh("pwd")
@@ -29,9 +29,10 @@ class Test(Job):
         self.sh("mv test.file.4 {out}", out=self.out)
 
     def tasks(self):
-        return [Task('run', args=range(3,6), rqmt={'cpu':1}),
+        return [Task('run', args=range(3, 6), rqmt={'cpu': 1}),
                 Task('finalize')
                 ]
+
 
 class MergeInputs(Job):
 
@@ -47,11 +48,11 @@ class MergeInputs(Job):
         print(pos)
         print(os.getcwd())
 
-        print("In:",  str(self.text))
+        print("In:", str(self.text))
         print("Out:", self.out)
         self.sh("echo SHELL COMMAND")
         print(pos)
-        self.sh("echo $$ > test.file.{job}",job=pos)
+        self.sh("echo $$ > test.file.{job}", job=pos)
 
         for self.text in self.texts:
             self.sh('zcat -f {text}')
@@ -61,6 +62,6 @@ class MergeInputs(Job):
         self.sh("mv test.file.4 {out}", out=self.out)
 
     def tasks(self):
-        return [Task('run', args=range(3,6), rqmt={'cpu':1}),
+        return [Task('run', args=range(3, 6), rqmt={'cpu': 1}),
                 Task('finalize')
                 ]

@@ -49,7 +49,7 @@ STATE_RETRY_ERROR = 'retry_error'  # to many failed retries
 CMD_WORKER = 'worker'  # command to call the worker from commandline
 
 # Directory with unittest elements
-TEST_DIR = 'testing'
+TEST_DIR = 'tests'
 
 # Message printed ahead of Sisyphus help message
 # Credits to: http://sisyphus.ascii.uk

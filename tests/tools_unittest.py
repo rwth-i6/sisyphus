@@ -27,7 +27,7 @@ class ExecuteInDir(unittest.TestCase):
             with execute_in_dir(recipe_test_dir):
                 self.assertEqual(os.path.join(cwd, recipe_test_dir), os.getcwd())
                 assert(False)
-        except:
+        except AssertionError:
             self.assertEqual(cwd, os.getcwd())
         self.assertEqual(cwd, os.getcwd())
 
@@ -64,7 +64,6 @@ class SisHash(unittest.TestCase):
 
     def test_f(self):
         from recipe.task import test
-        t = test.Test('foo')
         Point = collections.namedtuple('Point', ['x', 'y'])
         for obj, ref, hash_ref in [
                 (0, b'(int, 0)', '32c41e3ec33997dc8f7aa39d8c00317b'),

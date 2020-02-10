@@ -1,7 +1,8 @@
-import unittest
+import hashlib
 import os
 import shutil
-import hashlib
+import sys
+import unittest
 
 from sisyphus.job_path import Path
 from sisyphus.tools import execute_in_dir
@@ -12,6 +13,8 @@ import sisyphus.global_settings as gs
 gs.SIS_HASH = lambda x: hashlib.md5(sis_hash_helper(x)).hexdigest()
 
 # TODO replace fixed job hashes and compare if things changed
+sys.path.append(gs.TEST_DIR)
+
 
 class JobTest(unittest.TestCase):
 
@@ -70,6 +73,7 @@ class JobTest(unittest.TestCase):
             job = Test(text=Path("input_text.gz"))
             job._sis_setup_directory()
             shutil.rmtree(gs.WORK_DIR)
+
 
 if __name__ == '__main__':
     unittest.main()
