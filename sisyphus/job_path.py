@@ -211,10 +211,6 @@ class Path(DelayedBase):
         return hash((self.__dict__.get('creator'),
                      self.__dict__.get('path')))
 
-    def __deepcopy(self):
-        """ A Path should always be a singleton for one path => a deep copy is a reference to itself"""
-        return self
-
     def __getstate__(self):
         """  Skips exporting users
         :return:
