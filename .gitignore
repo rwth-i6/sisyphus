@@ -4,6 +4,7 @@ __pycache__
 docs/_build
 example/output
 example/work
+example/log
 *.swo
 .coverage
 htmlcov
