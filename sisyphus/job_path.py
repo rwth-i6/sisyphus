@@ -144,7 +144,7 @@ class Path(DelayedBase):
                 creator_path = self.creator._sis_path(gs.JOB_OUTPUT)
             return os.path.join(creator_path, self.path)
 
-    def get_path(self):
+    def get_path(self) -> str:
         """
         :return: a string with the absolute path to this file
         :rtype: str
@@ -155,14 +155,17 @@ class Path(DelayedBase):
         else:
             return os.path.join(gs.BASE_DIR, path)
 
-    def get(self):
-        return self.get_path()
-
-    def __str__(self):
+    def get_cached_path(self) -> str:
         if Path.cacheing_enabled and self.cached:
             return gs.file_caching(self.get_path())
         else:
             return self.get_path()
+
+    def get(self):
+        return self.get_path()
+
+    def __str__(self):
+        return self.get_cached_path()
 
     def __repr__(self):
         return repr(str(self))
@@ -225,6 +228,9 @@ class Path(DelayedBase):
         self.__dict__.update(state)
         if not hasattr(self, 'users'):
             self.users = set()
+
+    def __fspath__(self) -> str:
+        return self.get_cached_path()
 
     # Filesystem functions
     def __fs_directory__(self):

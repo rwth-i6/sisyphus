@@ -18,9 +18,10 @@ import subprocess
 import sys
 import time
 import traceback
-from typing import List, Generator
+from typing import List, Iterator
 
-from sisyphus import block, tools, Task
+from sisyphus import block, tools
+from sisyphus.task import Task
 from sisyphus.job_path import Path, Variable
 
 # Definition of constants
@@ -1059,7 +1060,7 @@ class Job(metaclass=JobSingleton):
         self._sis_task_rqmt_overwrite[task_name] = rqmt.copy(), False
         return self
 
-    def tasks(self) -> Generator[Task]:
+    def tasks(self) -> Iterator[Task]:
         """
         :return: yields Task's
         :rtype: list[sisyphus.task.Task]
