@@ -3,12 +3,11 @@ import os
 import sys
 import time
 import threading
-import tracemalloc
 
 from multiprocessing.pool import ThreadPool
 
 from sisyphus import toolkit, tools
-from sisyphus.loader import load_configs, load_config_file
+from sisyphus.loader import load_configs
 from sisyphus.block import Block
 import sisyphus.global_settings as gs
 
@@ -439,7 +438,10 @@ class Manager(threading.Thread):
 
     def startup(self):
         if gs.MEMORY_PROFILE_LOG:
-            self.mem_profile = tools.MemoryProfiler(open(gs.MEMORY_PROFILE_LOG, 'w'))
+            if tools.tracemalloc:
+                self.mem_profile = tools.MemoryProfiler(open(gs.MEMORY_PROFILE_LOG, 'w'))
+            else:
+                logging.warning('Could not load tracemalloc, continue without memory profiling')
         else:
             self.mem_profile = None
 

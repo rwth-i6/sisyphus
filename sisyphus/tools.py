@@ -12,7 +12,11 @@ import time
 import logging
 import subprocess
 import linecache
-import tracemalloc
+
+try:
+    import tracemalloc
+except ModuleNotFoundError:
+    tracemalloc = None
 
 import sisyphus.global_settings as gs
 from sisyphus.block import Block
