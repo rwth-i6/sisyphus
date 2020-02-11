@@ -9,8 +9,7 @@ A workflow manager in Python.
 
 Sisyphus requires a Python >=3.5 installation with the following additional libraries:
 
-    pip3 install psutil
-    pip3 install ipython
+    pip3 install -r requirements.txt
 
   Optional if curse based user interface should be used:
 
@@ -57,11 +56,23 @@ To run sisyphus on the example workflow change into the `/example` directory and
 
 A large realistic workflow will soon be added.
 
+# Development
+
+If you want to commit to the repository make sure to run the unittest and check for PEP 8 by running tox.
+All need tools can be installed by running:
+
+    pip3 install -r requirements-dev.txt
+
+To automatically check for PEP 8 errors before committing run:
+
+    pre-commit install
+
+The unittest and flake8 on all relevant files is done by running tox:
+
+    tox
 
 # License
 
 All Source Code in this Project is subject to the terms of the Mozilla
 Public License, v. 2.0. If a copy of the MPL was not distributed with
 this file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-https://sisyphus-workflow-manager.readthedocs.io/en/latest/

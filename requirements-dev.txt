@@ -1,0 +1,4 @@
+psutil
+ipython
+flake8
+tox
