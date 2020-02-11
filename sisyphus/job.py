@@ -18,7 +18,7 @@ import subprocess
 import sys
 import time
 import traceback
-from typing import List
+from typing import List, Generator
 
 from sisyphus import block, tools, Task
 from sisyphus.job_path import Path, Variable
@@ -1059,12 +1059,12 @@ class Job(metaclass=JobSingleton):
         self._sis_task_rqmt_overwrite[task_name] = rqmt.copy(), False
         return self
 
-    def tasks(self):
+    def tasks(self) -> Generator[Task]:
         """
         :return: yields Task's
         :rtype: list[sisyphus.task.Task]
         """
-        raise NotImplementedError("%s needs to have the tasks function explicitly defined" % self)
+        yield Task('run')
 
     def keep_value(self, value=None):
         """ Return keep_value, if value is given also set keep value """
