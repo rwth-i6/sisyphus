@@ -17,6 +17,24 @@ def main():
     tk.register_output('result', init(input_data).out, export_graph=True)
 
 
+async def async_main():
+    input_data = tk.Path('data/5lines.txt', tags={'5lines'})
+    spliter = parallel.LineSpliter(input_data)
+    # Test if requesting gpu works
+    spliter.set_rqmt('run', rqmt={'cpu': 1, 'mem': 2, 'gpu': 1})
+    await tk.async_run(spliter.out)
+
+    check_block = tk.sub_block('checker')
+    parallel_out = []
+    for count, path in enumerate(spliter.out.get()):
+        with tk.block('pipeline_%i' % count):
+            p = pipeline.pipeline(path, check_block, input_data.tags | {'pipeline_%i' % count})
+            parallel_out.append(p)
+
+    await tk.async_run(parallel_out)
+    for p in parallel_out:
+        print(p.score.get(), p.out)
+
 if __name__ == '__main__':
     input_data = tk.Path('data/5lines.txt', tags={'5lines'})
     output = init(input_data).out

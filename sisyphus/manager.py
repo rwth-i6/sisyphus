@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import sys
@@ -62,6 +63,10 @@ def manager(args):
     filesystem = None
     if args.filesystem:
         import sisyphus.filesystem as filesystem
+
+    # Ensure this thread has a event loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     start = time.time()
     load_configs(args.config_files)
@@ -425,14 +430,20 @@ class Manager(threading.Thread):
                 self.sis_graph.remove_from_active_targets(target)
 
     def continue_manager_loop(self):
+        # Stop loop flag is set
+        if self._stop_loop:
+            logging.info("Manager loop stopped")
+            return False
+
+        # Keep running if any config reader is not finished reading
+        if toolkit.config_reader_running():
+            return True
+
         # Stop loop if all outputs are computed
         if self.stop_if_done and len(self.sis_graph.active_targets) == 0:
             logging.info("All output calculated")
             return False
-        # the stop loop flag is set
-        if self._stop_loop:
-            logging.info("Manager loop stopped")
-            return False
+
         # or nothing is left to do
         return self.work_left()
 
@@ -450,8 +461,10 @@ class Manager(threading.Thread):
         self.update_jobs()
         self.update_state_overview()
 
+        toolkit.check_for_exceptions()
+
         # Skip first part if there is nothing todo
-        if not self.jobs and not self.ui:
+        if toolkit.config_reader_running() and not self.jobs and not self.ui:
             answer = self.input('All calculations are done, print verbose overview (v), update outputs and alias (u), '
                                 'cancel (c)? ')
             if answer.lower() in ('y', 'v'):
@@ -513,11 +526,19 @@ class Manager(threading.Thread):
 
     @tools.default_handle_exception_interrupt_main_thread
     def run(self):
+        try:
+            asyncio.get_event_loop().run_until_complete(self.async_run())
+        except KeyboardInterrupt:
+            pass
+
+    async def async_run(self):
         self.startup()
         last_state_overview = self.state_overview
         while self.continue_manager_loop():
             # check if finished
             logging.debug('Begin of manager loop')
+
+            toolkit.check_for_exceptions()
 
             if self.mem_profile:
                 self.mem_profile.snapshot()
@@ -545,10 +566,13 @@ class Manager(threading.Thread):
                 # Not thing to do right now, wait for jobs to finish
                 # otherwise continue directly
                 logging.debug("Wait for %i seconds" % gs.WAIT_PERIOD_BETWEEN_CHECKS)
-                time.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
+                await asyncio.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
 
             self.resume_jobs()
             self.run_jobs()
+
+        # Stop config reader
+        toolkit.cancel_all_config_reader()
 
         self.check_output(write_output=self.link_outputs, update_all_outputs=True)
 

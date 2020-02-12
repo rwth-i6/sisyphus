@@ -171,6 +171,7 @@ def main():
     # update_global_settings_from_list(args.commandline_settings)
 
     if gs.USE_VERBOSE_TRACEBACK:
+        sys.excepthook_org = sys.excepthook
         if gs.VERBOSE_TRACEBACK_TYPE == "ipython":
             from IPython.core import ultratb
             sys.excepthook = ultratb.VerboseTB()

@@ -153,6 +153,9 @@ class OutputReport(OutputTarget):
             self.write_report()
 
     def write_report(self):
+        # Allow for anonymous reports
+        if self._output_path is None:
+            return
         outfile_name = os.path.join(gs.OUTPUT_DIR, self._output_path)
         outfile_dir = os.path.dirname(outfile_name)
         try:

@@ -48,8 +48,10 @@ import tarfile
 import tempfile
 from typing import Union, Any, List, Optional
 import subprocess
+import asyncio
 
 from sisyphus.tools import sh, extract_paths
+import sisyphus.block
 from sisyphus.block import block, sub_block, set_root_block
 from sisyphus.delayed_ops import Delayed
 
@@ -1082,3 +1084,67 @@ def run(obj: Any, quiet: bool = False):
         jobs = get_jobs()
 
     gs.SKIP_IS_FINISHED_TIMEOUT = False
+
+
+all_config_readers = []
+
+
+def config_reader_running():
+    """ Return True if any config reader is not finished yet.
+
+    :return:
+    """
+    for _, reader in all_config_readers:
+        if reader is None or reader.done() or reader.cancelled():
+            continue
+        else:
+            return True
+    return False
+
+
+def cancel_all_config_reader():
+    for name, reader in all_config_readers:
+        if reader and not reader.done() and not reader.cancelled():
+            logging.warning("Stop config reader: %s" % name)
+            reader.cancel()
+
+
+def check_for_exceptions():
+    for name, reader in all_config_readers:
+        if reader and reader.done():
+            e = reader.exception()
+            if e:
+                raise e
+
+
+class async_context:
+    def __enter__(self):
+        global current_config_
+        self.local_config = current_config_
+        current_config_ = None
+        self.active_blocks = sisyphus.block.active_blocks
+        sisyphus.block.active_blocks = set()
+        self.all_root_blocks = sisyphus.block.all_root_blocks
+        sisyphus.block.all_root_blocks = []
+
+    def __exit__(self, type, value, traceback):
+        global current_config_
+        current_config_ = self.local_config
+        sisyphus.block.active_blocks = self.active_blocks
+        sisyphus.block.all_root_blocks = self.all_root_blocks
+
+
+async def async_run(obj: Any):
+    """
+    Run and setup all jobs that are contained inside object and all jobs that are necessary.
+
+    :param obj:
+    :param quiet: Do not forward job output do stdout
+    :return:
+    """
+    sis_graph.add_target(graph.OutputTarget(name='async_run', inputs=obj))
+    all_paths = {p for p in extract_paths(obj) if not p.available()}
+    with async_context():
+        while all_paths:
+            await asyncio.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
+            all_paths = {p for p in all_paths if not p.available()}

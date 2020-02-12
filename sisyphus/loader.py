@@ -1,40 +1,63 @@
 import os
 import logging
 import importlib
+import inspect
+import asyncio
 from ast import literal_eval
 from importlib.machinery import PathFinder
 import sisyphus.global_settings as gs
 
 
-def load_config_file(filename):
+def load_config_file(config_name):
     import sisyphus.toolkit as toolkit
+
+    # Check if file parameters are given
+    if '(' in config_name:
+        filename, parameters = config_name.split('(', 1)
+        parameters, _ = parameters.rsplit(')', 1)
+        parameters = literal_eval('(%s,)' % parameters)
+    else:
+        filename = config_name
+        parameters = []
+
     toolkit.current_config_ = os.path.abspath(filename)
     toolkit.set_root_block(filename)
+
+    filename = filename.replace(os.path.sep, '.')  # allows to use tab completion for file selection
+    assert all(part.isidentifier() for part in filename.split('.')), "Config name is invalid: %s" % filename
+    module_name, function_name = filename.rsplit('.', 1)
     try:
-        # Check if file parameters are given
-        if '(' in filename:
-            filename, parameters = filename.split('(', 1)
-            parameters, _ = parameters.rsplit(')', 1)
-            parameters = literal_eval('(%s,)' % parameters)
-        else:
-            parameters = None
-
-        filename = filename.replace(os.path.sep, '.')  # allows to use tab completion for file selection
-        assert all(part.isidentifier() for part in filename.split('.')), "Config name is invalid: %s" % filename
-        module_name, function_name = filename.rsplit('.', 1)
         config = importlib.import_module(module_name)
-        if parameters is not None:
-            getattr(config, function_name)(*parameters)
-        elif function_name != 'py':
-            # If filename ends on py and no parameters are given we assume we should only read the config file
-            getattr(config, function_name)()
+    except SyntaxError:
+        import sys
+        if gs.USE_VERBOSE_TRACEBACK:
+            sys.excepthook = sys.excepthook_org
+        raise
 
-    except AttributeError as e:
-        # TODO needs to be updated or removed
-        if str(e).endswith("object has no attribute 'add_user'"):
-            logging.error("Are you using a non Path object as path? Maybe a Job object instead of it's output path?")
-        raise e
+    try:
+        f = getattr(config, function_name)
+        res = f(*parameters)
+    except AttributeError:
+        if function_name == 'py':
+            # If filename ends on py and no function is found we assume we should only read the config file
+            res = None
+        else:
+            raise
+
+    task = None
+    if inspect.iscoroutine(res):
+        # Run till the first await command is found
+        logging.info('Loading async config: %s' % config_name)
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(res)
+        loop.call_soon(loop.stop)
+        loop.run_forever()
+    else:
+        logging.info('Loaded config: %s' % config_name)
+
     toolkit.current_config_ = None
+    toolkit.all_config_readers.append((filename, task))
+    return task
 
 
 def load_configs(filenames=None):

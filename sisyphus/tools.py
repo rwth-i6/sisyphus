@@ -12,6 +12,7 @@ import time
 import logging
 import subprocess
 import linecache
+from typing import Set, Any
 
 try:
     import tracemalloc
@@ -67,7 +68,7 @@ def str_to_hours(t):
     return t
 
 
-def extract_paths(args):
+def extract_paths(args: Any) -> Set:
     """
     Extract all path objects from the given arguments.
 
