@@ -341,10 +341,13 @@ class Variable(Path):
         self.cache = None
         self.backup = backup
 
+    def is_set(self):
+        return os.path.isfile(self.get_path())
+
     def get(self):
         if hasattr(self, 'cache_set') and self.cache_set:
             return self.cache
-        if not os.path.isfile(self.get_path()):
+        if not self.is_set():
             if self.backup is None:
                 return "<UNFINISHED VARIABLE: %s>" % self.get_path()
             else:
