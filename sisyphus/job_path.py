@@ -255,15 +255,6 @@ class Path(DelayedBase):
         else:
             raise KeyError(step)
 
-    def replace(self, other):
-        """ Replace this path by other path:
-
-        Args:
-        other: This path will be replaced by other path
-        """
-        other.users.update(self.users)
-        self.__dict__ = other.__dict__
-
     def size(self):
         """ Return file size if file exists, else return None """
         assert self.available(), "Path not ready: %s" % str(self.get_path())
