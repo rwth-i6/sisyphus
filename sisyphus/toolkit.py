@@ -1148,3 +1148,17 @@ async def async_run(obj: Any):
         while all_paths:
             await asyncio.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
             all_paths = {p for p in all_paths if not p.available()}
+
+
+def submit_next_task(job: Job, setup_directory=True):
+    if not job._sis_runnable():
+        logging.warning('Job is not runnable')
+        return
+    if setup_directory:
+        job._sis_setup_directory()
+    gs.cached_engine().start_engine()
+    task = job._sis_next_task()
+    if task is None:
+        logging.warning('No task to run')
+    else:
+        gs.cached_engine().submit(task)
