@@ -2,7 +2,6 @@ import os
 import sys
 import subprocess
 import time
-import threading
 import logging
 import pprint
 import urwid
@@ -14,6 +13,7 @@ from sisyphus.logging_format import color_end_marker, color_mapping
 from sisyphus.job import Job
 from sisyphus.job_path import Path
 from sisyphus.manager import create_aliases
+from sisyphus import toolkit as tk
 
 
 class RightButton(urwid.Button):
@@ -149,16 +149,55 @@ class SisyphusDisplay:
         self.obj_body.body = []
 
         for k, v in items:
-            if isinstance(v, Path):
-                label = '%s %s<%s>' % (k, type(v).__name__, repr(v))
+            if k is None:
+                button = v
             else:
-                label = '%s %s' % (k, pprint.pformat(v))
-            button = RightButton(label, on_press=self.obj_selected, user_data=v)
-            button = urwid.AttrWrap(button, 'button normal', 'button select')
+                if isinstance(v, Path):
+                    label = '%s %s<%s>' % (k, type(v).__name__, repr(v))
+                else:
+                    label = '%s %s' % (k, pprint.pformat(v))
+                button = RightButton(label, on_press=self.obj_selected, user_data=v)
+                button = urwid.AttrWrap(button, 'button normal', 'button select')
             self.obj_body.body.append(button)
 
     def show_job(self, job):
         items = []
+
+        def add_button(label, on_press, user_data=None):
+            button = RightButton(label, on_press=on_press, user_data=user_data)
+            return None, urwid.AttrWrap(button, 'button normal', 'button select')
+
+        items.append(add_button('Action: remove job and descendants',
+                                self.run_commands,
+                                [(tk.remove_job_and_descendants, [job], {})]))
+
+        items.append(add_button('Setup job directory',
+                                self.run_commands,
+                                [(job._sis_setup_directory, [], {})]))
+        items.append((None, urwid.Text("------------------------")))
+
+        if job._sis_runnable() and not job._sis_finished():
+            next_task = None
+            for task in job._sis_tasks():
+                if task.finished():
+                    items.append((None, urwid.Text("Finished Task: %s" % task.name())))
+                else:
+                    task_ids = task.task_ids()
+                    for task_id in task_ids:
+                        state = task.state(gs.cached_engine(), task_id)
+                        if len(task_ids) > 1:
+                            task_label = "%s <%i>" % (task.name(), task_id)
+                        else:
+                            task_label = task.name()
+                        items.append((None, urwid.Text('Task %s is in state: "%s"' % (task_label, state))))
+                    next_task = task
+                    break
+            if next_task:
+                items.append(add_button('Submit task: "%s" to engine' % next_task.name(),
+                                        self.run_commands,
+                                        [(tk.submit_next_task, [job], {})]))
+            items.append((None, urwid.Text("------------------------")))
+
         attributes = job.__dict__
         for name in ('_sis_kwargs', '_sis_aliases', '_sis_keep_value', '_sis_stacktrace',
                      '_sis_blocks', '_sis_tags', '_sis_task_rqmt_overwrite', '_sis_vis_name',
@@ -167,12 +206,13 @@ class SisyphusDisplay:
             if attr:
                 items.append((name[5:], attr))
 
+        items.append((None, urwid.Text("------------------------")))
+
         for k, v in attributes.items():
             if not k.startswith('_sis_'):
                 items.append((k, v))
 
         self.show_items(items)
-
         self.loop.widget = self.obj_view
         self.redraw()
 
@@ -293,7 +333,6 @@ class SisyphusDisplay:
 
     def update_menu(self):
         self.menu_box.body = []
-        from sisyphus import toolkit as tk
 
         def add_button(label, on_press=None, user_data=None):
             button = RightButton(label, on_press=on_press, user_data=user_data)
