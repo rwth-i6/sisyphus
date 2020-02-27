@@ -73,6 +73,8 @@ class UiLoggingHandler(logging.Handler):
     def add_event(self, s, tag='STDOUT'):
         if not s:
             return
+        if isinstance(s, bytes):
+            s = s.decode()
         if s[-1] == '\n':
             s = s[:-1]
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
