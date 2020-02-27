@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Support for async workflow definitions. If await tk.async_run(obj) is called sisyphus will wait until all Path objects inside of obj are available
 - Path has now is_set method
+- Manager can now be paused
 
 ### Fixed
 - Avoid crash if tracemalloc not found, needed to run sisyphus in pypy
+- Added timeout to html visualization which can fail for large graphs
 
 ## [1.0.0] - 2020-02-11
 

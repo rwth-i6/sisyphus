@@ -277,8 +277,14 @@ def visualize(block_id):
             items.extend(root_block.get_sub_blocks())
         return render_template("vis_overview.html", items=items)
     else:
-        dot_file = visualize_block(parent, g_sis_engine, url_prefix)
-        return sp.check_output(['dot', '-Tsvg'], input=dot_file, universal_newlines=True)
+        suc, dot_file = visualize_block(parent, g_sis_engine, url_prefix)
+        if not suc:
+            return dot_file
+        try:
+            return sp.check_output(['dot', '-Tsvg'], input=dot_file, universal_newlines=True, timeout=gs.VIS_TIMEOUT)
+        except sp.TimeoutExpired as timeout:
+            return 'Failed to create visual representation in %i seconds. The model is probably to complex. ' \
+                   'You can increase the timeout by setting VIS_TIMEOUT to a higher value.' % timeout.timeout
 
 
 class HttpThread(threading.Thread):

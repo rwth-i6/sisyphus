@@ -268,6 +268,10 @@ TMP_PREFIX = os.path.join(os.environ.get('TMPDIR', '/tmp'), 'sis_')
 VIS_RELATIVE_MERGE_THRESHOLD = 0.25
 #: For http visualization, list job input as common input if it is share between more then X jobs
 VIS_ABSOLUTE_MERGE_THRESHOLD = 5
+#: For http visualization, time out to create visual representation
+VIS_TIMEOUT = 5
+#: For http visualization, maximum number of nodes to show per view
+VIS_MAX_NODES_PER_VIEW = 500
 
 SHOW_VIS_NAME_IN_MANAGER = True
 
