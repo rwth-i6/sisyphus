@@ -355,22 +355,6 @@ def update_global_settings_from_env():
             globals()[k] = v
 
 
-# noinspection PyDefaultArgument
-def cached_engine(cache=[]):
-    """
-    :param list cache:
-    :return: engine (EngineBase)
-    """
-    # Returns a cached version, for internal usage
-    if not cache:
-        e = engine()
-        from sisyphus.engine import EngineBase
-        assert isinstance(e, EngineBase)
-        cache.append(e)
-        return e  # for better type hinting
-    return cache[0]
-
-
 # Parameter used for debugging or profiling
 MEMORY_PROFILE_LOG = None
 
