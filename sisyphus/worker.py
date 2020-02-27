@@ -155,7 +155,7 @@ class LoggingThread(Thread):
 
 def worker(args):
     # Change job into error state in case of any exception
-    gs.active_engine = gs.cached_engine().get_used_engine(args.engine)
+    gs.active_engine = gs.engine().get_used_engine(args.engine)
     try:
         worker_helper(args)
     except Exception:

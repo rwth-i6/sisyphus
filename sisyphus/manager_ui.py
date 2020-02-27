@@ -184,13 +184,14 @@ class SisyphusDisplay:
                 else:
                     task_ids = task.task_ids()
                     for task_id in task_ids:
-                        state = task.state(gs.cached_engine(), task_id)
+                        state = task.state(tk.cached_engine(), task_id)
                         if len(task_ids) > 1:
                             task_label = "%s <%i>" % (task.name(), task_id)
                         else:
                             task_label = task.name()
                         items.append((None, urwid.Text('Task %s is in state: "%s"' % (task_label, state))))
-                    next_task = task
+                    if state == gs.STATE_RUNNABLE:
+                        next_task = task
                     break
             if next_task:
                 items.append(add_button('Submit task: "%s" to engine' % next_task.name(),
@@ -262,14 +263,14 @@ class SisyphusDisplay:
         create_aliases(self.manager.sis_graph.jobs())
         logging.info('Updated aliases and outputs')
 
-    def stop_manager(self, w):
-        logging.info('Stopping the manager')
-        self.manager.stop()
+    def pause_manager(self, w):
+        logging.info('Pause submitting jobs')
+        self.manager.pause()
         self.update_menu()
 
-    def start_manager(self, w):
-        logging.info('Starting the manager')
-        self.manager.start()
+    def unpause_manager(self, w):
+        logging.info('Start submitting jobs')
+        self.manager.unpause()
         self.update_menu()
 
     def setup_view(self):
@@ -339,14 +340,14 @@ class SisyphusDisplay:
             button = urwid.AttrWrap(button, 'button normal', 'button select')
             self.menu_box.body.append(button)
 
-        if not self.manager.is_alive() and not self.manager._stop_loop:
-            add_button('start manager', self.start_manager)
+        if self.manager.is_paused():
+            add_button('start submitting jobs', self.unpause_manager)
         add_button('show active jobs', self.show_active_jobs)
         add_button('show all jobs', self.show_all_jobs)
         add_button('open console', self.open_console)
         add_button('update aliases and outputs', self.update_alias_and_outputs)
-        if self.manager.is_alive() and not self.manager._stop_loop:
-            add_button('stop manager', self.stop_manager)
+        if self.manager.is_paused() and self.manager.is_alive():
+            add_button('pause submitting job', self.pause_manager)
         add_button('exit', self.exit)
         self.menu_box.body.append(urwid.Text("------------------------"))
         add_button('cleanup work directory (keep value=0)', self.run_commands,

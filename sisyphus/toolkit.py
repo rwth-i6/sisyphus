@@ -419,6 +419,7 @@ def remove_job_and_descendants(jobs: Union[str, Path, Job, List[Union[str, Path,
                     job._sis_move()
                 else:
                     job._sis_delete()
+            sis_graph.update_nodes()
         else:
             print("Abort")
 
@@ -1156,9 +1157,9 @@ def submit_next_task(job: Job, setup_directory=True):
         return
     if setup_directory:
         job._sis_setup_directory()
-    gs.cached_engine().start_engine()
+    cached_engine().start_engine()
     task = job._sis_next_task()
     if task is None:
         logging.warning('No task to run')
     else:
-        gs.cached_engine().submit(task)
+        cached_engine().submit(task)

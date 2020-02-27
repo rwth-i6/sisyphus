@@ -113,6 +113,8 @@ def manager(args):
         if args.ui:
             args.ui.manager = manager
             args.ui.update_menu()
+        else:
+            manager.unpause()
 
         kernel_connect_file = None
         if gs.START_KERNEL:
@@ -229,6 +231,7 @@ class Manager(threading.Thread):
         # Cached states of jobs
         self.jobs = None
         self.state_overview = None
+        self._paused = True
 
     def stop(self):
         self._stop_loop = True
@@ -303,8 +306,8 @@ class Manager(threading.Thread):
             logging.debug(info_string)
 
     def get_job_states(self, all_jobs=False, verbose=False):
-        if all_jobs:
-            jobs = self.update_jobs(skip_finished=False)
+        if all_jobs or self.is_paused():
+            jobs = self.update_jobs(skip_finished=not all_jobs)
             self.update_state_overview()
         else:
             jobs = self.jobs
@@ -447,6 +450,15 @@ class Manager(threading.Thread):
         # or nothing is left to do
         return self.work_left()
 
+    def is_paused(self):
+        return self._paused
+
+    def pause(self):
+        self._paused = True
+
+    def unpause(self):
+        self._paused = False
+
     def startup(self):
         if gs.MEMORY_PROFILE_LOG:
             if tools.tracemalloc:
@@ -535,6 +547,10 @@ class Manager(threading.Thread):
         self.startup()
         last_state_overview = self.state_overview
         while self.continue_manager_loop():
+            # Don't to anything while the manager is paused
+            if self.is_paused():
+                await asyncio.sleep(1)
+                continue
             # check if finished
             logging.debug('Begin of manager loop')
 
