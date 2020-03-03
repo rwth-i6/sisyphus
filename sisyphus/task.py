@@ -2,6 +2,7 @@ import os
 import logging
 import sys
 import time
+import typing
 import subprocess as sp
 from ast import literal_eval
 
@@ -25,7 +26,7 @@ class Task(object):
                 "gpu": number of gpus
                 "mem": amount of memory, in GB
                 "time": amount of time, in hours
-        :param list[list[object]|object] args: job arguments
+        :param typing.Sequence[typing.Union[typing.List[object],object]] args: job arguments
         :param bool mini_task: will be run on engine for short jobs if True
         :param (dict[str],dict[str])->dict[str] update_rqmt: function to update job requirements for interrupted jobs
         :param int parallel: the max. number of jobs to submit to a queue, defaults to the number of args

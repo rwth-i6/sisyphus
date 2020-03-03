@@ -343,6 +343,7 @@ class Job(metaclass=JobSingleton):
         :param str|None path_type:
         :param int|None task_id:
         :param bool abspath:
+        :rtype: str
         """
 
         if gs.JOB_USE_TAGS_IN_PATH and self._sis_tags:
