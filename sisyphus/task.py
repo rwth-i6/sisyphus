@@ -15,7 +15,7 @@ class Task(object):
     Object to hold information what function should be run with which requirements.
     """
 
-    def __init__(self, start, resume=None, rqmt={}, args=[[]], mini_task=False,
+    def __init__(self, start, resume=None, rqmt=None, args=None, mini_task=False,
                  update_rqmt=None, parallel=0, tries=1, continuable=False):
         """
         :param str start: name of the function which will be executed on start
@@ -34,6 +34,10 @@ class Task(object):
         :param bool continuable: If set to True this task will not set a finished marker, useful for tasks that can be
                                  continued for arbitrarily long, e.g. adding more epochs to neural network training
         """
+        if rqmt is None:
+            rqmt = {}
+        if args is None:
+            args = [[]]
         self._start = start
         self._resume = resume
         self._rqmt = rqmt
