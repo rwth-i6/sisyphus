@@ -1,6 +1,5 @@
 import os
 import logging
-import traceback
 import sys
 import time
 import subprocess as sp
