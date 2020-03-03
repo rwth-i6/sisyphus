@@ -8,9 +8,7 @@ These settings can be overwritten via a ``settings.py`` file in the current dire
 import sys
 import logging
 import sisyphus.hash
-# noinspection PyUnresolvedReferences
 from sisyphus.global_constants import *
-# noinspection PyUnresolvedReferences
 import os
 
 
@@ -168,7 +166,7 @@ WORK_DIR = 'work'
 # Name default config file if no config directory is found
 CONFIG_FILE_DEFAULT = "config.py"
 
-#: Name of default fuction to call in config directory
+#: Name of default function to call in config directory
 CONFIG_FUNCTION_DEFAULT = "%s.main" % CONFIG_PREFIX
 
 #: Name alias directory
@@ -285,7 +283,7 @@ SKIP_IS_FINISHED_TIMEOUT = False
 # Internal functions
 def update_global_settings_from_text(text, filename):
     """
-    :param text:
+    :param str text:
     :param str filename:
     :return: nothing
     """
