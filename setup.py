@@ -9,5 +9,6 @@ setup(
     long_description=open('README.md').read(),
     author="Jan-Thorsten Peter",
     author_email="jtpeter@apptek.com",
-    url="https://github.com/rwth-i6/sisyphus"
+    url="https://github.com/rwth-i6/sisyphus",
+    install_requires=['psutil']
 )
