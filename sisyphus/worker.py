@@ -72,28 +72,25 @@ class LoggingThread(Thread):
         current_process = psutil.Process(os.getpid())
         max_resources = {}
 
-        usage_file = open(self.task.get_process_logging_path(self.task_id), 'w')
+        usage_file_path = self.task.get_process_logging_path(self.task_id)
+        user = os.geteuid()
+        try:
+            user = pwd.getpwuid(user).pw_name,
+        except KeyError:
+            pass
 
         def log_usage(current):
-            usage_file.seek(0)
-
-            user = os.geteuid()
-            try:
-                user = pwd.getpwuid(user).pw_name,
-            except KeyError:
-                pass
-            usage = {'max': max_resources,
-                     'current': current,
-                     'pid': os.getpid(),
-                     'user': user,
-                     'used_time': (time.time() - start_time) / 3600.,
-                     'host': socket.gethostname(),
-                     'current_time': time.ctime(),
-                     'out_of_memory': self.out_of_memory,
-                     'requested_resources': self.rqmt}
-            usage_file.write("%s\n" % pprint.pformat(usage))
-            usage_file.truncate()
-            usage_file.flush()
+            with open(usage_file_path, 'w') as usage_file:
+                usage = {'max': max_resources,
+                         'current': current,
+                         'pid': os.getpid(),
+                         'user': user,
+                         'used_time': (time.time() - start_time) / 3600.,
+                         'host': socket.gethostname(),
+                         'current_time': time.ctime(),
+                         'out_of_memory': self.out_of_memory,
+                         'requested_resources': self.rqmt}
+                usage_file.write("%s\n" % pprint.pformat(usage))
 
         last_log_value = 0
         last_log_time = 0
