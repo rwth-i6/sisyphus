@@ -34,7 +34,7 @@ class Path(DelayedBase):
         :param function|None available: Overwrite function which tests if path is available.
                                         Gets path as input and must be pickleable
         """
-
+        assert isinstance(path, str)
         self.creator = creator
         self.users = set()
 
