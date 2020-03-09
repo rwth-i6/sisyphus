@@ -154,6 +154,9 @@ class Job(metaclass=JobSingleton):
     # If the new parameter is called 'foo' and old behavior would be reached by setting it to 'bar'
     # Hash exclude should be {'foo': 'bar'}
     __sis_hash_exclude__ = {}
+    # This list can be used to replace hash values e.g. if it is set to [('key_name', 'foo', 'bar')]
+    # the parameter key_name='foo' will be changed to return the same hash as key_name='bar'
+    __sis_hash_overwrite__ = []
 
     _lock_storage = []
     _lock_index = -1
@@ -1133,6 +1136,10 @@ class Job(metaclass=JobSingleton):
         for k, v in parsed_args.items():
             if k not in cls.__sis_hash_exclude__ or cls.__sis_hash_exclude__[k] != v:
                 d[k] = v
+
+        for k, org, replacement in cls.__sis_hash_overwrite__:
+            if k in d and d[k] == org:
+                d[k] = replacement
         if cls.__sis_version__ is None:
             return tools.sis_hash(d)
         else:
