@@ -36,13 +36,13 @@ def load_config_file(config_name):
 
     try:
         f = getattr(config, function_name)
-        res = f(*parameters)
     except AttributeError:
         if function_name == 'py':
             # If filename ends on py and no function is found we assume we should only read the config file
             res = None
         else:
             raise
+    res = f(*parameters)
 
     task = None
     if inspect.iscoroutine(res):
