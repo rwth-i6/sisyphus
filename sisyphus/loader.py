@@ -34,15 +34,17 @@ def load_config_file(config_name):
             sys.excepthook = sys.excepthook_org
         raise
 
+    f = res = None
     try:
         f = getattr(config, function_name)
     except AttributeError:
-        if function_name == 'py':
+        if function_name != 'py':
             # If filename ends on py and no function is found we assume we should only read the config file
-            res = None
-        else:
+            # otherwise we reraise the exception
             raise
-    res = f(*parameters)
+
+    if f:
+        res = f(*parameters)
 
     task = None
     if inspect.iscoroutine(res):
