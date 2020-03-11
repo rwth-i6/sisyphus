@@ -86,18 +86,33 @@ class OutputPath(OutputTarget):
             for prefix in prefixes:
                 outfile_name = os.path.join(gs.OUTPUT_DIR, prefix, self._output_path)
                 outfile_dir = os.path.dirname(outfile_name)
-                if not os.path.isdir(outfile_dir):
-                    os.makedirs(outfile_dir)
 
-                # Check if current link is correct
-                if os.path.islink(outfile_name) and \
-                   os.path.realpath(outfile_name) != os.path.realpath(self._sis_path.get_path()):
-                    os.unlink(outfile_name)
+                # Remove file if it exists, if not or if it is an directory an OSError is raised
+                try:
+                    os.unlink(outfile_dir)
+                    logging.warning('Removed file from output directory: %s' % outfile_dir)
+                except OSError:
+                    pass
 
-                # Set new link if needed
-                if not os.path.islink(outfile_name):
-                    logging.info("Finished output: %s" % outfile_name)
+                # Create directory if it does not exist yet
+                try:
+                    try:
+                        os.makedirs(outfile_dir)
+                    except FileExistsError:
+                        pass
+
+                    # Check if current link is correct
+                    if os.path.islink(outfile_name):
+                        if os.path.realpath(outfile_name) != os.path.realpath(self._sis_path.get_path()):
+                            os.unlink(outfile_name)
+                        else:
+                            return
+
+                    # Set new link if needed
                     os.symlink(os.path.realpath(self._sis_path.get_path()), outfile_name)
+                    logging.info("Finished output: %s" % outfile_name)
+                except OSError as e:
+                    logging.warning('Failed to updated output %s. Exception: %s' % (outfile_name, e))
 
 
 class OutputCall(OutputTarget):
