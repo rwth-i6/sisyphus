@@ -97,6 +97,11 @@ The config folder contains the description which experiments should be run. e.g.
 
 This imports the module tools from the recipe folder and runs the job Head with a given input file and registers the result as output.
 
+config.py file
+--------------
+The config.py file is similar to the config folder, but is only one single file.
+All config files (config.py file and config files in the config folder must be valid python module identifiers.
+
 work folder
 -----------
 The work folder stores all files created during the experiment. This folder should point to a directory with a lot available space. The whole folder could be deleted after an experiment is done since everything can be recomputed, assuming your experiments are deterministic.
