@@ -237,6 +237,10 @@ class SonOfGridEngine(EngineBase):
         job_id = None
         if len(out) == 1:
             sout = out[0].split()
+            if len(sout) == 7 and sout[3].startswith(b'("') and sout[3].endswith(b'")'):
+                if sout[3][2:-2] != name.encode() and sout[3][2:-2].startswith(name.encode()):
+                    # SGE can cutoff the job-name. Fix that.
+                    ref_output[2] = sout[3]
             if retval != 0 or len(err) > 0 or len(sout) != 7 or sout[0:2] + sout[3:] != ref_output:
                 print(retval, len(err), len(sout), sout[0:2], sout[3:], ref_output)
                 logging.error("Error to submit job")
