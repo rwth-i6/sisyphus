@@ -238,7 +238,7 @@ class SonOfGridEngine(EngineBase):
         if len(out) == 1:
             sout = out[0].split()
             if len(sout) == 7 and sout[3].startswith(b'("') and sout[3].endswith(b'")'):
-                if sout[3][2:-2] != name.encode() and sout[3][2:-2].startswith(name.encode()):
+                if sout[3][2:-2] != name.encode() and name.encode().startswith(sout[3][2:-2]):
                     # SGE can cutoff the job-name. Fix that.
                     ref_output[2] = sout[3]
             if retval != 0 or len(err) > 0 or len(sout) != 7 or sout[0:2] + sout[3:] != ref_output:
