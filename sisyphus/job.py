@@ -264,6 +264,11 @@ class Job(metaclass=JobSingleton):
             creator = input_path.creator
             if creator:
                 job_id = creator._sis_id()
+                if len(job_id) > 255:
+                    # Many filesystems have a restriction of 255 bytes per filename (basename).
+                    # We would hit that limit by the flattening below...
+                    # To avoid that (but also risking further collisions...):
+                    job_id = job_id.split("/")[-1]
                 # replace / with _ to make the directory structure flat
                 # I it would be possible to hit some cases where this could
                 # cause a collision sorry if you are really that unlucky...
