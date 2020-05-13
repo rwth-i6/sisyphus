@@ -9,7 +9,6 @@ import logging
 import getpass  # used to get username
 import math
 
-from xml.dom import minidom
 import xml.etree.cElementTree
 from collections import defaultdict, namedtuple
 
