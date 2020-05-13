@@ -164,7 +164,7 @@ class SonOfGridEngine(EngineBase):
         :param str task_name:
         :param list[int] task_ids:
         :return: ENGINE_NAME, submitted (list of (list of task ids, job id))
-        :rtype: str, list[(list[int],int)]
+        :rtype: (str, list[(list[int],str)])
         """
         if not task_ids:
             # skip empty list
@@ -203,6 +203,7 @@ class SonOfGridEngine(EngineBase):
         :param int start_id:
         :param int end_id:
         :param int step_size:
+        :rtype: str|None
         """
         name = escape_name(name)
         qsub_call = [

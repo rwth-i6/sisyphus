@@ -41,7 +41,7 @@ class EngineBase:
         :param str task_name:
         :param list[int] task_ids:
         :return: ENGINE_NAME, submitted (list of (list of task ids, job id))
-        :rtype: str, list[(list[int],int)]
+        :rtype: (str, list[(list[int],str|int)])
         """
         raise NotImplementedError
 
