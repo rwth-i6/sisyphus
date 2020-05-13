@@ -53,7 +53,7 @@ def try_to_multiply(y, x, backup_value=None):
 
 class SonOfGridEngine(EngineBase):
 
-    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=[]):
+    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=None):
         """
 
         :param dict default_rqmt: dictionary with the default rqmts
@@ -67,6 +67,8 @@ class SonOfGridEngine(EngineBase):
         self.gateway = gateway
         self.default_rqmt = default_rqmt
         self.auto_clean_eqw = auto_clean_eqw
+        if ignore_jobs is None:
+            ignore_jobs = []
         self.ignore_jobs = ignore_jobs
 
     def system_call(self, command, send_to_stdin=None):
