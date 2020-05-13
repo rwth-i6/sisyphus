@@ -297,6 +297,7 @@ class Manager(threading.Thread):
         elif state in [gs.STATE_INTERRUPTED, gs.STATE_UNKNOWN]:
             logging.warning(info_string)
         elif state in [gs.STATE_QUEUE,
+                       gs.STATE_HOLD,
                        gs.STATE_RUNNING,
                        gs.STATE_RUNNABLE]:
             logging.info(info_string)
@@ -373,6 +374,11 @@ class Manager(threading.Thread):
             ret = input(prompt)
         return ret
 
+    def setup_holded_jobs(self):
+        # Find all jobs in hold state and set them up.
+        # _sis_setup_directory can be called multiple times, it will only create the directory once
+        self.thread_pool.map(lambda job: job._sis_setup_directory(), self.jobs.get(gs.STATE_HOLD, []))
+
     def resume_jobs(self):
         # function to resume jobs:
         def f(job):
@@ -385,8 +391,7 @@ class Manager(threading.Thread):
             if task.resumeable():
                 if job._sis_setup() or not job._sis_setup_since_restart:
                     if self.ask_user("Resetup job directory (%s)?" % job, ('resetup', job)):
-                        job._sis_setup_directory()
-                        job._sis_setup_since_restart = True
+                        job._sis_setup_directory(force=True)
                 if self.ask_user("Resubmit job (%s)?" % job, ('resubmit', job)):
                     self.job_engine.submit(task)
             else:
@@ -402,13 +407,11 @@ class Manager(threading.Thread):
         # function to submit jobs to queue, run in parallel
         def f(job):
             # Setup job directory if not already done since restart
-            if not job._sis_setup() or not job._sis_setup_since_restart:
-                try:
-                    job._sis_setup_directory()
-                    job._sis_setup_since_restart = True
-                except RuntimeError as e:
-                    logging.error('Failed to setup %s: %s' % (str(job), str(e)))
-                    return
+            try:
+                job._sis_setup_directory()
+            except RuntimeError as e:
+                logging.error('Failed to setup %s: %s' % (str(job), str(e)))
+                return
 
             # run first runnable task
             task = job._sis_next_task()
@@ -584,6 +587,7 @@ class Manager(threading.Thread):
                 logging.debug("Wait for %i seconds" % gs.WAIT_PERIOD_BETWEEN_CHECKS)
                 await asyncio.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
 
+            self.setup_holded_jobs()
             self.resume_jobs()
             self.run_jobs()
 

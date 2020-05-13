@@ -431,7 +431,9 @@ class SISGraph(object):
             new_state = None
             if job._sis_runnable():
                 if job._sis_setup():
-                    if job._sis_finished():
+                    if job._sis_is_set_to_hold():
+                        new_state = gs.STATE_HOLD
+                    elif job._sis_finished():
                         new_state = gs.STATE_FINISHED
                     else:
                         # check state of tasks
@@ -447,7 +449,10 @@ class SISGraph(object):
                             else:
                                 new_state = gs.STATE_FINISHED
                 else:
-                    new_state = gs.STATE_RUNNABLE
+                    if job._sis_is_set_to_hold():
+                        new_state = gs.STATE_HOLD
+                    else:
+                        new_state = gs.STATE_RUNNABLE
             else:
                 new_state = gs.STATE_WAITING
 

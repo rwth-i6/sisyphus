@@ -198,6 +198,7 @@ class Job(metaclass=JobSingleton):
         self._sis_output_dirs = set()
         self._sis_outputs = {}
         self._sis_keep_value = None
+        self._sis_hold_job = False
 
         self._sis_blocks = set()
         self._sis_kwargs = parsed_args
@@ -230,8 +231,11 @@ class Job(metaclass=JobSingleton):
         self._sis_stacktrace = []
 
     # Functions directly used to run the job
-    def _sis_setup_directory(self):
+    def _sis_setup_directory(self, force=False):
         """Setup the working directory"""
+
+        if self._sis_setup_since_restart and self._sis_setup() and not force:
+            return
 
         basepath = self._sis_path()
         if os.path.islink(basepath) and not os.path.exists(basepath):
@@ -292,6 +296,7 @@ class Job(metaclass=JobSingleton):
                     f.write('PARAMETER: %s: %s\n' % (key, value))
                 except UnicodeEncodeError as e:
                     f.write('PARAMETER: %s: <UnicodeEncodeError: %s>\n' % (key, e))
+        self._sis_setup_since_restart = True
 
     def __getstate__(self):
         d = self.__dict__.copy()
@@ -586,6 +591,8 @@ class Job(metaclass=JobSingleton):
         """ Return the state of this job """
         if self._sis_setup():
             # job is setup, check progress
+            if self._sis_is_set_to_hold():
+                return gs.STATE_HOLD
             if self._sis_finished():
                 return gs.STATE_FINISHED
 
@@ -601,7 +608,10 @@ class Job(metaclass=JobSingleton):
             # All states are finished:
             return gs.STATE_FINISHED
         elif self._sis_runnable():
-            return gs.STATE_RUNNABLE
+            if self._sis_is_set_to_hold():
+                return gs.STATE_HOLD
+            else:
+                return gs.STATE_RUNNABLE
         else:
             return gs.STATE_WAITING
 
@@ -1149,3 +1159,13 @@ class Job(metaclass=JobSingleton):
             return tools.sis_hash(d)
         else:
             return tools.sis_hash((d, cls.__sis_version__))
+
+    def hold(self):
+        """ A job set to hold will not be started, but all required jobs will be run.
+        :return:
+        """
+        self._sis_hold_job = True
+
+    def _sis_is_set_to_hold(self):
+        """ Return true if job is set to hold """
+        return self._sis_hold_job or os.path.exists(self._sis_path(gs.STATE_HOLD))
