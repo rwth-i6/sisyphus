@@ -22,14 +22,25 @@ TaskInfo = namedtuple('TaskInfo', ["job_id", "task_id", "state"])
 
 
 def escape_name(name):
+    """
+    :param str name:
+    :rtype: str
+    """
     return name.replace('/', '.')
 
 
 def try_to_multiply(y, x, backup_value=None):
-    """ Tries to convert y to float multiply it by x and convert it back
+    """
+    Tries to convert y to float multiply it by x and convert it back
     to a rounded string.
     return backup_value if it fails
-    return y if backup_value == None """
+    return y if backup_value == None
+
+    :param str y:
+    :param int|float x:
+    :param str|None backup_value:
+    :rtype: str
+    """
 
     try:
         return str(int(float(y) * x))
@@ -326,7 +337,12 @@ class SonOfGridEngine(EngineBase):
             job_number = job_info['JB_job_number'].strip()
 
             def parse_task_ids(string):
-                """ Return list with all task ids of this task """
+                """
+                Return list with all task ids of this task
+
+                :param str|None string:
+                :rtype: list[int|None]
+                """
 
                 if string is None:
                     # No task id
