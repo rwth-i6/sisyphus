@@ -73,7 +73,7 @@ def visualize_block(block, engine, vis_url_prefix):
         return False, 'Failed to create visual representation. The graph contains more than %i nodes which exceeds ' \
                       'the limit of %i (VIS_MAX_NODES_PER_VIEW)' % (len(merged_labels), gs.VIS_MAX_NODES_PER_VIEW)
 
-        merged_links = set((merge_inputs_mapping[l[0]], l[1]) for l in links)
+    merged_links = set((merge_inputs_mapping[l[0]], l[1]) for l in links)
     merged_counts = collections.Counter(dict((merge_inputs_mapping[k], v) for k, v in counts.items()))
 
     # output inputs and the links from the creators to the inputs
