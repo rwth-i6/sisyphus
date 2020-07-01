@@ -479,7 +479,7 @@ class Manager(threading.Thread):
         toolkit.check_for_exceptions()
 
         # Skip first part if there is nothing todo
-        if toolkit.config_reader_running() and not self.jobs and not self.ui:
+        if not (toolkit.config_reader_running() or self.jobs or self.ui):
             answer = self.input('All calculations are done, print verbose overview (v), update outputs and alias (u), '
                                 'cancel (c)? ')
             if answer.lower() in ('y', 'v'):
