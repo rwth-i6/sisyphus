@@ -462,7 +462,7 @@ class Manager(threading.Thread):
     def unpause(self):
         self._paused = False
 
-    def startup(self):
+    async def startup(self):
         if gs.MEMORY_PROFILE_LOG:
             if tools.tracemalloc:
                 self.mem_profile = tools.MemoryProfiler(open(gs.MEMORY_PROFILE_LOG, 'w'))
@@ -474,9 +474,14 @@ class Manager(threading.Thread):
         self.job_engine.reset_cache()
         self.check_output(write_output=False, update_all_outputs=True)
         self.update_jobs()
-        self.update_state_overview()
 
-        toolkit.check_for_exceptions()
+        # Ensure at least one async reader head the chance to continue until he added his jobs to the list
+        if toolkit.config_reader_running():
+            await asyncio.sleep(0.1)
+            # Check if any async reader raised an exception
+            toolkit.check_for_exceptions()
+            self.update_jobs()
+        self.update_state_overview()
 
         # Skip first part if there is nothing todo
         if not (toolkit.config_reader_running() or self.jobs or self.ui):
@@ -491,6 +496,7 @@ class Manager(threading.Thread):
             return
 
         self.print_state_overview()
+        toolkit.print_config_reader()
 
         answer = None
         if gs.STATE_ERROR in self.jobs:
@@ -547,7 +553,7 @@ class Manager(threading.Thread):
             pass
 
     async def async_run(self):
-        self.startup()
+        await self.startup()
         last_state_overview = self.state_overview
         while self.continue_manager_loop():
             # Don't to anything while the manager is paused

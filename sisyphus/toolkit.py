@@ -1103,6 +1103,21 @@ def config_reader_running():
     return False
 
 
+def print_config_reader():
+    """ Print running config reader
+
+    :return:
+    """
+    running_reader = []
+    for name, reader in all_config_readers:
+        if reader is None or reader.done() or reader.cancelled():
+            continue
+        else:
+            running_reader.append(name)
+    if running_reader:
+        logging.info("Configs waiting for jobs to finish: %s" % ' '.join(running_reader))
+
+
 def cancel_all_config_reader():
     for name, reader in all_config_readers:
         if reader and not reader.done() and not reader.cancelled():
