@@ -148,6 +148,16 @@ class SonOfGridEngine(EngineBase):
         else:
             out.append('h_rss=%s' % mem)
 
+        try:
+            file_size = "%iG" % math.ceil(float(rqmt['file_size']))
+        except (ValueError, KeyError):
+            # If a different default value is wanted it can be overwritten by adding
+            # 'file_size' to the default_rqmt of this engine.
+            file_size = rqmt.get('file_size', "50G")
+
+        out.append('-l')
+        out.append('h_fsize=%s' % file_size)
+
         out.append('-l')
         out.append('gpu=%s' % rqmt.get('gpu', 0))
 
@@ -227,8 +237,6 @@ class SonOfGridEngine(EngineBase):
             'y',
             '-o',
             logpath,
-            '-l',
-            'h_fsize=50G',
             '-S',
             '/bin/bash',
             '-m',
