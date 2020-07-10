@@ -148,16 +148,15 @@ class SonOfGridEngine(EngineBase):
         else:
             out.append('h_rss=%s' % mem)
 
-        if "file_size" in rqmt:
-            try:
-                filesize = "%iG" % math.ceil(float(rqmt['file_size']))
-            except ValueError:
-                filesize = rqmt.get('file_size', "50G")
-        else:
-            file_size = "50G"
+        try:
+            file_size = "%iG" % math.ceil(float(rqmt['file_size']))
+        except (ValueError, KeyError):
+            # If a different default value is wanted it can be overwritten by adding
+            # 'file_size' to the default_rqmt of this engine.
+            file_size = rqmt.get('file_size', "50G")
 
         out.append('-l')
-        out.append('f_fsize=%s' % filesize)
+        out.append('h_fsize=%s' % file_size)
 
         out.append('-l')
         out.append('gpu=%s' % rqmt.get('gpu', 0))
