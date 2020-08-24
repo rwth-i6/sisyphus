@@ -476,11 +476,13 @@ class Manager(threading.Thread):
         self.update_jobs()
 
         # Ensure at least one async reader head the chance to continue until he added his jobs to the list
+        # TODO: Find a way to ensure all readers read as much as possible
         if toolkit.config_reader_running():
             await asyncio.sleep(0.1)
-            # Check if any async reader raised an exception
-            toolkit.check_for_exceptions()
-            self.update_jobs()
+
+        # Check if any async reader raised an exception
+        toolkit.check_for_exceptions()
+        self.update_jobs()
         self.update_state_overview()
 
         # Skip first part if there is nothing todo
