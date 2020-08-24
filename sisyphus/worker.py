@@ -158,10 +158,15 @@ def worker(args):
     except Exception:
         task_id = gs.active_engine.get_task_id(args.task_id)
         error_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.STATE_ERROR, args.task_name, task_id)
+        log_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.JOB_LOG, args.task_name, task_id)
         if not os.path.isfile(error_file) and not os.path.isdir(error_file):
             # create error file
-            with open(error_file, 'w'):
-                pass
+            try:
+                os.link(log_file, error_file)
+            except OSError:
+                if not os.path.isfile(error_file):
+                    with open(error_file, 'w'):
+                        pass
         raise
 
 
