@@ -57,7 +57,6 @@ from sisyphus.delayed_ops import Delayed
 
 from sisyphus.job_path import Path, Variable
 from sisyphus.job import Job
-from sisyphus.loader import load_configs
 from sisyphus import graph
 import sisyphus.global_settings as gs
 
@@ -919,21 +918,24 @@ def reload_recipes():
     _reload_prefix(gs.RECIPE_PREFIX)
 
 
-def reload_config(config_files: List[str] = []):
-    """ Reset state, reload old config files, and load given config_files
-
-    :param config_files([str, ...]):
-    """
-    # Reset current state
-    import sisyphus.job
-    sisyphus.job.created_jobs = {}
-    global sis_graph
-    sis_graph = graph.SISGraph()
-
-    _reload_prefix(gs.CONFIG_PREFIX)
-
-    # Load new config
-    load_configs(config_files)
+# Removed since it could cause problems with async config files
+# Best practice would be to restart sisyphus
+# def reload_config(config_files: List[str] = []):
+#     """ Reset state, reload old config files, and load given config_files
+#
+#     :param config_files([str, ...]):
+#     """
+#     # Reset current state
+#     import sisyphus.job
+#     from sisyphus.loader import config_manager
+#     sisyphus.job.created_jobs = {}
+#     global sis_graph
+#     sis_graph = graph.SISGraph()
+#
+#     _reload_prefix(gs.CONFIG_PREFIX)
+#
+#     # Load new config
+#     config_manager.load_configs(config_files)
 
 
 def reload_module(module):
@@ -1087,52 +1089,21 @@ def run(obj: Any, quiet: bool = False):
     gs.SKIP_IS_FINISHED_TIMEOUT = False
 
 
-all_config_readers = []
+def submit_next_task(job: Job, setup_directory=True):
+    if not job._sis_runnable():
+        logging.warning('Job is not runnable')
+        return
+    if setup_directory:
+        job._sis_setup_directory()
+    cached_engine().start_engine()
+    task = job._sis_next_task()
+    if task is None:
+        logging.warning('No task to run')
+    else:
+        cached_engine().submit(task)
 
 
-def config_reader_running():
-    """ Return True if any config reader is not finished yet.
-
-    :return:
-    """
-    for _, reader in all_config_readers:
-        if reader is None or reader.done() or reader.cancelled():
-            continue
-        else:
-            return True
-    return False
-
-
-def print_config_reader():
-    """ Print running config reader
-
-    :return:
-    """
-    running_reader = []
-    for name, reader in all_config_readers:
-        if reader is None or reader.done() or reader.cancelled():
-            continue
-        else:
-            running_reader.append(name)
-    if running_reader:
-        logging.info("Configs waiting for jobs to finish: %s" % ' '.join(running_reader))
-
-
-def cancel_all_config_reader():
-    for name, reader in all_config_readers:
-        if reader and not reader.done() and not reader.cancelled():
-            logging.warning("Stop config reader: %s" % name)
-            reader.cancel()
-
-
-def check_for_exceptions():
-    for name, reader in all_config_readers:
-        if reader and reader.done():
-            e = reader.exception()
-            if e:
-                raise e
-
-
+# Stuff for async workflow
 class async_context:
     def __enter__(self):
         global current_config_
@@ -1158,23 +1129,29 @@ async def async_run(obj: Any):
     :param quiet: Do not forward job output do stdout
     :return:
     """
+
+    from sisyphus.loader import config_manager
+    assert current_config_
+    config_manager.mark_reader_as_waiting(current_config_)
     sis_graph.add_target(graph.OutputTarget(name='async_run', inputs=obj))
     all_paths = {p for p in extract_paths(obj) if not p.available()}
     with async_context():
         while all_paths:
             await asyncio.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
             all_paths = {p for p in all_paths if not p.available()}
+    config_manager.unmark_reader_as_waiting(current_config_)
 
 
-def submit_next_task(job: Job, setup_directory=True):
-    if not job._sis_runnable():
-        logging.warning('Job is not runnable')
-        return
-    if setup_directory:
-        job._sis_setup_directory()
-    cached_engine().start_engine()
-    task = job._sis_next_task()
-    if task is None:
-        logging.warning('No task to run')
-    else:
-        cached_engine().submit(task)
+async def __async_helper_set_config(awaitable, config):
+    global current_config_
+    current_config_ = config
+    await awaitable
+
+
+async def async_join(*aws):
+    global current_config_
+    config_name = current_config_
+    c_aws = [__async_helper_set_config(aw, '%s:thread_%i' % (current_config_, i)) for i, aw in enumerate(aws)]
+    await asyncio.gather(*c_aws)
+    assert current_config_.startswith(config_name)
+    current_config_ = config_name

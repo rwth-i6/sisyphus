@@ -8,7 +8,7 @@ import threading
 from multiprocessing.pool import ThreadPool
 
 from sisyphus import toolkit, tools
-from sisyphus.loader import load_configs
+from sisyphus.loader import config_manager
 from sisyphus.block import Block
 import sisyphus.global_settings as gs
 
@@ -69,7 +69,7 @@ def manager(args):
     asyncio.set_event_loop(loop)
 
     start = time.time()
-    load_configs(args.config_files)
+    config_manager.load_configs(args.config_files)
     load_time = time.time() - start
     if load_time < 5:
         logging.debug("Config loaded (time needed: %.2f)" % load_time)
@@ -442,7 +442,7 @@ class Manager(threading.Thread):
             return False
 
         # Keep running if any config reader is not finished reading
-        if toolkit.config_reader_running():
+        if config_manager.reader_running():
             return True
 
         # Stop loop if all outputs are computed
@@ -462,7 +462,7 @@ class Manager(threading.Thread):
     def unpause(self):
         self._paused = False
 
-    async def startup(self):
+    def startup(self):
         if gs.MEMORY_PROFILE_LOG:
             if tools.tracemalloc:
                 self.mem_profile = tools.MemoryProfiler(open(gs.MEMORY_PROFILE_LOG, 'w'))
@@ -471,22 +471,20 @@ class Manager(threading.Thread):
         else:
             self.mem_profile = None
 
+        config_manager.continue_readers()
+
         self.job_engine.reset_cache()
         self.check_output(write_output=False, update_all_outputs=True)
         self.update_jobs()
 
         # Ensure at least one async reader head the chance to continue until he added his jobs to the list
-        # TODO: Find a way to ensure all readers read as much as possible
-        if toolkit.config_reader_running():
-            await asyncio.sleep(0.1)
+        config_manager.continue_readers()
 
-        # Check if any async reader raised an exception
-        toolkit.check_for_exceptions()
         self.update_jobs()
         self.update_state_overview()
 
         # Skip first part if there is nothing todo
-        if not (toolkit.config_reader_running() or self.jobs or self.ui):
+        if not (config_manager.reader_running() or self.jobs or self.ui):
             answer = self.input('All calculations are done, print verbose overview (v), update outputs and alias (u), '
                                 'cancel (c)? ')
             if answer.lower() in ('y', 'v'):
@@ -498,7 +496,7 @@ class Manager(threading.Thread):
             return
 
         self.print_state_overview()
-        toolkit.print_config_reader()
+        config_manager.print_config_reader()
 
         answer = None
         if gs.STATE_ERROR in self.jobs:
@@ -549,29 +547,22 @@ class Manager(threading.Thread):
 
     @tools.default_handle_exception_interrupt_main_thread
     def run(self):
-        try:
-            asyncio.get_event_loop().run_until_complete(self.async_run())
-        except KeyboardInterrupt:
-            pass
-
-    async def async_run(self):
-        await self.startup()
+        self.startup()
         last_state_overview = self.state_overview
         while self.continue_manager_loop():
             # Don't to anything while the manager is paused
             if self.is_paused():
-                await asyncio.sleep(1)
+                time.sleep(1)
                 continue
             # check if finished
             logging.debug('Begin of manager loop')
-
-            toolkit.check_for_exceptions()
 
             if self.mem_profile:
                 self.mem_profile.snapshot()
             self.job_engine.reset_cache()
             self.check_output(write_output=self.link_outputs)
 
+            config_manager.continue_readers()
             self.update_jobs()
 
             if (gs.CLEAR_ERROR or self.clear_errors_once):
@@ -593,14 +584,14 @@ class Manager(threading.Thread):
                 # Not thing to do right now, wait for jobs to finish
                 # otherwise continue directly
                 logging.debug("Wait for %i seconds" % gs.WAIT_PERIOD_BETWEEN_CHECKS)
-                await asyncio.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
+                time.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
 
             self.setup_holded_jobs()
             self.resume_jobs()
             self.run_jobs()
 
         # Stop config reader
-        toolkit.cancel_all_config_reader()
+        config_manager.cancel_all_reader()
 
         self.check_output(write_output=self.link_outputs, update_all_outputs=True)
 

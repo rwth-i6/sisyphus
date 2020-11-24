@@ -7,7 +7,7 @@ import sys
 from ast import literal_eval
 from glob import glob
 
-from sisyphus.loader import load_configs
+from sisyphus.loader import config_manager
 import sisyphus.global_settings as gs
 
 import sisyphus.tools as tools
@@ -30,7 +30,7 @@ def console(args):
         for i, job in enumerate(jobs):
             print("jobs[%i]: %s" % (i, job))
     elif not args.not_load_config:
-        load_configs(args.config_files)
+        config_manager.load_configs(args.config_files)
 
     # TODO Update welcome message
     welcome_msg = """
