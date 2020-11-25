@@ -1148,10 +1148,13 @@ async def __async_helper_set_config(awaitable, config):
     await awaitable
 
 
-async def async_join(*aws):
+async def async_gather(*aws):
     global current_config_
+    assert current_config_
     config_name = current_config_
     c_aws = [__async_helper_set_config(aw, '%s:thread_%i' % (current_config_, i)) for i, aw in enumerate(aws)]
-    await asyncio.gather(*c_aws)
+    ret = await asyncio.gather(*c_aws)
+    assert current_config_
     assert current_config_.startswith(config_name)
     current_config_ = config_name
+    return ret
