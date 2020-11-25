@@ -493,7 +493,7 @@ class Manager(threading.Thread):
                 self.link_outputs = True
                 create_aliases(self.sis_graph.jobs())
                 self.check_output(write_output=self.link_outputs, update_all_outputs=True)
-            return
+            return False
 
         self.print_state_overview()
         config_manager.print_config_reader()
@@ -535,7 +535,7 @@ class Manager(threading.Thread):
                 self.check_output(write_output=self.link_outputs, update_all_outputs=True)
             elif answer.lower() == 'n':
                 self.stop()
-                break
+                return False
             else:
                 logging.warning('Unknown command: %s' % answer)
             answer = self.input('Print verbose overview (v), update aliases and outputs (u), '
@@ -544,10 +544,13 @@ class Manager(threading.Thread):
         if (not self._stop_loop) and (gs.CLEAR_ERROR or self.clear_errors_once):
             self.clear_states(state=gs.STATE_ERROR)
             self.clear_errors_once = False
+        return True
 
     @tools.default_handle_exception_interrupt_main_thread
     def run(self):
-        self.startup()
+        if not self.startup():
+            return
+
         last_state_overview = self.state_overview
         while self.continue_manager_loop():
             # Don't to anything while the manager is paused
