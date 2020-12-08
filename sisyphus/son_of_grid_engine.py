@@ -410,7 +410,7 @@ class SonOfGridEngine(EngineBase):
         if qs == []:
             return STATE_UNKNOWN
         state = qs[0][1]
-        if state in ['r', 't']:
+        if state in ['r', 't', 'Rr', 'Rt']:
             return STATE_RUNNING
         elif state == 'qw':
             return STATE_QUEUE
