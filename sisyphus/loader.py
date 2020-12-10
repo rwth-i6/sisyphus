@@ -1,9 +1,11 @@
 import os
 import time
+from collections import defaultdict
 import logging
 import importlib
 import inspect
 import asyncio
+import asyncio.tasks
 from ast import literal_eval
 from importlib.machinery import PathFinder
 import sisyphus.global_settings as gs
@@ -14,6 +16,16 @@ class ConfigManager:
         self._config_readers = []
         self._waiting_reader = {}
         self.loop = asyncio.get_event_loop()
+        self._reader_threads = defaultdict(dict)
+        self._current_config = None
+
+    @property
+    def current_config(self):
+        return self._current_config
+
+    @current_config.setter
+    def current_config(self, value):
+        self._current_config = value
 
     def load_config_file(self, config_name):
         import sisyphus.toolkit as toolkit
@@ -27,7 +39,7 @@ class ConfigManager:
             filename = config_name
             parameters = []
 
-        toolkit.current_config_ = os.path.abspath(filename)
+        self.current_config = os.path.abspath(filename)
 
         toolkit.set_root_block(filename)
 
@@ -64,9 +76,10 @@ class ConfigManager:
         else:
             logging.info('Loaded config: %s' % config_name)
 
-        self._config_readers.append((toolkit.current_config(), task))
+        assert self.current_config
+        self._config_readers.append((self.current_config, task))
         self.continue_readers()
-        toolkit.current_config_ = None
+        self.current_config = None
         return task
 
     def load_configs(self, filenames=None):
@@ -120,7 +133,7 @@ class ConfigManager:
         if non_waiting:
             for name, reader in non_waiting:
                 logging.warning("Reader " + name + " is currently in a undefined mode, "
-                                "continue anyway and hope for the best")
+                                "continue anyway and hope for the best" + str(self._waiting_reader))
 
     def reader_running(self):
         """ Return True if any config reader is not finished yet.
@@ -145,8 +158,13 @@ class ConfigManager:
         for name, reader in self._config_readers:
             if reader and not reader.done() and not reader.cancelled():
                 if name not in self._waiting_reader:
-                    out.append((name, reader))
-        return out
+                    if not self._reader_threads[name]:
+                        out.append((name, reader))
+                    else:
+                        for reader_thread in self._reader_threads[name]:
+                            if reader_thread not in self._waiting_reader:
+                                out.append((reader_thread, reader))
+            return out
 
     def print_config_reader(self):
         """ Print running config reader
@@ -174,6 +192,14 @@ class ConfigManager:
                 e = reader.exception()
                 if e:
                     raise e
+
+    def add_reader_thread(self, thread_name):
+        reader_name = thread_name.split(':')[0]
+        self._reader_threads[reader_name][thread_name] = time.time()
+
+    def remove_reader_thread(self, thread_name):
+        reader_name = thread_name.split(':')[0]
+        del self._reader_threads[reader_name][thread_name]
 
 
 class RecipeFinder:

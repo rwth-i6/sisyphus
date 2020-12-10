@@ -48,17 +48,19 @@ import tarfile
 import tempfile
 from typing import Union, Any, List, Optional
 import subprocess
-import asyncio
 
 from sisyphus.tools import sh, extract_paths
 import sisyphus.block
 from sisyphus.block import block, sub_block, set_root_block
+from sisyphus.async_workflow import async_run, async_gather
 from sisyphus.delayed_ops import Delayed
 
 from sisyphus.job_path import Path, Variable
 from sisyphus.job import Job
 from sisyphus import graph
 import sisyphus.global_settings as gs
+
+from sisyphus.loader import config_manager
 
 
 class BlockedWorkflow(Exception):
@@ -137,7 +139,7 @@ def bundle_to_str(bundle):
     return ' '.join(str(i) for i in bundle)
 
 
-sis_graph = graph.SISGraph()
+sis_graph = graph.graph
 
 
 # graph macros
@@ -184,15 +186,6 @@ def register_report(name, values, template=None, required=None, update_frequency
                                 update_frequency=update_frequency)
     sis_graph.add_target(report)
     return report
-
-
-current_config_ = None
-
-
-def current_config():
-    assert current_config_, "No config file set at the moment. "
-    "This function can only be called during the initial setup"
-    return current_config_
 
 
 class Object:
@@ -1101,60 +1094,3 @@ def submit_next_task(job: Job, setup_directory=True):
         logging.warning('No task to run')
     else:
         cached_engine().submit(task)
-
-
-# Stuff for async workflow
-class async_context:
-    def __enter__(self):
-        global current_config_
-        self.local_config = current_config_
-        current_config_ = None
-        self.active_blocks = sisyphus.block.active_blocks
-        sisyphus.block.active_blocks = set()
-        self.all_root_blocks = sisyphus.block.all_root_blocks
-        sisyphus.block.all_root_blocks = []
-
-    def __exit__(self, type, value, traceback):
-        global current_config_
-        current_config_ = self.local_config
-        sisyphus.block.active_blocks = self.active_blocks
-        sisyphus.block.all_root_blocks = self.all_root_blocks
-
-
-async def async_run(obj: Any):
-    """
-    Run and setup all jobs that are contained inside object and all jobs that are necessary.
-
-    :param obj:
-    :param quiet: Do not forward job output do stdout
-    :return:
-    """
-
-    from sisyphus.loader import config_manager
-    assert current_config_
-    config_manager.mark_reader_as_waiting(current_config_)
-    sis_graph.add_target(graph.OutputTarget(name='async_run', inputs=obj))
-    all_paths = {p for p in extract_paths(obj) if not p.available()}
-    with async_context():
-        while all_paths:
-            await asyncio.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
-            all_paths = {p for p in all_paths if not p.available()}
-    config_manager.unmark_reader_as_waiting(current_config_)
-
-
-async def __async_helper_set_config(awaitable, config):
-    global current_config_
-    current_config_ = config
-    await awaitable
-
-
-async def async_gather(*aws):
-    global current_config_
-    assert current_config_
-    config_name = current_config_
-    c_aws = [__async_helper_set_config(aw, '%s:thread_%i' % (current_config_, i)) for i, aw in enumerate(aws)]
-    ret = await asyncio.gather(*c_aws)
-    assert current_config_
-    assert current_config_.startswith(config_name)
-    current_config_ = config_name
-    return ret

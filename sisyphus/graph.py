@@ -718,3 +718,6 @@ def is_literal(obj, visited=None):
             if not is_literal(k, visited) or not is_literal(v, visited):
                 return False
     return False
+
+
+graph = SISGraph()

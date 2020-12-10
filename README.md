@@ -71,6 +71,10 @@ The unittest and flake8 on all relevant files is done by running tox:
 
     tox
 
+# Known Problems:
+
+* blocks may don't work correctly if used together with the async workflow
+
 # License
 
 All Source Code in this Project is subject to the terms of the Mozilla
