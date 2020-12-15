@@ -64,6 +64,8 @@ class ConfigManager:
                 # If filename ends on py and no function is found we assume we should only read the config file
                 # otherwise we reraise the exception
                 raise
+            else:
+                logging.warning("No function named 'py' found in config file '%s'" % config_name)
 
         if f:
             res = f(*parameters)
