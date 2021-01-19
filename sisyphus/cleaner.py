@@ -87,6 +87,9 @@ def find_too_low_keep_value(job_dirs, min_keep_value):
     :param min_keep_value: minimal keep value
     :return:
     """
+    if isinstance(job_dirs, str):
+        job_dirs = load_used_paths(job_dirs)
+
     to_remove = set()
     for path, keep_value in job_dirs.items():
         if keep_value in (DIR_IN_GRAPH, JOB_NOT_FINSIHED, JOB_STILL_NEEDED):
@@ -114,14 +117,16 @@ def list_all_graph_directories():
     return job_dirs
 
 
-def save_used_paths(outfile=None):
+def save_used_paths(outfile=None, job_dirs=None):
     """ Write dict of directories in the graph to file
 
     :param outfile: Filename of output file, if not given write to stdout
+    :param job_dirs: Job dirs that will be written to file, if not given it will be extracted from current graph
     :return:
     """
     out = open(outfile, 'a') if outfile else sys.stdout
-    job_dirs = list_all_graph_directories()
+    if job_dirs is None:
+        job_dirs = list_all_graph_directories()
     for path, status in job_dirs.items():
         out.write('%s %i\n' % (path, status))
     if out != sys.stdout:
@@ -166,14 +171,17 @@ def load_remove_list(infile):
     return out
 
 
-def search_for_unused(current, job_dirs, verbose=True):
+def search_for_unused(job_dirs, current=gs.WORK_DIR, verbose=True):
     """ Check work directory and list all subdirectories which do not belong to the given list of directories.
 
-    :param current: current work directory (start is gs.WORK_DIR)
-    :param job_dirs: dict with all used directories, can be created with list_all_graph_directories
+    :param job_dirs: dict with all used directories, can be created with list_all_graph_directories.
+    :param current: current work directory
     :param verbose: make it verbose
     :return: List with all unused directories
     """
+
+    if isinstance(job_dirs, str):
+        job_dirs = load_used_paths(job_dirs)
 
     unused = set()  # going to hold all directories not needed anymore
 
@@ -188,7 +196,7 @@ def search_for_unused(current, job_dirs, verbose=True):
             unused.add(path)
         elif status == DIR_IN_GRAPH:
             # directory has sub directories used by current graph
-            found = search_for_unused(path, job_dirs)
+            found = search_for_unused(job_dirs, path, verbose)
             unused.update(found)
             if verbose:
                 logging.info('found %s unused directories in %s (total so far: %s)' % (len(found), path, len(unused)))
@@ -200,11 +208,16 @@ def search_for_unused(current, job_dirs, verbose=True):
 
 def remove_directories(dirs, message, move_postfix='.cleanup', mode='remove', force=False):
     """ list all directories that will be deleted and add a security check """
+    if isinstance(dirs, str):
+        dirs = load_remove_list(dirs)
     tmp = list(dirs)
     tmp.sort(key=lambda x: str(x))
 
     logging.info(message)
     logging.info("Number of affected directories: %i" % len(dirs))
+    if len(dirs) == 0:
+        return
+
     input_var = 'UNSET'
     while input_var.lower() not in ('n', 'y', ''):
         input_var = input("Calculate size of affected directories? (Y/n): ")
@@ -217,14 +230,17 @@ def remove_directories(dirs, message, move_postfix='.cleanup', mode='remove', fo
             for i in tmp:
                 logging.info(i)
     else:
-        with tempfile.namedtemporaryfile() as tmp_file:
-            for directory in dirs:
-                tmp_file.write(directory + "\x00")
-            tmp_file.flush()
-            command = 'du -sch --files0-from=%s' % (tmp_file.name,)
-            p = os.popen(command)
-            print(p.read())
-            p.close()
+        # replace with 'with tempfile.namedtemporaryfile() as tmp_file:' when dropping support for older python verion
+        from sisyphus.toolkit import mktemp
+        with mktemp() as tmp_file_name:
+            with open(tmp_file_name, 'w') as tmp_file:
+                for directory in dirs:
+                    tmp_file.write(directory + "\x00")
+                tmp_file.flush()
+                command = 'du -sch --files0-from=%s' % tmp_file_name
+                p = os.popen(command)
+                print(p.read())
+                p.close()
 
     input_var = 'UNSET'
     if force:
@@ -293,5 +309,5 @@ def cleanup_unused(load_from: str = '', job_dirs=None):
         job_dirs = load_used_paths(load_from)
     else:
         job_dirs = list_all_graph_directories()
-    to_remove = search_for_unused(gs.WORK_DIR, job_dirs, verbose=True)
+    to_remove = search_for_unused(job_dirs, verbose=True)
     remove_directories(to_remove, 'Not used in graph', mode='remove', force=False)
