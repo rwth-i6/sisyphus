@@ -36,7 +36,7 @@ def add_coloring_to_emit_ansi(func):
         """ hidden function to change color """
         levelno = args[1].levelno
         color = color_mapping(levelno)
-        args[1].msg = color + args[1].msg + color_end_marker  # normal
+        args[1].msg = color + str(args[1].msg) + color_end_marker  # normal
         # print "after"
         return func(*args)
     return add_color
