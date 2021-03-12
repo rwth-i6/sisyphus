@@ -12,6 +12,7 @@ import sys
 from sisyphus.worker import worker
 from sisyphus.manager import manager
 from sisyphus.helper import console
+from sisyphus import shortcuts
 import sisyphus.global_settings as gs
 
 # Setup logging
@@ -91,6 +92,8 @@ def main():
                                 help="do not load config files before starting the console")
     parser_console.add_argument("-c", dest="commands", default=[], action='append',
                                 help="Run commands after loading console")
+    parser_console.add_argument("--script", '-s', dest="script", default=False, action='store_true',
+                                help="Script mode, exit console after running commands (to be used with -c)")
     parser_console.add_argument('argv', metavar='ARGV', type=str, nargs='*',
                                 help='an additional way do define config files')
     parser_console.set_defaults(func=console)
@@ -110,6 +113,8 @@ def main():
     parser_worker.add_argument('--engine', default='short', help='The engine running the Job')
     parser_worker.add_argument('--redirect_output', default=False, action='store_true',
                                help='Redirect stdout and stderr to logfile')
+
+    shortcuts.add_subparsers(subparsers)
 
     # Currently disabled parser, maybe used again in the future
     #

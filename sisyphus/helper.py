@@ -32,6 +32,12 @@ def console(args):
     elif not args.not_load_config:
         config_manager.load_configs(args.config_files)
 
+    if args.script:
+        cmd = ';'.join(args.commands)
+        logging.info('Running: %s' % cmd)
+        exec(cmd, user_ns)
+        return
+
     # TODO Update welcome message
     welcome_msg = """
 Info: IPCompleter.greedy = True is set to True.

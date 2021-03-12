@@ -10,7 +10,8 @@ import sisyphus.global_settings as gs
 class async_context:
     def __enter__(self):
         self.local_config = config_manager.current_config
-        assert config_manager.current_config
+        # The async context is currently not working stable enough to keep this check
+        # assert config_manager.current_config
         config_manager.current_config = None
         self.active_blocks = sisyphus.block.active_blocks
         sisyphus.block.active_blocks = set()

@@ -34,8 +34,8 @@ Useful examples::
     # Print short job summary
     tk.job_info(j)
 
-    # Cleanup work directory (use with caution):
-    tk.cleaner(clean_job_dir=True, clean_work_dir=True, mode='remove')
+    # List functions to cleanup work directory:
+    tk.cleaner?
 """
 
 import glob
@@ -52,8 +52,9 @@ import subprocess
 from sisyphus.tools import sh, extract_paths
 import sisyphus.block
 from sisyphus.block import block, sub_block, set_root_block
-from sisyphus.async_workflow import async_run, async_gather
+from sisyphus.async_workflow import async_run, async_gather, async_context
 from sisyphus.delayed_ops import Delayed
+from sisyphus import cleaner
 
 from sisyphus.job_path import Path, Variable
 from sisyphus.job import Job
@@ -442,155 +443,6 @@ def import_work_directory(directories: Union[str, List[str]], mode='dryrun'):
     while number_of_jobs != len(sis_graph.jobs()):
         number_of_jobs = len(sis_graph.jobs())
         sis_graph.for_all_nodes(import_directory, bottom_up=True)
-
-
-def cleaner(clean_job_dir: bool = False,
-            clean_work_dir: bool = False,
-            mode: str = 'dryrun',
-            keep_value: int = 0,
-            only_remove_current_graph: bool = False):
-    """ Free wasted disk space.
-    Creates a list of all possible path in the current setup and deletes all directories that
-    are not part of the current graph.
-    In addition it can clean up directories of finished jobs by deleting the work directory,
-    zipping the log files and removing status files.
-
-    Check keep value of each job, if the job has a lower value then given and is not needed anymore to compute an other
-    job it will be removed. Each job has a default value of 50.
-
-    :param clean_job_dir(bool): Clean up job directories by zipping as much as possible into a tar archive, also delete
-           the work directory (depending on global setting) and remove status files. Set mode to 'remove' for cleaning.
-    :param clean_work_dir(bool): Scan the work directory for files and directories not part of the graph
-    :param mode(str): Possible values: dryrun, move, remove
-    :param keep_value(int): Delete all jobs with a lower value.
-    :param only_remove_current_graph(bool): Only remove files from the current graph.
-    """
-
-    assert mode in ('dryrun', 'move', 'remove')
-    # create a dictionary with all paths in the current graph
-    active_paths = {}
-    # and a set containing all jobs which should not be deleted yet since they are needed to compute
-    # the output of unfinished jobs or belong to the output. Recheck targets until no new targets are added
-    needed = set()
-    last_targets = None
-    current_targets = sis_graph.targets.copy()
-    while last_targets != current_targets:
-        for target in sis_graph.targets.copy():
-            for path in target.required:
-                active_paths[os.path.abspath(os.path.join(path.get_path()))] = path
-                if path.creator is not None:
-                    needed.update(path.creator._sis_get_needed_jobs({}))
-                    active_paths.update(path.creator._sis_get_all_inputs())
-        last_targets = current_targets
-        current_targets = sis_graph.targets.copy()
-
-    needed = {job._sis_path() for job in needed}
-
-    # create directory with all jobs and partial paths to these jobs
-    job_dirs = {}
-    for k, v in active_paths.items():
-        if hasattr(v, 'creator') and v.creator:
-            path = v.creator._sis_path()
-            job_dirs[path] = v.creator
-            path_parts = os.path.split(path)[0]
-            while path_parts:
-                if path_parts not in job_dirs:
-                    job_dirs[path_parts] = True
-                path_parts = os.path.split(path_parts)[0]
-
-    unused = set()  # going to hold all directories not needed anymore
-    low_keep_value = set()  # going to hold all directories with a too low keep value
-
-    def scan_work(current):
-        for d in os.listdir(current):
-            n = os.path.join(current, d)
-            symlink = None
-            if os.path.islink(n):
-                symlink = os.readlink(n)
-                symlink = os.path.relpath(os.path.join(os.path.dirname(n), symlink))
-
-            if os.path.isdir(n):
-                k = job_dirs.get(n)
-                if symlink and (k is not None or symlink in job_dirs):
-                    # symlink is still pointing somewhere inside the used graph, ignore it
-                    pass
-                elif k is None:
-                    # directory is not created by current graph
-                    if not only_remove_current_graph:
-                        unused.add(n)
-                elif k is True:
-                    # directory has sub directories used by current graph
-                    scan_work(n)
-                else:
-                    # It's a job of this graph, let's see what we want to do with it
-                    keep_value_local = k.keep_value() if k.keep_value() is not None else gs.JOB_DEFAULT_KEEP_VALUE
-                    if (not k._sis_path() in needed) and keep_value_local < keep_value and k._sis_finished():
-                        # Job is not needed, has a to low keep value and is finished => can be removed
-                        low_keep_value.add(k)
-                    elif clean_job_dir and k._sis_cleanable():
-                        # is part of an active job
-                        # clean job directory if possible
-                        logging.info('Cleanable: %s' % k._sis_path())
-                        if mode == 'remove':
-                            k._sis_cleanup()
-                    else:
-                        # Keep this job
-                        pass
-
-    scan_work(gs.WORK_DIR)
-
-    def remove_directories(dirs, message, move_postfix, just_list):
-        """ List all directories that will be deleted and add a security check """
-        print(message)
-        input_var = input("Calculate size of affected directories? (Y/n): ")
-        tmp = list(dirs)
-        tmp.sort(key=lambda x: str(x))
-        if input_var.lower() == 'n':
-            print("Affected directories:")
-            for i in tmp:
-                print(i)
-        else:
-            with mktemp() as tmp_file:
-                with open(tmp_file, "w") as f:
-                    for directory in dirs:
-                        f.write(directory + "\x00")
-                command = 'du -sch --files0-from=%s' % (tmp_file,)
-                p = os.popen(command)
-                print(p.read())
-                p.close()
-        if not just_list:
-            if mode == 'dryrun':
-                input_var = 'y'
-            else:
-                message = 'Move directories?' if mode == 'move' else 'Delete directories?'
-                input_var = input("%s (y/N): " % message)
-
-            if input_var.lower() == 'y':
-                for num, k in enumerate(dirs, 1):
-                    if mode == 'dryrun':
-                        logging.info('Unused: %s' % k)
-                    elif mode == 'move':
-                        logging.info('Move: %s' % k)
-                        # TODO: k.{postfix} is may already used
-                        shutil.move(k, k + '.' + move_postfix)
-                    elif mode == 'remove':
-                        logging.info('Delete: (%d/%d) %s' % (num, len(dirs), k))
-                        if os.path.islink(k):
-                            os.unlink(k)
-                        else:
-                            try:
-                                shutil.rmtree(k)
-                            except OSError as error:
-                                print(error)
-                    else:
-                        assert False
-            else:
-                print("Abort")
-
-    if unused:
-        remove_directories(unused, 'Found unused directories:', 'unused', not clean_work_dir)
-    if low_keep_value and keep_value:
-        remove_directories({j._sis_path() for j in low_keep_value}, 'To low keep value directories:', 'trash', False)
 
 
 def cached_engine(cache=[]):

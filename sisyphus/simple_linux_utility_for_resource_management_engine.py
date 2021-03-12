@@ -44,11 +44,12 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         PER_CPU = "per_cpu"
         PER_NODE = "per_node"
 
-    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_CPU):
+    def __init__(self, default_rqmt, gateway=None, has_memory_resource=True, auto_clean_eqw=True, ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_CPU):
         """
 
         :param dict default_rqmt: dictionary with the default rqmts
         :param str gateway: ssh to that node and run all sge commands there
+        :param bool has_memory_resource: Set to False if the Slurm setup was not configured for managing memory
         :param bool auto_clean_eqw: if True jobs in eqw will be set back to qw automatically
         :param list[str] ignore_jobs: list of job ids that will be ignored during status updates.
                                       Useful if a job is stuck inside of Slurm and can not be deleted.
@@ -57,6 +58,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self._task_info_cache_last_update = 0
         self.gateway = gateway
         self.default_rqmt = default_rqmt
+        self.has_memory_resource = has_memory_resource
         self.auto_clean_eqw = auto_clean_eqw
         self.ignore_jobs = ignore_jobs
 
@@ -117,10 +119,11 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
 
     def options(self, rqmt):
         out = []
-        try:
-            mem = "%iG" % math.ceil(float(rqmt['mem']))
-        except ValueError:
-            mem = rqmt['mem']
+        if self.has_memory_resource:
+          try:
+              mem = "%iG" % math.ceil(float(rqmt['mem']))
+          except ValueError:
+              mem = rqmt['mem']
 
         if self.memory_allocation_type == MemoryAllocationType.PER_CPU:
             out.append('--mem-per-cpu=%s' % mem)

@@ -132,7 +132,8 @@ class ConfigManager:
             if not non_waiting:
                 break
 
-        if non_waiting:
+        # TODO Enable again once we can track all readers reliable
+        if False and non_waiting:
             for name, reader in non_waiting:
                 logging.warning("Reader " + name + " is currently in a undefined mode, "
                                 "continue anyway and hope for the best" + str(self._waiting_reader))
@@ -153,7 +154,8 @@ class ConfigManager:
         self._waiting_reader[config_name] = time.time()
 
     def unmark_reader_as_waiting(self, config_name):
-        del self._waiting_reader[config_name]
+        if config_name in self._waiting_reader:
+            del self._waiting_reader[config_name]
 
     def non_waiting_readers(self):
         out = []
