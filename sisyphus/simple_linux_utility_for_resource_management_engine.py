@@ -1,17 +1,15 @@
 # Author: Wilfried Michel <michel@cs.rwth-aachen.de>
 
+from collections import defaultdict, namedtuple
+from enum import Enum
+import getpass  # used to get username
+import logging
+import math
 import os
 import subprocess
-
 import time
-import logging
-
-import getpass  # used to get username
-import math
-
 from xml.dom import minidom
 import xml.etree.cElementTree
-from collections import defaultdict, namedtuple
 
 import sisyphus.global_settings as gs
 from sisyphus.engine import EngineBase
@@ -42,7 +40,11 @@ def try_to_multiply(y, x, backup_value=None):
 
 class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
 
-    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=[]):
+    class MemoryAllocationType(Enum):
+        PER_CPU = "per_cpu"
+        PER_NODE = "per_node"
+
+    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_CPU):
         """
 
         :param dict default_rqmt: dictionary with the default rqmts
@@ -120,7 +122,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         except ValueError:
             mem = rqmt['mem']
 
-        out.append('--mem-per-cpu=%s' % mem)
+        if self.memory_allocation_type == MemoryAllocationType.PER_CPU:
+            out.append('--mem-per-cpu=%s' % mem)
+        elif self.memory_allocation_type == MemoryAllocationType.PER_NODE:
+            out.append('--mem=%s' % mem)
 
         if 'rss' in rqmt:
             pass  # there is no option in SLURM?
