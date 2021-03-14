@@ -22,6 +22,7 @@ Sisyphus requires a Python >=3.5 installation with the following additional libr
   Optional to compile documentation:
 
     pip3 install Sphinx
+    pip3 install sphinxcontrib-mermaid
 
   Optional if virtual file system should be used:
 
