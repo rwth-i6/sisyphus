@@ -36,7 +36,33 @@ Sisyphus requires a Python 3.5 installation with the following additional librar
 QuickStart
 ==========
 To run sisyphus you need to setup an experiment folder that contains all needed files (See :ref:`sec-structure`).
-An example directory is given in the example folder. To start this toy setup run::
+
+An example directory is given in the example folder.
+It runs the workflow presented by the diagramm below
+
+.. mermaid::
+
+  graph TD;
+      start[Start]:::startclass -- data/5lines.txt --> Splitter
+      Splitter -- out_path --> Parallel
+      Parallel -- out_path: path, check_block --> Simple
+      Parallel -- out --> result[Finish]:::resultclass
+      classDef resultclass fill:#f66;
+      classDef startclass fill:#63e06d;
+      PipeLine -- merger.gz, score --> Parallel
+
+      subgraph pipeline
+      Merger -- merger.gz  --> PipeLine
+      FinishedParts -. out1.gz --> SimplePart1 -.-> Merger
+      FinishedParts -. out2.gz  --> SimplePart2 -.-> Merger
+      FinishedParts -. out3.gz  --> SimplePart3 -.-> Merger
+      Arguments -- out.gz --> FinishedParts
+      Simple -- out.gz --> Arguments
+      Arguments -- out.gz  --> CheckState
+      CheckState -- score --> PipeLine
+    end
+
+To start this toy setup run::
 
     ../sis manager
 
