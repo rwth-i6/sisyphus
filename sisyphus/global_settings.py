@@ -279,6 +279,10 @@ JOB_ADD_STACKTRACE_WITH_DEPTH = 0
 # Is enabled if tk.run is called
 SKIP_IS_FINISHED_TIMEOUT = False
 
+# Warnings
+#: Warn if a config file is loaded without calling a function
+WARNING_NO_FUNCTION_CALLED = True
+
 
 # Internal functions
 def update_global_settings_from_text(text, filename):

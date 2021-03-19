@@ -65,8 +65,9 @@ class ConfigManager:
                 # otherwise we reraise the exception
                 raise
             else:
-                logging.warning("No function named 'py' found in config file '%s'" % config_name)
-
+                if gs.WARNING_NO_FUNCTION_CALLED:
+                    logging.warning("No function named 'py' found in config file '%s'"
+                                    " (hide warning by setting WARNING_NO_FUNCTION_CALLED=False)" % config_name)
         if f:
             res = f(*parameters)
 
