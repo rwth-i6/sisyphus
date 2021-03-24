@@ -61,6 +61,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self.has_memory_resource = has_memory_resource
         self.auto_clean_eqw = auto_clean_eqw
         self.ignore_jobs = ignore_jobs
+        self.memory_allocation_type = memory_allocation_type
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -125,9 +126,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
           except ValueError:
               mem = rqmt['mem']
 
-        if self.memory_allocation_type == MemoryAllocationType.PER_CPU:
+        if self.memory_allocation_type == self.MemoryAllocationType.PER_CPU:
             out.append('--mem-per-cpu=%s' % mem)
-        elif self.memory_allocation_type == MemoryAllocationType.PER_NODE:
+        elif self.memory_allocation_type == self.MemoryAllocationType.PER_NODE:
             out.append('--mem=%s' % mem)
 
         if 'rss' in rqmt:
