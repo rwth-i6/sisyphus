@@ -6,6 +6,7 @@ example/output
 example/work
 example/log
 *.swo
+*.swp
 .coverage
 htmlcov
 .tox
