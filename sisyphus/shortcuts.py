@@ -54,6 +54,17 @@ def add_subparsers(parsers):
                                             help='All config files that will be loaded')
     parser_clean_by_keep_value.set_defaults(func=clean_by_keep_value)
 
+    parser_import_from_dir = sc_subparsers.add_parser('import_from_dir',
+                                                      help="Remove all jobs with a too low keep value")
+    parser_import_from_dir.add_argument("--dir", default=[],
+                                        action='append',
+                                        help="Directories used as import source")
+    parser_import_from_dir.add_argument("--use_alias", default=False, action='store_true',
+                                        help="Given directories contains alias")
+    parser_import_from_dir.add_argument('argv', metavar='ARGV', type=str, nargs='*',
+                                        help='All config files that will be loaded')
+    parser_import_from_dir.set_defaults(func=import_from_dir)
+
 
 def clean_unused(args):
     if args.load_used_path:
@@ -126,6 +137,12 @@ def clean_by_keep_value(args):
 
     call = ['console', '--skip_config', '--script', '-c',
             'tk.cleaner.remove_directories("%s", "To low keep value:")' % to_remove]
+    call_sis(call)
+
+
+def import_from_dir(args):
+    call = ['console', '--script', '-c',
+            'tk.import_work_directory(%s, mode="symlink", use_alias=%s)' % (args.dir, args.use_alias)] + args.argv
     call_sis(call)
 
 

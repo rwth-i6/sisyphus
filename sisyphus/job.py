@@ -539,7 +539,7 @@ class Job(metaclass=JobSingleton):
             "hash should a only contain these characters: %s" % allowed_characters
         return h
 
-    def _sis_import_from_dirs(self, import_dirs, mode):
+    def _sis_import_from_dirs(self, import_dirs, mode, use_alias=False):
         """
         If a finished version of this job is found in the given directories
         it's linked into the local work directory.
@@ -551,17 +551,41 @@ class Job(metaclass=JobSingleton):
         """
         assert mode in ('copy', 'symlink', 'dryrun'), "Unsupported mode given: %s" % mode
         local_path = self._sis_path()
-        with self._sis_job_lock:
-            for team_dir in import_dirs:
-                if not os.path.isdir(local_path) and os.path.islink(local_path):
-                    # we got a broken local link, delete it
-                    os.unlink(local_path)
 
+        if use_alias and not self._sis_aliases:
+            return False
+
+        with self._sis_job_lock:
+            if not os.path.isdir(local_path) and os.path.islink(local_path):
+                # we got a broken local link, delete it
+                os.unlink(local_path)
+
+            for import_dir in import_dirs:
                 # Check if the job is already completed in the team directory
-                team_path = os.path.join(team_dir, self._sis_id())
-                if os.path.isdir(team_path):
+                if use_alias:
+                    found_aliases = []
+                    found_targets = set()
+                    for alias in self._sis_aliases:
+                        import_path = os.path.join(import_dir, alias)
+                        if os.path.islink(import_path):
+                            target = os.readlink(import_path)
+                            found_aliases.append((import_path, target))
+                            found_targets.add(target)
+
+                    if not found_targets:
+                        continue
+                    elif len(found_targets) > 1:
+                        logging.warning("Skip import: Multiple aliases with different targets "
+                                        "found for %s: %s" % (local_path, found_aliases))
+                        continue
+                    else:
+                        import_path = found_targets.pop()
+                else:
+                    import_path = os.path.join(import_dir, self._sis_id())
+
+                if os.path.isdir(import_path):
                     # Job found, check if job is finished
-                    if job_finished(os.path.join(team_dir, self._sis_id())):
+                    if job_finished(os.path.join(import_path)):
                         # ensure base directory exists
                         with sis_global_lock:
                             base_dir = os.path.dirname(local_path)
@@ -570,16 +594,16 @@ class Job(metaclass=JobSingleton):
                         # link job directory to local work directory
                         if not os.path.islink(local_path):
                             if mode == 'copy':
-                                logging.info('Copy import %s from %s' % (self._sis_id(), team_path))
-                                shutil.copytree(src=os.path.abspath(team_path), dst=local_path,
+                                logging.info('Copy import %s from %s' % (self._sis_id(), import_path))
+                                shutil.copytree(src=os.path.abspath(import_path), dst=local_path,
                                                 symlinks=True)
                             elif mode == 'symlink':
-                                logging.info('Symlink import %s from %s' % (self._sis_id(), team_path))
-                                os.symlink(src=os.path.abspath(team_path),
+                                logging.info('Symlink import %s from %s' % (self._sis_id(), import_path))
+                                os.symlink(src=os.path.abspath(import_path),
                                            dst=local_path,
                                            target_is_directory=True)
                             else:
-                                logging.info('Possible import %s from %s' % (self._sis_id(), team_path))
+                                logging.info('Possible import %s from %s' % (self._sis_id(), import_path))
                         return True
         return False
 

@@ -417,7 +417,7 @@ def remove_job_and_descendants(jobs: Union[str, Path, Job, List[Union[str, Path,
             print("Abort")
 
 
-def import_work_directory(directories: Union[str, List[str]], mode='dryrun'):
+def import_work_directory(directories: Union[str, List[str]], mode='dryrun', use_alias=False):
     """
     Link or copy finished jobs from other work directories.
 
@@ -433,13 +433,13 @@ def import_work_directory(directories: Union[str, List[str]], mode='dryrun'):
         job._sis_runnable()
         # import work directory if job is not already setup
         if not job._sis_setup():
-            job._sis_import_from_dirs(directories, mode=mode)
+            job._sis_import_from_dirs(directories, mode=mode, use_alias=use_alias)
         return True
 
     number_of_jobs = 0
     # run once before to unsure inputs are updated at least once
     sis_graph.for_all_nodes(import_directory, bottom_up=True)
-    # run until no new jobs are added. This could be more efficient, but this is easier...
+    # run until no new jobs are added. This could be solved more efficient, but this is works...
     while number_of_jobs != len(sis_graph.jobs()):
         number_of_jobs = len(sis_graph.jobs())
         sis_graph.for_all_nodes(import_directory, bottom_up=True)
