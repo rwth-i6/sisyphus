@@ -283,6 +283,9 @@ SKIP_IS_FINISHED_TIMEOUT = False
 #: Warn if a config file is loaded without calling a function
 WARNING_NO_FUNCTION_CALLED = True
 
+#: Warn if an absolute path inside the current directory is created
+WARNING_ABSPATH = True
+
 
 # Internal functions
 def update_global_settings_from_text(text, filename):

@@ -34,6 +34,10 @@ class Path(DelayedBase):
         :param function|None available: Overwrite function which tests if path is available.
                                         Gets path as input and must be pickleable
         """
+
+        if path.startswith(os.path.abspath('.')) and gs.WARNING_ABSPATH:
+            logging.warning('Creating absolute path inside current work directory: %s '
+                            '(disable with WARNING_ABSPATH=False)' % path)
         assert isinstance(path, str)
         self.creator = creator
         self.users = set()
