@@ -80,17 +80,11 @@ def manager(args):
     Block.sis_graph = sis_graph
     job_engine = toolkit.cached_engine()
     job_engine.start_engine()
-    job_cleaner = None
+    manager = None
 
     try:
         if args.run:
             create_aliases(sis_graph.jobs())
-        else:
-            gs.JOB_AUTO_CLEANUP = False
-
-        if gs.JOB_AUTO_CLEANUP:
-            job_cleaner = JobCleaner(sis_graph=sis_graph)
-            job_cleaner.start()
 
         # The actual work loop
         if args.http_port is not None:
@@ -107,7 +101,6 @@ def manager(args):
                           clear_interrupts_once=args.clear_interrupts_once,
                           ignore_once=args.ignore_once,
                           start_computations=args.run,
-                          job_cleaner=job_cleaner,
                           interative=args.interactive,
                           ui=args.ui)
         if args.ui:
@@ -155,8 +148,8 @@ def manager(args):
 
             sys.exit(1)
     finally:
-        if job_cleaner:
-            job_cleaner.close()
+        if manager and manager.job_cleaner:
+            manager.job_cleaner.close()
         job_engine.stop_engine()
 
 
@@ -189,7 +182,6 @@ class Manager(threading.Thread):
                  ignore_once=False,
                  start_computations=False,
                  auto_print_stat_overview=True,
-                 job_cleaner=None,
                  interative=False,
                  ui=None):
         """
@@ -226,7 +218,9 @@ class Manager(threading.Thread):
 
         # Disable parallel mode for now, seems buggy
         self.thread_pool = ThreadPool(gs.MANAGER_SUBMIT_WORKER)
-        self.job_cleaner = job_cleaner
+        if gs.JOB_AUTO_CLEANUP:
+            self.job_cleaner = JobCleaner(sis_graph=sis_graph)
+            self.job_cleaner.start()
 
         # Cached states of jobs
         self.jobs = None
