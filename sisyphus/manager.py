@@ -218,6 +218,7 @@ class Manager(threading.Thread):
 
         # Disable parallel mode for now, seems buggy
         self.thread_pool = ThreadPool(gs.MANAGER_SUBMIT_WORKER)
+        self.job_cleaner = None
         if gs.JOB_AUTO_CLEANUP:
             self.job_cleaner = JobCleaner(sis_graph=sis_graph)
             self.job_cleaner.start()
