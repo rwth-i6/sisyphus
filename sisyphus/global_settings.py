@@ -47,6 +47,17 @@ def engine():
     return LocalEngine(cpu=cpu_count, gpu=0)
 
 
+def worker_wrapper(job, task_name, call):
+    """
+    All worker calls are passed through this function. This can be used, for example,
+    to run the worker in a singularity environment:
+
+        def worker_wrapper(job, task_name, call):
+            return ['singularity_call'] + call
+    """
+    return call
+
+
 def update_engine_rqmt(initial_rqmt, last_usage):
     """ Update requirements after a job got interrupted.
 

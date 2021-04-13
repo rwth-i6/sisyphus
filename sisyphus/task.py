@@ -451,4 +451,5 @@ class Task(object):
         call += [gs.CMD_WORKER, os.path.relpath(self.path()), self.name()]
         if task_id is not None:
             call.append(str(task_id))
+        call = gs.worker_wrapper(getattr(self, '_job', None), self.name(), call)
         return call
