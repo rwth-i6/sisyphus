@@ -165,11 +165,11 @@ MAX_SUBMIT_RETRIES = 3
 #: Default function to hash jobs and objects
 SIS_HASH = sisyphus.hash.short_hash
 
-#: Path to the config directory, not including the directory name 'config'
-CONFIG_PATH = '.'
-
-#: Path to the recipe directory, not including the directory name 'recipe'
-RECIPE_PATH = '.'
+#: List of paths searched for loading config and recipe files. The module name should be part of the path e.g.:
+#: adding 'config' will cause Sisyphus to the current directory for a folder named config to load modules starting
+#: with config, other python files in the current directory will be ignored.
+#: If the path ends with '/' everything inside it will be loaded, similar to adding it to PYTHONPATH.
+IMPORT_PATHS = ['config', 'recipe']
 
 #: The work directory
 WORK_DIR = 'work'

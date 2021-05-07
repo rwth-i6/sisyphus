@@ -210,14 +210,24 @@ class ConfigManager:
 class RecipeFinder:
     @classmethod
     def find_spec(cls, fullname, path, target=None):
-        for rprefix, rdir in ((gs.RECIPE_PREFIX, gs.RECIPE_PATH), (gs.CONFIG_PREFIX, gs.CONFIG_PATH)):
-            if fullname.startswith(rprefix):
+        for load_path in gs.IMPORT_PATHS:
+            if load_path.endswith(os.path.sep):
+                module_dir = load_path[:-1]
+                module_prefix = ''
+            else:
+                module_dir = os.path.dirname(load_path)
+                if not module_dir:
+                    module_dir = '.'
+                module_prefix = os.path.basename(load_path)
+
+            if not module_prefix or fullname == module_prefix or fullname.startswith(module_prefix + '.'):
                 if path is None:
-                    path = [os.path.abspath(rdir)]
+                    search_path = os.path.abspath(module_dir)
                 elif isinstance(path, str):
-                    path = [os.path.abspath(os.path.join(rdir, path))]
-                spec = PathFinder.find_spec(fullname, path, target)
-                return spec
+                    search_path = os.path.abspath(os.path.join(module_dir, path))
+                spec = PathFinder.find_spec(fullname, [search_path], target)
+                if spec:
+                    return spec
 
     @classmethod
     def invalidate_caches(cls):
