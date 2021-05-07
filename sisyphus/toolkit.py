@@ -48,6 +48,7 @@ import tarfile
 import tempfile
 from typing import Union, Any, List, Optional
 import subprocess
+import importlib
 
 from sisyphus.tools import sh, extract_paths
 import sisyphus.block
@@ -222,12 +223,9 @@ def setup_path(package: str) -> RelPath:
     assert package, ("setup_path is used to make all path relative to the current package directory, "
                      "it only works inside of directories and not if the config file is passed directly")
 
-    path = package.replace('.', '/')
-    hash_overwrite = None
-    if package.startswith(gs.RECIPE_PREFIX):
-        hash_overwrite = path
-        path = os.path.join(gs.RECIPE_PATH, path)
-
+    hash_overwrite = package.replace('.', '/')
+    module = importlib.import_module(package)
+    path = os.path.dirname(module.__file__)
     return RelPath(path, hash_overwrite=hash_overwrite)
 
 
