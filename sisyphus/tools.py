@@ -3,6 +3,7 @@
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 import collections
 from sisyphus.hash import *
+import enum
 import inspect
 import os
 import platform
@@ -75,7 +76,7 @@ def extract_paths(args: Any) -> Set:
     :rtype: set
     """
     out = set()
-    if isinstance(args, Block):
+    if isinstance(args, Block) or isinstance(args, enum.Enum):
         return out
     if hasattr(args, '_sis_path') and args._sis_path is True:
         out = {args}
