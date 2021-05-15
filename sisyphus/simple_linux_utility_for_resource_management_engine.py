@@ -44,7 +44,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         PER_CPU = "per_cpu"
         PER_NODE = "per_node"
 
-    def __init__(self, default_rqmt, gateway=None, has_memory_resource=True, auto_clean_eqw=True, ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_CPU):
+    def __init__(self, default_rqmt, gateway=None, has_memory_resource=True, auto_clean_eqw=True,
+                 ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_CPU):
         """
 
         :param dict default_rqmt: dictionary with the default rqmts
@@ -121,10 +122,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
     def options(self, rqmt):
         out = []
         if self.has_memory_resource:
-          try:
-              mem = "%iG" % math.ceil(float(rqmt['mem']))
-          except ValueError:
-              mem = rqmt['mem']
+            try:
+                mem = "%iG" % math.ceil(float(rqmt['mem']))
+            except ValueError:
+                mem = rqmt['mem']
 
         if self.memory_allocation_type == self.MemoryAllocationType.PER_CPU:
             out.append('--mem-per-cpu=%s' % mem)
