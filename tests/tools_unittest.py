@@ -53,7 +53,7 @@ class FunctionCache(unittest.TestCase):
         self.assertEqual(c, self.f())
 
 
-class TestClass(object):
+class MockClass(object):
 
     def __init__(self, a, b):
         self.a = a
@@ -79,8 +79,8 @@ class SisHash(unittest.TestCase):
                 ({'foo': 1, 'bar': -1},
                  b"(dict, (tuple, (str, 'bar'), (int, -1)), (tuple, (str, 'foo'), (int, 1)))", None),
 
-                (TestClass(1, 2),
-                 b"(TestClass, (dict, (tuple, (str, 'a'), (int, 1)), (tuple, (str, 'b'), (int, 2))))", None),
+                (MockClass(1, 2),
+                 b"(MockClass, (dict, (tuple, (str, 'a'), (int, 1)), (tuple, (str, 'b'), (int, 2))))", None),
                 (Point(3, 5),
                  b'(Point, (tuple, (tuple, (int, 3), (int, 5)), (dict)))', None),
 
@@ -90,16 +90,18 @@ class SisHash(unittest.TestCase):
                 (b'0' * 4088,
                  b't\xe0\xf8\xbb\xfd\xe6\xfaN\xa6\xac`\x7f\xd3\xfeZ\xa3c6z\xe8\xc7\x869^\xa1\x011\x8e\xfcx\xa1V', None),
                 ({
-                    TestClass(1, 2): 999,
+                    MockClass(1, 2): 999,
                     test.Test('foo'): 777,
                     'foo': test.Test('bar'),
                     'bar': job_path.Path('foo/bar'),
                     job_path.Path('foo/bar'): 'bar'
                 },
-                    b"(dict, (tuple, (Path, (tuple, (NoneType), (str, 'foo/bar'))), (str, 'bar')), "
-                    b"(tuple, (TestClass, (dict, (tuple, (str, 'a'), (int, 1)), (tuple, (str, 'b'), "
-                    b"(int, 2)))), (int, 999)), (tuple, (str, 'bar'), (Path, (tuple, (NoneType), "
-                    b"(str, 'foo/bar')))), (tuple, (str, 'foo'), task/test/Test.84bbb5730368c68c8151b56c3ede6c5e), "
+                    b"(dict, "
+                    b"(tuple, (MockClass, "
+                    b"(dict, (tuple, (str, 'a'), (int, 1)), (tuple, (str, 'b'), (int, 2)))), (int, 999)), "
+                    b"(tuple, (Path, (tuple, (NoneType), (str, 'foo/bar'))), (str, 'bar')), "
+                    b"(tuple, (str, 'bar'), (Path, (tuple, (NoneType), (str, 'foo/bar')))), "
+                    b"(tuple, (str, 'foo'), task/test/Test.84bbb5730368c68c8151b56c3ede6c5e), "
                     b"(tuple, task/test/Test.7be358a10ed713206e44d0ab965e8612, (int, 777)))",
                     None),
         ]:
