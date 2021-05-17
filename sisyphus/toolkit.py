@@ -225,6 +225,8 @@ def setup_path(package: str) -> RelPath:
 
     hash_overwrite = package.replace('.', '/')
     module = importlib.import_module(package)
+    assert (getattr(module, '__file__', None)
+            ), "setup_path failed for %s. Does %s/__init__.py exist?" % (package, hash_overwrite)
     path = os.path.dirname(module.__file__)
     return RelPath(path, hash_overwrite=hash_overwrite)
 
