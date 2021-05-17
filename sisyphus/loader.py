@@ -222,10 +222,12 @@ class RecipeFinder:
 
             if not module_prefix or fullname == module_prefix or fullname.startswith(module_prefix + '.'):
                 if path is None:
-                    search_path = os.path.abspath(module_dir)
+                    search_path = [os.path.abspath(module_dir)]
                 elif isinstance(path, str):
-                    search_path = os.path.abspath(os.path.join(module_dir, path))
-                spec = PathFinder.find_spec(fullname, [search_path], target)
+                    search_path = [os.path.abspath(os.path.join(module_dir, path))]
+                else:
+                    search_path = path
+                spec = PathFinder.find_spec(fullname, search_path, target)
                 if spec:
                     return spec
 
