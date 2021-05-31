@@ -228,6 +228,8 @@ def setup_path(package: str) -> RelPath:
     assert (getattr(module, '__file__', None)
             ), "setup_path failed for %s. Does %s/__init__.py exist?" % (package, hash_overwrite)
     path = os.path.dirname(module.__file__)
+    path = os.path.relpath(path)
+
     return RelPath(path, hash_overwrite=hash_overwrite)
 
 
