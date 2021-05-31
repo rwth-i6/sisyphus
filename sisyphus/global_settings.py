@@ -169,7 +169,8 @@ SIS_HASH = sisyphus.hash.short_hash
 #: adding 'config' will cause Sisyphus to the current directory for a folder named config to load modules starting
 #: with config, other python files in the current directory will be ignored.
 #: If the path ends with '/' everything inside it will be loaded, similar to adding it to PYTHONPATH.
-IMPORT_PATHS = ['config', 'recipe']
+#: keep 'recipe' for legacy setups
+IMPORT_PATHS = ['config', 'recipe', 'recipe/']
 
 #: The work directory
 WORK_DIR = 'work'
