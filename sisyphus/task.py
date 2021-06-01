@@ -40,7 +40,7 @@ class Task(object):
             args = [[]]
         self._start = start
         self._resume = resume
-        self._rqmt = rqmt
+        self._rqmt = rqmt.copy()
         if mini_task:
             self._rqmt['engine'] = 'short'
         self._update_rqmt = update_rqmt if update_rqmt else gs.update_engine_rqmt
