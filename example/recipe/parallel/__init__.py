@@ -11,11 +11,13 @@ class LineSpliter(Job):
     __sis_auto_cleanup__ = False  # disable automatic cleanup for testing
 
     def __init__(self, text):
+        assert not tk.running_in_worker()
         self.text = text
         self.out_dir = self.output_path('out_dir', True)
         self.out = self.output_var('out_path', pickle=True)
 
     def run(self):
+        assert tk.running_in_worker()
         start_time = time.time()
         waste = []
         # just waste some computation time and memory

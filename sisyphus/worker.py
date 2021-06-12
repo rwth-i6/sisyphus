@@ -13,6 +13,7 @@ from threading import Thread, Condition
 
 import sisyphus.global_settings as gs
 import sisyphus.job_path
+import sisyphus.toolkit
 
 
 def format_time(t):
@@ -153,6 +154,8 @@ class LoggingThread(Thread):
 def worker(args):
     # Change job into error state in case of any exception
     gs.active_engine = gs.engine().get_used_engine(args.engine)
+    sisyphus.toolkit._sis_running_in_worker = True
+
     try:
         worker_helper(args)
     except Exception:
@@ -168,6 +171,8 @@ def worker(args):
                     with open(error_file, 'w'):
                         pass
         raise
+    finally:
+        sisyphus.toolkit._sis_running_in_worker = False
 
 
 def worker_helper(args):

@@ -257,6 +257,14 @@ def load_file(path: str) -> Any:
         return pickle.load(f)
 
 
+_sis_running_in_worker = False
+
+
+def running_in_worker():
+    """Returns rue if this code is run inside the worker"""
+    return _sis_running_in_worker
+
+
 # Helper functions mainly used in the console
 def load_job(path: str) -> Job:
     """ Load job from job directory even if it is already cleaned up
