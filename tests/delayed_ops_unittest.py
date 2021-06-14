@@ -28,6 +28,11 @@ class DelayedOpsTest(unittest.TestCase):
         self.check_only_get_eq(a - 4, -1)
         self.check_only_get_eq(4 - a, 1)
 
+        self.check_only_get_eq(a ** 2, 9)
+        self.check_only_get_eq(2 ** a, 8)
+        self.check_only_get_eq(a ** 2 % 2, 1)
+        self.check_only_get_eq(2 ** a % 2, 0)
+
     def test_string(self):
         a = Delayed('foo')
 

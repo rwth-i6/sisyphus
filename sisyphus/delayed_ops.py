@@ -28,6 +28,15 @@ class DelayedBase:
     def __mod__(self, other):
         return DelayedMod(self, other)
 
+    def __pow__(self, other, modulo=None):
+        if modulo is None:
+            return DelayedPow(self, other)
+        else:
+            return DelayedMod(DelayedPow(self, other), modulo)
+
+    def __rpow__(self, other):
+        return DelayedPow(other, self)
+
     def __getitem__(self, key):
         return DelayedGetItem(self, key)
 
@@ -68,6 +77,11 @@ class DelayedMul(DelayedBase):
 class DelayedMod(DelayedBase):
     def get(self):
         return try_get(self.a) % try_get(self.b)
+
+
+class DelayedPow(DelayedBase):
+    def get(self):
+        return try_get(self.a) ** try_get(self.b)
 
 
 class DelayedGetItem(DelayedBase):
