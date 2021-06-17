@@ -291,6 +291,14 @@ JOB_ADD_STACKTRACE_WITH_DEPTH = 0
 # Is enabled if tk.run is called
 SKIP_IS_FINISHED_TIMEOUT = False
 
+# Caching
+#: If enabled the results of finished jobs are cached in an extra file to reduce the file system access
+CACHE_FINISHED_RESULTS = False
+#: Path used for CACHE_FINISHED_RESULTS
+CACHE_FINISHED_RESULTS_PATH = "finished_results_cache.pkl"
+#: Only cache results smaller than this in central file (in bytes)
+CACHE_FINISHED_RESULTS_MAX_SIZE = 1024
+
 # Warnings
 #: Warn if a config file is loaded without calling a function
 WARNING_NO_FUNCTION_CALLED = True

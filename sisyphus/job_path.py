@@ -8,6 +8,7 @@ import pickle
 import sisyphus.tools as tools
 import sisyphus.global_settings as gs
 from sisyphus.delayed_ops import DelayedBase
+from sisyphus.tools import finished_results_cache
 
 
 class Path(DelayedBase):
@@ -102,6 +103,7 @@ class Path(DelayedBase):
             creator = os.path.join(self.creator._sis_id(), gs.JOB_OUTPUT)
         return b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
 
+    @finished_results_cache.caching(get_key=lambda self, debug_info=None: ('available', self.rel_path()))
     def available(self, debug_info=None):
         """  Returns True if the computations creating the path are completed
         :return:
@@ -332,16 +334,16 @@ class Variable(Path):
 
         Path.__init__(self, path, creator)
         self.pickle = pickle
-        self.cache_set = False
-        self.cache = None
         self.backup = backup
 
     def is_set(self):
         return os.path.isfile(self.get_path())
 
+    @finished_results_cache.caching(get_key=lambda self: ('value', self.rel_path()),
+                                    cache_if=lambda res, self:
+                                    self.available() and (os.path.getsize(self.get_path())
+                                                          < gs.CACHE_FINISHED_RESULTS_MAX_SIZE))
     def get(self):
-        if hasattr(self, 'cache_set') and self.cache_set:
-            return self.cache
         if not self.is_set():
             if self.backup is None:
                 return "<UNFINISHED VARIABLE: %s>" % self.get_path()
@@ -354,8 +356,6 @@ class Variable(Path):
             with open(self.get_path(), 'rt', encoding='utf-8') as f:
                 # using eval since literal_eval can not parse 'nan' or 'inf'
                 v = eval(f.read(), {'nan': float('nan'), 'inf': float('inf')})
-        self.cache_set = True
-        self.cache = v
         return v
 
     def set(self, value):

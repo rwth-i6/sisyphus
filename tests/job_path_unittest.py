@@ -4,6 +4,7 @@ import pickle
 
 import sisyphus.toolkit as tk
 from sisyphus.job_path import Path, Variable
+from sisyphus.tools import finished_results_cache
 
 
 class MockJob(object):
@@ -100,6 +101,7 @@ class PathTest(unittest.TestCase):
                 pass
             self.assertEqual(path.available(), True)
 
+        finished_results_cache.reset()
         path = Path('lm.gz', mjob, available=path_available_false)
         self.assertEqual(path.available(), False)
         path = Path('lm.gz', mjob, available=path_available_true)

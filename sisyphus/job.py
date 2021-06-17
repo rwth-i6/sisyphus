@@ -23,6 +23,7 @@ from typing import List, Iterator
 from sisyphus import block, tools
 from sisyphus.task import Task
 from sisyphus.job_path import Path, Variable
+from sisyphus.tools import finished_results_cache
 
 # Definition of constants
 import sisyphus.global_settings as gs
@@ -50,6 +51,7 @@ def get_args(f, args, kwargs):
 created_jobs = {}
 
 
+@finished_results_cache.caching(get_key=lambda path: ('job', path))
 def job_finished(path):
     """ Return true if given job is finished according to files in directory
     :param path: path to directory

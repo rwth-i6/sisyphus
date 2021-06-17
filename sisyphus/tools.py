@@ -4,8 +4,10 @@
 import collections
 from sisyphus.hash import *
 import enum
+import functools
 import inspect
 import os
+import pickle
 import platform
 import sys
 import shutil
@@ -503,3 +505,62 @@ class EnvironmentModifier:
 
     def __repr__(self):
         return repr(self.keep_vars) + ' ' + repr(self.set_vars)
+
+
+class FinishedResultsCache:
+    """Caches results of finished jobs, e.g. which jobs are finished, which paths are available,
+    and the content of finished variables"""
+
+    def __init__(self, cache_file):
+        self.cache_file = cache_file
+        self.cache = {}
+        self.changed = False
+
+    def read_from_file(self):
+        path = self.cache_file
+        try:
+            if os.path.exists(path):
+                logging.info("Loading cached results from %s" % repr(path))
+                with open(path, 'rb') as f:
+                    self.cache = pickle.load(f)
+        except Exception as e:
+            logging.warning("Failed to read cached file, use empty cache instead. %s" % e)
+
+    def write_to_file(self):
+        if self.changed:
+            with open(self.cache_file, 'wb') as f:
+                cache = self.cache.copy()
+                pickle.dump(cache, f)
+            self.changed = False
+
+    def __getitem__(self, key):
+        return self.cache[key]
+
+    def __setitem__(self, key, value):
+        self.cache[key] = value
+        self.changed = True
+
+    def reset(self):
+        self.cache = {}
+        self.changed = True
+
+    def caching(self, get_key=lambda x: x, cache_if=lambda x, *args, **kwargs: x is True):
+        def caching_decorator(func):
+            @functools.wraps(func)
+            def cached_call(*args, **kwargs):
+                if not gs.CACHE_FINISHED_RESULTS:
+                    return func(*args, **kwargs)
+
+                key = get_key(*args, **kwargs)
+                try:
+                    return self[key]
+                except KeyError:
+                    res = func(*args, **kwargs)
+                    if cache_if(res, *args, **kwargs):
+                        self[key] = res
+                    return res
+            return cached_call
+        return caching_decorator
+
+
+finished_results_cache = FinishedResultsCache(gs.CACHE_FINISHED_RESULTS_PATH)
