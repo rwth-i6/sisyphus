@@ -10,6 +10,7 @@ from multiprocessing.pool import ThreadPool
 from sisyphus import toolkit, tools
 from sisyphus.loader import config_manager
 from sisyphus.block import Block
+from sisyphus.tools import finished_results_cache
 import sisyphus.global_settings as gs
 
 
@@ -219,9 +220,6 @@ class Manager(threading.Thread):
         # Disable parallel mode for now, seems buggy
         self.thread_pool = ThreadPool(gs.MANAGER_SUBMIT_WORKER)
         self.job_cleaner = None
-        if gs.JOB_AUTO_CLEANUP:
-            self.job_cleaner = JobCleaner(sis_graph=sis_graph)
-            self.job_cleaner.start()
 
         # Cached states of jobs
         self.jobs = None
@@ -477,6 +475,13 @@ class Manager(threading.Thread):
 
         self.update_jobs()
         self.update_state_overview()
+        logging.info("Finished updating job states")
+        finished_results_cache.write_to_file()
+
+        # Start job cleaner after updating the graph the first time
+        if gs.JOB_AUTO_CLEANUP:
+            self.job_cleaner = JobCleaner(sis_graph=self.sis_graph)
+            self.job_cleaner.start()
 
         # Skip first part if there is nothing todo
         if not (config_manager.reader_running() or self.jobs or self.ui):
@@ -548,6 +553,7 @@ class Manager(threading.Thread):
 
         last_state_overview = self.state_overview
         while self.continue_manager_loop():
+            finished_results_cache.write_to_file()
             # Don't to anything while the manager is paused
             if self.is_paused():
                 time.sleep(1)

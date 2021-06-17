@@ -170,6 +170,15 @@ def main():
     else:
         logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s', level=args.log_level)
 
+    # Disable cache for worker
+    if args.func == worker:
+        gs.CACHE_FINISHED_RESULTS = False
+
+    # Load cache
+    if gs.CACHE_FINISHED_RESULTS:
+        from sisyphus.tools import finished_results_cache
+        finished_results_cache.read_from_file()
+
     # Changing settings via commandline is currently not supported
     # Needs to ensure all parameters are passed correctly to worker, ignored since nobody requested it so far
     # update_global_settings_from_file(args.settings_file)
