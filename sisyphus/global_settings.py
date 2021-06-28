@@ -309,6 +309,7 @@ WARNING_ABSPATH = True
 # Prohibit resolving paths in graph construction
 DELAYED_CHECK_FOR_WORKER = False
 
+
 # Internal functions
 def update_global_settings_from_text(text, filename):
     """
@@ -394,5 +395,5 @@ USE_UI = True
 # Set to False to disable Warning of unset engine
 ENGINE_NOT_SETUP_WARNING = True
 
-update_global_settings_from_env()
 update_global_settings_from_file(GLOBAL_SETTINGS_FILE_DEFAULT)
+update_global_settings_from_env()
