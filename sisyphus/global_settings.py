@@ -347,7 +347,6 @@ def update_global_settings_from_file(filename):
     :param str filename:
     :return: nothing
     """
-    # skip if settings file doesn't exist
     globals()['GLOBAL_SETTINGS_FILE'] = filename
 
     content = ''
@@ -355,6 +354,7 @@ def update_global_settings_from_file(filename):
         with open(filename, encoding='utf-8') as f:
             content = f.read()
     except IOError as e:
+        # skip if settings file doesn't exist
         if e.errno != 2:
             raise e
 
@@ -393,4 +393,5 @@ USE_UI = True
 ENGINE_NOT_SETUP_WARNING = True
 
 update_global_settings_from_env()
+update_global_settings_from_file(GLOBAL_SETTINGS_FILE_USER)
 update_global_settings_from_file(GLOBAL_SETTINGS_FILE_DEFAULT)

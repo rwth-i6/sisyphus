@@ -25,6 +25,7 @@ CONFIG_PREFIX = "config"
 RECIPE_PREFIX = "recipe"
 
 # settings file
+GLOBAL_SETTINGS_FILE_USER = os.path.expanduser('~/.sisyphus_settings.py')
 GLOBAL_SETTINGS_FILE_DEFAULT = "settings.py"
 
 # File states
