@@ -4,11 +4,27 @@ import os
 import logging
 import gzip
 import pickle
+from functools import wraps
 
 import sisyphus.tools as tools
 import sisyphus.global_settings as gs
 from sisyphus.delayed_ops import DelayedBase
 from sisyphus.tools import finished_results_cache
+
+
+def check_is_worker(get_func):
+    """
+    Prohibits calling a get function while being in the "graph" thread, thus
+    causing bugs/inconsistent behavior in Sisyphus.
+    """
+    @wraps(get_func)
+    def check(*args, **kwargs):
+        if gs.DELAYED_CHECK_FOR_WORKER:
+            from sisyphus.toolkit import running_in_worker
+            assert running_in_worker()
+        return get_func(*args, **kwargs)
+
+    return check
 
 
 class Path(DelayedBase):
@@ -167,6 +183,7 @@ class Path(DelayedBase):
         else:
             return self.get_path()
 
+    @check_is_worker
     def get(self):
         return self.get_path()
 
@@ -339,6 +356,7 @@ class Variable(Path):
     def is_set(self):
         return os.path.isfile(self.get_path())
 
+    @check_is_worker
     @finished_results_cache.caching(get_key=lambda self: ('value', self.rel_path()),
                                     cache_if=lambda res, self:
                                     self.available() and (os.path.getsize(self.get_path())
