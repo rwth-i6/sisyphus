@@ -3,9 +3,19 @@ from sisyphus.tools import try_get
 
 
 class DelayedBase:
-    def __init__(self, a, b):
+    def __init__(self, a, b=None):
         self.a = a
         self.b = b
+
+    @staticmethod
+    def _is_set_helper(var):
+        if isinstance(var, DelayedBase):
+            if not var.is_set():
+                return False
+        return True
+
+    def is_set(self):
+        return self._is_set_helper(self.a) and self._is_set_helper(self.b)
 
     def __add__(self, other):
         return DelayedAdd(self, other)
@@ -43,11 +53,20 @@ class DelayedBase:
     def format(self, *args, **kwargs):
         return DelayedFormat(self, *args, **kwargs)
 
+    def rformat(self, fstring, *args, **kwargs):
+        """ Reverse format call e.g.:
+        a.rformat(b, *args, **kwargs) is mapped to b.format(a, *args, **kwargs) """
+        return DelayedFormat(fstring, self, *args, **kwargs)
+
     def replace(self, *args, **kwargs):
         return DelayedReplace(self, *args, **kwargs)
 
     def function(self, func, *args, **kwargs):
         return DelayedFunction(self, func, *args, **kwargs)
+
+    def fallback(self, fallback):
+        """ If this variable is not set yet the fallback value will be returned """
+        return DelayedFallback(self, fallback)
 
     def get(self):
         assert False, 'This method needs to be declared in a child class'
@@ -92,6 +111,7 @@ class DelayedGetItem(DelayedBase):
 class Delayed(DelayedBase):
     def __init__(self, a):
         self.a = a
+        self.b = None
 
     def get(self):
         return try_get(self.a)
@@ -108,6 +128,9 @@ class DelayedFunctionBase(DelayedBase):
         self.args = args
         self.kwargs = kwargs
 
+    def is_set(self):
+        return all(self._is_set_helper(var) for var in [self.string] + list(self.args) + list(self.kwargs.values()))
+
 
 class DelayedFunction(DelayedFunctionBase):
     def __init__(self, string, func, *args, **kwargs):
@@ -121,9 +144,18 @@ class DelayedFunction(DelayedFunctionBase):
 
 class DelayedFormat(DelayedFunctionBase):
     def get(self):
-        return try_get(self.string).format(*self.args, **self.kwargs)
+        return try_get(self.string).format(*(try_get(i) for i in self.args), **self.kwargs)
 
 
 class DelayedReplace(DelayedFunctionBase):
     def get(self):
         return try_get(self.string).replace(*self.args, **self.kwargs)
+
+
+class DelayedFallback(DelayedBase):
+    """Return second value if first value is not available yet"""
+    def get(self):
+        if self.a.is_set():
+            return self.a.get()
+        else:
+            return try_get(self.b)
