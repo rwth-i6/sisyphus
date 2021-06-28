@@ -306,6 +306,8 @@ WARNING_NO_FUNCTION_CALLED = True
 #: Warn if an absolute path inside the current directory is created
 WARNING_ABSPATH = True
 
+# Prohibit resolving paths in graph construction
+DELAYED_CHECK_FOR_WORKER = False
 
 # Internal functions
 def update_global_settings_from_text(text, filename):
