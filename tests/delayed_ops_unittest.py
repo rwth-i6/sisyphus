@@ -1,6 +1,8 @@
 import unittest
 from sisyphus.delayed_ops import *
 from sisyphus.hash import short_hash
+from sisyphus.job_path import Variable
+import sisyphus.toolkit as tk
 
 
 class DelayedOpsTest(unittest.TestCase):
@@ -33,6 +35,8 @@ class DelayedOpsTest(unittest.TestCase):
         self.check_only_get_eq(a ** 2 % 2, 1)
         self.check_only_get_eq(2 ** a % 2, 0)
 
+        self.check_only_get_eq(a.rformat('foo{:04d} foo'), 'foo0003 foo')
+
     def test_string(self):
         a = Delayed('foo')
 
@@ -46,6 +50,9 @@ class DelayedOpsTest(unittest.TestCase):
 
         a = Delayed('foo{b} foo')
         self.check_only_get_eq(a.format(b='bar'), 'foobar foo')
+
+        a = Delayed('bar')
+        self.check_only_get_eq(a.rformat('foo{} foo'), 'foobar foo')
 
         a = Delayed('foobbb foo')
         b = a.replace('bbb', 'bar')
@@ -67,6 +74,53 @@ class DelayedOpsTest(unittest.TestCase):
 
         a = DelayedBase(1, 2)
         self.assertRaises(AssertionError, lambda: a.get())
+
+    def test_ist_set(self):
+        with tk.mktemp() as t1, tk.mktemp() as t2:
+            var1 = Variable(t1)
+            var2 = Variable(t2)
+            c1 = var1 + 5
+            c2 = c1 * 8
+            c3 = c2 - (var2 % 5)
+            c4 = c3.rformat('Hello {}')
+            for i in [var1, var2, c1, c2, c3, c4]:
+                self.assertEqual(i.is_set(), False)
+            var1.set(3)
+            for i in [var1, c1, c2]:
+                self.assertEqual(i.is_set(), True)
+            for i in [var2, c3, c4]:
+                self.assertEqual(i.is_set(), False)
+            var2.set(9)
+            for i in [var1, var2, c1, c2, c3, c4]:
+                self.assertEqual(i.is_set(), True)
+
+            self.check_only_get_eq(var1, 3)
+            self.check_only_get_eq(var2, 9)
+            self.check_only_get_eq(c1, 8)
+            self.check_only_get_eq(c2, 64)
+            self.check_only_get_eq(c3, 60)
+            self.check_only_get_eq(c4, 'Hello 60')
+
+    def test_fallback(self):
+        with tk.mktemp() as t:
+            var = Variable(t)
+            self.assertEqual(var.is_set(), False)
+            fallback = var.fallback(0)
+            self.check_only_get_eq(fallback, 0)
+            self.check_only_get_eq(fallback + 5, 5)
+            var.set(3)
+            self.assertEqual(var.is_set(), True)
+            self.check_only_get_eq(fallback + 5, 8)
+
+        with tk.mktemp() as t:
+            var = Variable(t)
+            var_chain = ((var + 4) % 2) * 42
+            fallback = var_chain.rformat('{:05.1f}').fallback(0)
+            self.assertEqual(var.is_set(), False)
+            self.check_only_get_eq(fallback, 0)
+            var.set(3)
+            self.assertEqual(var.is_set(), True)
+            self.check_only_get_eq(fallback, '042.0')
 
 
 def add(a, b):
