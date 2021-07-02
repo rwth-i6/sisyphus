@@ -307,6 +307,9 @@ WARNING_ABSPATH = True
 # Prohibit resolving paths in graph construction
 DELAYED_CHECK_FOR_WORKER = False
 
+#: Raise an exception if a Variable is accessed which is not set yet
+RAISE_VARIABLE_NOT_SET_EXCEPTION = True
+
 
 # Internal functions
 def update_global_settings_from_text(text, filename):
