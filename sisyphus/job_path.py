@@ -27,6 +27,11 @@ def check_is_worker(get_func):
     return check
 
 
+class VariableNotSet(Exception):
+    """Variable is not set"""
+    pass
+
+
 class Path(DelayedBase):
     """
     Object do hold the connecting path to files:
@@ -363,6 +368,8 @@ class Variable(Path):
                                                           < gs.CACHE_FINISHED_RESULTS_MAX_SIZE))
     def get(self):
         if not self.is_set():
+            if gs.RAISE_VARIABLE_NOT_SET_EXCEPTION:
+                raise VariableNotSet("Variable is not set (%s)" % self.get_path())
             if self.backup is None:
                 return "<UNFINISHED VARIABLE: %s>" % self.get_path()
             else:
