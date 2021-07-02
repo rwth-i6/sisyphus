@@ -8,7 +8,7 @@ from ast import literal_eval
 
 import sisyphus.tools as tools
 import sisyphus.global_settings as gs
-
+from .job import Job
 
 class Task(object):
     """
@@ -77,6 +77,16 @@ class Task(object):
     def get_f(self, name):
         return getattr(self._job, name)
 
+    def get_prev_task(self) -> 'Task':
+        """ Returns the task peceeding this one or None if it's the first one """
+        prev = None
+        for t in self._job.tasks():
+            if t.name == self.name:
+                break
+            prev = t
+
+        return t
+
     def task_ids(self):
         """
         :return: list with all valid task ids
@@ -112,21 +122,13 @@ class Task(object):
         :param sisyphus.worker.LoggingThread logging_thread:
         """
 
+        
         logging.debug("Task name: %s id: %s" % (self.name(), task_id))
         job = self._job
-
         logging.info("Start Job: %s Task: %s" % (job, self.name()))
-        logging.info("Inputs:")
-        for i in self._job._sis_inputs:
-            logging.info(str(i))
-
-            # each input must be at least X seconds old
-            # if an input file is too young it's may not synced in a network filesystem yet
-            try:
-                input_age = time.time() - os.stat(i.get_path()).st_mtime
-                time.sleep(max(0, gs.WAIT_PERIOD_MTIME_OF_INPUTS - input_age))
-            except FileNotFoundError:
-                logging.warning('Input path does not exist: %s' % i.get_path())
+        logging.info("Inputs:\n%s", "\n".join( str(i) for i in self._job._sis_inputs))
+        
+        self._wait_for_input_to_sync()
 
         tools.get_system_informations(sys.stdout)
         sys.stdout.flush()
@@ -186,6 +188,58 @@ class Task(object):
             sys.stdout.flush()
             sys.stderr.flush()
             logging.info("Job finished successful")
+
+    def _wait_for_input_to_sync(self):
+        """
+        Waits for the input files of this task to be synced across the network, eventually raising a
+        TimeoutError.
+
+        The input files are either the ouput files of other jobs or the output files of a preceeding
+        task of this job
+
+        """
+        # Collect expected file sizes, either from a preceeding task or from other jobs
+        logging.info("Getting expected input sizes ...")
+
+        expected_sizes = []
+        prev = self.get_prev_task()
+
+        if prev:
+            expected_sizes = Job._sis_get_expected_file_sizes(self._job._sis_path(), task=prev.name)
+        else: 
+            for i in self._job._sis_inputs:
+                other_job_sizes = Job._sis_get_expected_file_sizes(i.creator)
+                # If the job has been cleaned up, no size info is available, but we can safely
+                # assume that enough time has passed so that all files are synced.
+                if other_job_sizes:
+                    expected_sizes[i.path] = other_job_sizes[i.path]
+
+        s = "\n".join("{0}\t{1}".format(i) for i in expected_sizes.items())
+        logging.debug("Expected file sized:\n%s", s)
+
+        # Make sure the files have the required size
+        logging.info("Waiting for the filesystem to sync files ...")
+        for path, expected_size in expected_sizes:
+            logging.debug(path)
+
+            start = time.time()
+            while True:
+                try:
+                    # Use absolute path?
+                    cur_size = os.stat(path).size
+                except FileNotFoundError:
+                    cur_size = -1
+
+                if cur_size == expected_size:
+                    break
+
+                if time.time() - start > gs.MAX_WAIT_FILE_SYNC:
+                    logging.error("%s not synced for more than MAX_WAIT_FILE_SYNC.", path)
+                    raise TimeoutError
+
+                logging.info("%s not synced yet (current size %d, expected: %d).", path, cur_size, expected_size)
+                time.sleep(gs.WAIT_PERIOD_CHECK_FILE_SIZE)
+
 
     def task_name(self):
         return '%s.%s' % (self._job._sis_id(), self.name())
