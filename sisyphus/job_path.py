@@ -196,7 +196,10 @@ class Path(DelayedBase):
         return self.get_cached_path()
 
     def __repr__(self):
-        return repr(str(self))
+        if gs.LEGACY_PATH_CONVERSION:
+            return repr(str(self))
+        else:
+            return '<Path %s>' % self.get_path()
 
     def __lt__(self, other):
         """
@@ -413,4 +416,10 @@ class Variable(Path):
         return str(self.get())
 
     def __repr__(self):
-        return str(self.get())
+        if gs.LEGACY_VARIABLE_CONVERSION:
+            return repr(self.get())
+        else:
+            value = ''
+            if self.is_set():
+                value = ' %s' % self.get()
+            return "<Variable %s%s>" % (self.rel_path(), value)
