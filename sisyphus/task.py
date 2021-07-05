@@ -128,7 +128,10 @@ class Task(object):
         logging.info("Start Job: %s Task: %s" % (job, self.name()))
         logging.info("Inputs:\n%s", "\n".join( str(i) for i in self._job._sis_inputs))
         
-        self._wait_for_input_to_sync()
+        try:
+            self._wait_for_input_to_sync()
+        except TimeoutError:
+            self.error(task_id, True)
 
         tools.get_system_informations(sys.stdout)
         sys.stdout.flush()
