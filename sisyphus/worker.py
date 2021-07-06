@@ -138,7 +138,11 @@ class LoggingThread(Thread):
             #     if max_mem and (max_mem - last_rss) / max_mem < 0.02 or max_mem - last_rss < 2**28:
             #     self.task.check_state(gs.JOB_CLOSE_TO_MAX_MEM, task_id=self.task_id, update=True)
 
-        log_usage(resources, self.job._sis_get_file_stats())
+        file_stats = self.job._sis_get_file_stats()
+        s = "\n".join("\t".join(i) for i in file_stats.items())
+        logging.debug("Got file stats:\n%s", s)
+        
+        log_usage(resources, file_stats)
         logging.info("Max resources: Run time: {time} CPU: {cpu}% RSS: {rss} VMS: {vms}"
                      "".format(time=format_time(time.time() - start_time),
                                cpu=max_resources['cpu'],
