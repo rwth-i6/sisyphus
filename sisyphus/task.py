@@ -85,7 +85,7 @@ class Task(object):
                 break
             prev = t
 
-        return t
+        return prev
 
     def task_ids(self):
         """
@@ -240,7 +240,7 @@ class Task(object):
                 if other_job_sizes:
                     expected_sizes[i.path] = other_job_sizes[i.path]
 
-        s = "\n".join("{0}\t{1}".format(i) for i in expected_sizes.items())
+        s = "\n".join("{0}\t{1}".format(**i) for i in expected_sizes.items())
         logging.debug("Expected file sized:\n%s", s)
 
         # Make sure the files have the required size
@@ -251,7 +251,6 @@ class Task(object):
             start = time.time()
             while True:
                 try:
-                    # Use absolute path?
                     cur_size = os.stat(path).size
                 except FileNotFoundError:
                     cur_size = -1
