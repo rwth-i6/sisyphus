@@ -80,7 +80,7 @@ class LoggingThread(Thread):
         except KeyError:
             pass
 
-        def log_usage(current, file_stats = None):
+        def log_usage(current, file_stats = []):
             with open(usage_file_path, 'w') as usage_file:
                 usage = {'max': max_resources,
                          'current': current,
@@ -139,8 +139,10 @@ class LoggingThread(Thread):
             #     self.task.check_state(gs.JOB_CLOSE_TO_MAX_MEM, task_id=self.task_id, update=True)
 
         file_stats = self.job._sis_get_file_stats()
-        s = "\n".join("\t".join(i) for i in file_stats.items())
-        logging.debug("Got file stats:\n%s", s)
+        logging.debug("File stats:")
+        for (path, mtime, size) in file_stats:
+            logging.debug("%s (size: %s, mtime: %s)", path, size,
+                          time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime)))
         
         log_usage(resources, file_stats)
         logging.info("Max resources: Run time: {time} CPU: {cpu}% RSS: {rss} VMS: {vms}"

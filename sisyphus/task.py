@@ -8,7 +8,7 @@ from ast import literal_eval
 
 import sisyphus.tools as tools
 import sisyphus.global_settings as gs
-from .job import Job
+from . import job
 
 class Task(object):
     """
@@ -81,7 +81,7 @@ class Task(object):
         """ Returns the task peceeding this one or None if it's the first one """
         prev = None
         for t in self._job.tasks():
-            if t.name == self.name:
+            if t.name() == self.name():
                 break
             prev = t
 
@@ -204,31 +204,38 @@ class Task(object):
         # Collect expected file sizes, either from a preceeding task or from other jobs
         logging.info("Getting expected input sizes ...")
 
-        expected_sizes = []
+        expected_sizes = {}
         prev = self.get_prev_task()
 
         if prev:
-            expected_sizes = Job._sis_get_expected_file_sizes(self._job._sis_path(), task=prev.name)
+            expected_sizes = job.Job._sis_get_expected_file_sizes(self._job, task=prev.name())
+            if expected_sizes is None:
+                logging.warning("This tasks job has already been cleanup up, shouldn't happen!")
+                expected_sizes = {}
         else: 
             for i in self._job._sis_inputs:
-                other_job_sizes = Job._sis_get_expected_file_sizes(i.creator)
+                if not i.creator:
+                    logging.info("Cannot check the size of %s, it's not created by sisyphus.", i)
+                    continue
+
+                other_job_sizes = job.Job._sis_get_expected_file_sizes(i.creator)
                 # If the job has been cleaned up, no size info is available, but we can safely
                 # assume that enough time has passed so that all files are synced.
                 if other_job_sizes:
-                    expected_sizes[i.path] = other_job_sizes[i.path]
+                    expected_sizes[i.rel_path()] = other_job_sizes[i.rel_path()]
 
-        s = "\n".join("{0}\t{1}".format(**i) for i in expected_sizes.items())
-        logging.debug("Expected file sized:\n%s", s)
+        s = "\n".join("{0}\t{1}".format(*i) for i in expected_sizes.items())
+        logging.debug("Expected file sizes:\n%s", s)
 
         # Make sure the files have the required size
         logging.info("Waiting for the filesystem to sync files ...")
-        for path, expected_size in expected_sizes:
+        for path, expected_size in expected_sizes.items():
             logging.debug(path)
 
             start = time.time()
             while True:
                 try:
-                    cur_size = os.stat(path).size
+                    cur_size = os.stat(path).st_size
                 except FileNotFoundError:
                     cur_size = -1
 
