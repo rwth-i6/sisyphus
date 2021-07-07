@@ -253,7 +253,6 @@ class Task(object):
         # Make sure the files have the required size
         logging.info("Waiting for the filesystem to sync files ...")
         for path, expected_size in expected_sizes.items():
-            logging.debug(path)
 
             start = time.time()
             while True:
@@ -263,6 +262,7 @@ class Task(object):
                     cur_size = -1
 
                 if cur_size == expected_size:
+                    logging.debug("%s is synced (size: %s)", path, cur_size)
                     break
 
                 if time.time() - start > gs.MAX_WAIT_FILE_SYNC:
