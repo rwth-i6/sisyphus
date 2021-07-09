@@ -20,14 +20,15 @@ A simple job looks like this::
           self.text = text
           self.out = self.output_path('counts.gz') # the output file of this job
 
+      def tasks(self): # function that will be called to request all tasks from this job, expects a iterable
+          # request to run the function 'run', with requirements of 2GB memory and 2 hours of time.
+          yield Task('run', rqmt={'mem': 2, 'time': 2})
+
       def run(self): # this function will be run by the task, see below
           # the actual bash command, everything placed in {name} will be replaced by property with the same name of this
           # object, e.g. self.name
           self.sh("zcat -f {text} | tr ' ' '\n' | awk 'NF' | sort | uniq -c | sort -g | gzip > {out}")
 
-      def tasks(self): # function that will be called to request all tasks from this job, expects a iterable
-          # request to run the function 'run', with requirements of 2GB memory and 2 hours of time.
-          yield Task('run', rqmt={'mem': 2, 'time': 2})
 
 
 Task
@@ -42,9 +43,24 @@ A possible setup with multiple tasks is a setup task, a worker task which is run
 Path
 ----
 
+The `Path` object is the most common type of "edge" that is passed between Jobs.
+A Path object usually contains:
+
+ - The **creator**, which is the Job that created the Path, and can be considered the "origin" of the edge.
+ - The relative file location, meaning the relative path from the folder of the creator to the file.
+   In case no creator is give, this can be an absolute path, which means that this Path object is an "input" edge into
+   the Sisyphus graph.
+
+Note that you should NEVER try to access the content of a Path object outside of a task function in the "manager" thread for any other reason than debugging, meaning to display the current content.
+This will always lead to inconsistent behavior within the Sisyphus graph.
 
 
 Variable
 --------
+
+A variable is similar to a Path, with the difference is that it acts as an interface to directly read or write python
+variables into the file via ``Variable.get`` and ``Variable.set``.
+Same as for the Path object, ``.get`` and ``.set`` should never be used outside of task functions.
+
 
 
