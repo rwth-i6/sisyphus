@@ -1,0 +1,145 @@
+2020-10-10.10-50-08 vim setup.py
+2020-10-10.10-50-26 pip3 install sisyphus
+2021-02-01.14-54-52 git diff
+2021-02-01.14-54-55 git pull --rebase
+2021-02-01.14-54-59 git log
+2021-02-01.14-55-08 git show remote
+2021-02-01.14-55-10 git remote show
+2021-02-01.14-55-14 git remote show origin
+2021-02-01.14-55-21 git pull --rebase origin
+2021-02-01.14-55-23 git pull --rebase origin master
+2021-02-01.14-55-26 git log
+2021-02-23.11-41-33 git pull --rebase rwth master
+2021-02-23.11-41-38 git pull --rebase origin master
+2021-02-23.11-41-42 git log
+2021-02-23.11-41-50 git diff HEAD^
+2021-02-23.11-42-03 git diff HEAD^
+2021-02-23.11-42-37 git diff HEAD^
+2021-02-23.11-46-43 git add sisyphus/simple_linux_utility_for_resource_management_engine.py
+2021-02-23.11-46-58 git commit -m "add has_memory_resource parameter for slurm"
+2021-02-23.11-47-06 git rebase -i HEAD+2
+2021-02-23.11-47-09 git rebase -i HEAD~2
+2021-02-23.11-47-21 git log
+2021-02-23.11-47-30 git branch
+2021-02-23.11-47-51 git checkout -b error_message
+2021-02-23.11-47-58 git checkout rwth_master
+2021-02-23.11-48-17 git checkout -b slurm_update
+2021-02-23.11-48-19 git log
+2021-02-23.11-48-25 git reset 38214c896f415a3d2a47eeed411ec6f2579266da
+2021-02-23.11-48-26 git log
+2021-02-23.11-48-29 git checkout .
+2021-02-23.11-48-36 git remote
+2021-02-23.11-48-41 git push -f mygithub
+2021-02-26.14-40-57 git checkout master
+2021-02-26.14-41-03 git pull --rebase 
+2021-02-26.14-41-06 git log
+2021-05-07.12-37-48 sudo pip3 install .
+2021-05-17.10-59-02 git diff
+2021-05-17.10-59-24 git checkout .
+2021-05-17.10-59-28 git pull --rebase
+2021-05-17.10-59-33 git checkout flexible_recipe_loading
+2021-05-17.11-10-25 numpy
+2021-06-01.10-21-54 git checkout master
+2021-06-01.10-22-00 git pull rwth
+2021-06-01.10-22-03 git pull 
+2021-06-01.10-22-10 git log
+2021-06-01.10-22-19 git rebase 11afce4b686e43ab127244e0b6ee67fedbe890bb
+2021-06-01.10-22-21 git log
+2021-06-01.17-23-25 git pull --rebase
+2021-06-01.17-29-36 git add sisyphus/task.py
+2021-06-01.17-32-38 git commit -m "fix: copy local rqmt in Task"
+2021-06-01.17-38-16 git checkout -b rqmt_fix
+2021-06-01.17-38-20 git push
+2021-06-01.17-38-23 git push --set-upstream origin rqmt_fix
+2021-06-01.17-38-59 git log
+2021-06-01.17-39-06 git rebase -i 11afce4b686e43ab127244e0b6ee67fedbe890bb
+2021-06-01.17-39-11 git push -f
+2021-06-11.17-09-12 git status
+2021-06-11.17-09-19 git add sisyphus/task.py
+2021-06-11.17-09-22 git commit --amend
+2021-06-11.17-09-27 git push -f
+2021-06-25.13-31-58 git checkout master
+2021-06-25.13-32-06 git pull --rebase
+2021-06-25.13-32-43 git rebase --abort
+2021-06-25.13-32-45 git log
+2021-06-25.13-33-06 git remote show
+2021-06-25.13-33-12 git reset --hard origin/master
+2021-06-25.13-33-14 git log
+2021-06-25.13-36-37 git log
+2021-06-28.14-00-13 git diff
+2021-06-28.14-00-20 git status
+2021-06-28.14-00-26 git add sisyphus/global_settings.py sisyphus/job_path.py
+2021-06-28.14-00-44 git commit -m "prohibit get in graph mode"
+2021-06-28.14-00-49 git push mygithub
+2021-06-28.14-00-53 git push -f mygithub
+2021-06-28.14-07-31 git add tests/delayed_ops_unittest.py
+2021-06-28.14-07-34 git commit -m "fix test"
+2021-06-28.14-07-41 git push mygithub
+2021-06-28.14-10-25 git add tests/job_path_unittest.py 
+2021-06-28.14-10-30 git commit --amend
+2021-06-28.14-10-35 git push -f mygithub
+2021-06-28.14-13-27 git add tests/job_path_unittest.py 
+2021-06-28.14-13-28 git commit --amend
+2021-06-28.14-13-42 python3 tests/job_path_unittest.py
+2021-06-28.14-13-50 python3 tests/delayed_ops_unittest.py
+2021-06-28.14-15-02 git add tests/job_path_unittest.py 
+2021-06-28.14-15-04 git push -f mygithub
+2021-06-28.14-34-30 python3 tests/delayed_ops_unittest.py
+2021-06-28.14-34-35 python3 tests/job_path_unittest.py
+2021-06-28.14-42-56 python3 tests/job_path_unittest.py
+2021-06-28.14-42-58 python3 tests/delayed_ops_unittest.py
+2021-06-28.14-45-12 git log
+2021-06-28.14-45-22 git reset f58f05699808aa354efcdf81487d3b9c4a8e0999
+2021-06-28.14-45-26 git diff
+2021-06-28.14-45-39 git status
+2021-06-28.14-45-45 git add sisyphus/delayed_ops.py sisyphus/global_settings.py sisyphus/job_path.py tests/delayed_ops_unittest.py tests/job_path_unittest.py
+2021-06-28.14-46-02 git checkout -b add_worker_check
+2021-06-28.14-46-14 git commit -m "add worker check for Delayed"
+2021-06-28.14-46-18 git push mygithub
+2021-06-28.14-46-52 git pull --rebase origin master
+2021-06-28.14-49-51 git add sisyphus/job_path.py
+2021-06-28.14-49-54 git rebase --continue
+2021-06-28.14-49-57 git log
+2021-06-28.14-50-05 git push -f mygithub
+2021-06-28.14-53-11 git add sisyphus/delayed_ops.py
+2021-06-28.14-53-24 git commit --amend
+2021-06-28.14-53-28 git push -f mygithub
+2021-06-28.14-55-42 python3 tests/delayed_ops_unittest.py
+2021-06-28.14-55-57 which python3
+2021-06-28.14-55-59 which python3 -v
+2021-06-28.14-56-04 python3 -V
+2021-06-28.14-57-34 git add sisyphus/delayed_ops.py
+2021-06-28.14-57-36 git commit --amend
+2021-06-28.14-57-40 git push -f mygithub
+2021-06-28.14-59-47 git add tests/delayed_ops_unittest.py
+2021-06-28.14-59-51 git add tests/job_path_unittest.py 
+2021-06-28.14-59-58 git commit --amend
+2021-06-28.15-00-01 git push -f mygithub
+2021-06-28.16-51-35 git status
+2021-06-28.16-51-41 git add sisyphus/job_path.py sisyphus/delayed_ops.py
+2021-06-28.16-51-43 git log
+2021-06-28.16-51-48 git commit --amend
+2021-06-28.16-51-51 git push -f mygithub
+2021-06-28.16-53-02 git status
+2021-06-28.16-53-07 git add sisyphus/global_settings.py tests/delayed_ops_unittest.py tests/job_path_unittest.py
+2021-06-28.16-53-08 git commit --amend
+2021-06-28.16-53-11 git push -f mygithub
+2021-06-28.16-54-18 git status
+2021-06-28.16-54-21 git add sisyphus/job_path.py
+2021-06-28.16-54-24 git commit --amend
+2021-06-28.16-54-26 git push -f mygithub
+2021-07-07.17-52-24 git branch
+2021-07-07.17-53-04 git checkout master
+2021-07-09.11-27-37 git status
+2021-07-09.11-27-42 git add docs/
+2021-07-09.11-27-49 git checkout -b nick_new_docs
+2021-07-09.11-32-25 git add docs/
+2021-07-09.11-34-06 git add docs/
+2021-07-09.11-34-18 git commit -m "first docs restructuring"
+2021-07-09.11-34-25 git remote show
+2021-07-09.11-34-29 git push origin
+2021-07-09.11-34-33 git push --set-upstream origin nick_new_docs+
+2021-07-09.11-34-34 git push --set-upstream origin nick_new_docs
+2021-07-09.11-34-40 git push
+2021-07-09.11-34-48 git push --set-upstream mygithub nick_new_docs
+2021-07-09.18-27-59 make html
