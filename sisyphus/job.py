@@ -6,6 +6,7 @@ Module to contain all job related code
 
 """
 
+from ast import literal_eval
 import copy
 import gzip
 import inspect
@@ -18,7 +19,11 @@ import subprocess
 import sys
 import time
 import traceback
-from typing import List, Iterator
+import json
+import pathlib
+from collections import defaultdict
+from itertools import chain
+from typing import List, Iterator, Tuple, Union, Dict
 
 from sisyphus import block, tools
 from sisyphus.task import Task
@@ -651,9 +656,96 @@ class Job(metaclass=JobSingleton):
                 return False
         return True
 
+    def _sis_get_file_stats(self) -> List[Tuple[str, float, int]]:
+        """
+        Returns a triple for every file below `work` and `output`: path, modification time, size.
+        
+        Path is relative to the job dir, the modification time is epoch time.
+
+        These stats are written to the `usage` files by the `LoggingThread`, and read by
+        Job._sis_get_expected_file_sizes.
+
+        """
+        stats = []
+        below_work = pathlib.Path(self._sis_path(gs.WORK_DIR)).rglob("*")
+        below_output = pathlib.Path(self._sis_path(gs.OUTPUT_DIR)).rglob("*")
+        for p in chain(below_work, below_output):
+            if p.is_file():
+                stat = p.stat()
+                rel_path = str(p.relative_to(self._sis_path()))
+                stats.append((rel_path, stat.st_mtime, stat.st_size))
+
+        return stats
+
+
+    @staticmethod
+    def _sis_get_expected_file_sizes(job: Union[str,"Job"], task: str = None,
+                                     timeout = gs.MAX_WAIT_FILE_SYNC) -> Dict[str, int]:
+        """
+        Tries to obtain the expected file sizes for files below `output` and `work` from the usage
+        files of the given job (or job dir). Returns None if the job had already been cleaned up.
+
+        If a usage file does not contain the file size information, this is either because the
+        respective task is still runnung or because the usage file is not yet synced. In this case,
+        retry until timeout and raise a TimeoutError.
+
+        When accumulating the information from several files, the most recent size info is retained
+        for every *existing* path. That is, deleted files are not part of the returned list.
+
+        The file paths returned are relative to the experiment directory.
+
+        If `task` is given, only usage files from these tasks are read.
+
+        """
+        # The job might be a Job object or the job directory
+        try:
+            job_dir = job._sis_path()
+        except AttributeError:
+            job_dir = job
+
+        if os.path.exists(os.path.join(job_dir, gs.JOB_FINISHED_ARCHIVE)):
+            logging.info("No expected file size info for job %s, is has already been cleaned up.", job_dir)
+            return None
+
+        m_times = defaultdict(int)
+        sizes = dict()
+        
+        exp = "{0}.{1}.*".format(gs.PLOGGING_FILE, task if task else "*")
+        for fn in pathlib.Path(job_dir).glob(exp):
+            start = time.time()
+            while True:
+                with open(fn) as f:
+                    try:
+                        stats = literal_eval(f.read())["file_stats"]
+                    except KeyError:
+                        # Fairly unlikely to happen: A job from an earlier sisyphus run should be cleaned up.
+                        logging.warning("%s contains no file_stats (was created by an older version of sisyphus).")
+                        stats = []
+                        break
+                
+                if stats:
+                    break
+                if time.time() - start > timeout:
+                    logging.error("%s not synced for more than %ds, file_stats still empty.", fn, timeout)
+                    raise TimeoutError
+                logging.info("%s not synced yet, file_stats still empty.", fn)
+                time.sleep(gs.WAIT_PERIOD_CHECK_FILE_SIZE)
+
+            for (rel_path, m_time, size) in stats:
+                path = os.path.join(job_dir, rel_path)
+                # Omit deleted files
+                if not os.path.exists(path):
+                    continue
+                if m_time > m_times[path]:
+                    m_times[path] = m_time
+                    sizes[path] = size
+
+        return sizes
+
+
     def _sis_runnable(self):
         """ True if all inputs are available, also checks if new inputs are requested """
-
+ 
         if not self._sis_update_possible():
             # Short cut used for most jobs
             return self._sis_all_path_available()

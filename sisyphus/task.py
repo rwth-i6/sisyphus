@@ -8,7 +8,7 @@ from ast import literal_eval
 
 import sisyphus.tools as tools
 import sisyphus.global_settings as gs
-
+from . import job
 
 class Task(object):
     """
@@ -77,6 +77,16 @@ class Task(object):
     def get_f(self, name):
         return getattr(self._job, name)
 
+    def get_prev_task(self) -> 'Task':
+        """ Returns the task peceeding this one or None if it's the first one """
+        prev = None
+        for t in self._job.tasks():
+            if t.name() == self.name():
+                break
+            prev = t
+
+        return prev
+
     def task_ids(self):
         """
         :return: list with all valid task ids
@@ -112,22 +122,18 @@ class Task(object):
         :param sisyphus.worker.LoggingThread logging_thread:
         """
 
+        
         logging.debug("Task name: %s id: %s" % (self.name(), task_id))
         job = self._job
-
         logging.info("Start Job: %s Task: %s" % (job, self.name()))
-        logging.info("Inputs:")
+        logging.info("Inputs:\n%s", "\n".join( str(i) for i in self._job._sis_inputs))
+        
+        try:
+            self._wait_for_input_to_sync()
+        except TimeoutError:
+            self.error(task_id, True)
+
         for i in self._job._sis_inputs:
-            logging.info(str(i))
-
-            # each input must be at least X seconds old
-            # if an input file is too young it's may not synced in a network filesystem yet
-            try:
-                input_age = time.time() - os.stat(i.get_path()).st_mtime
-                time.sleep(max(0, gs.WAIT_PERIOD_MTIME_OF_INPUTS - input_age))
-            except FileNotFoundError:
-                logging.warning('Input path does not exist: %s' % i.get_path())
-
             if i.creator and gs.ENABLE_LAST_USAGE:
                 # mark that input was used
                 try:
@@ -208,6 +214,64 @@ class Task(object):
             sys.stdout.flush()
             sys.stderr.flush()
             logging.info("Job finished successful")
+
+    def _wait_for_input_to_sync(self):
+        """
+        Waits for the input files of this task to be synced across the network, eventually raising a
+        TimeoutError.
+
+        The input files are either the ouput files of other jobs or the output files of a preceeding
+        task of this job
+
+        """
+        # Collect expected file sizes, either from a preceeding task or from other jobs
+        logging.info("Getting expected input sizes ...")
+
+        expected_sizes = {}
+        prev = self.get_prev_task()
+
+        if prev:
+            expected_sizes = job.Job._sis_get_expected_file_sizes(self._job, task=prev.name())
+            if expected_sizes is None:
+                logging.warning("This tasks job has already been cleanup up, shouldn't happen!")
+                expected_sizes = {}
+        else: 
+            for i in self._job._sis_inputs:
+                if not i.creator:
+                    logging.info("Cannot check the size of %s, it's not created by sisyphus.", i)
+                    continue
+
+                other_job_sizes = job.Job._sis_get_expected_file_sizes(i.creator)
+                # If the job has been cleaned up, no size info is available, but we can safely
+                # assume that enough time has passed so that all files are synced.
+                if other_job_sizes:
+                    expected_sizes[i.rel_path()] = other_job_sizes[i.rel_path()]
+
+        s = "\n".join("{0}\t{1}".format(*i) for i in expected_sizes.items())
+        logging.debug("Expected file sizes:\n%s", s)
+
+        # Make sure the files have the required size
+        logging.info("Waiting for the filesystem to sync files ...")
+        for path, expected_size in expected_sizes.items():
+
+            start = time.time()
+            while True:
+                try:
+                    cur_size = os.stat(path).st_size
+                except FileNotFoundError:
+                    cur_size = -1
+
+                if cur_size == expected_size:
+                    logging.debug("%s is synced (size: %s)", path, cur_size)
+                    break
+
+                if time.time() - start > gs.MAX_WAIT_FILE_SYNC:
+                    logging.error("%s not synced for more than MAX_WAIT_FILE_SYNC.", path)
+                    raise TimeoutError
+
+                logging.info("%s not synced yet (current size %d, expected: %d).", path, cur_size, expected_size)
+                time.sleep(gs.WAIT_PERIOD_CHECK_FILE_SIZE)
+
 
     def task_name(self):
         return '%s.%s' % (self._job._sis_id(), self.name())

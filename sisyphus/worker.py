@@ -80,7 +80,7 @@ class LoggingThread(Thread):
         except KeyError:
             pass
 
-        def log_usage(current):
+        def log_usage(current, file_stats = []):
             with open(usage_file_path, 'w') as usage_file:
                 usage = {'max': max_resources,
                          'current': current,
@@ -90,7 +90,8 @@ class LoggingThread(Thread):
                          'host': socket.gethostname(),
                          'current_time': time.ctime(),
                          'out_of_memory': self.out_of_memory,
-                         'requested_resources': self.rqmt}
+                         'requested_resources': self.rqmt,
+                         'file_stats': file_stats}
                 usage_file.write("%s\n" % pprint.pformat(usage))
 
         last_log_value = 0
@@ -137,7 +138,13 @@ class LoggingThread(Thread):
             #     if max_mem and (max_mem - last_rss) / max_mem < 0.02 or max_mem - last_rss < 2**28:
             #     self.task.check_state(gs.JOB_CLOSE_TO_MAX_MEM, task_id=self.task_id, update=True)
 
-        log_usage(resources)
+        file_stats = self.job._sis_get_file_stats()
+        logging.debug("File stats:")
+        for (path, mtime, size) in file_stats:
+            logging.debug("%s (size: %s, mtime: %s)", path, size,
+                          time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime)))
+        
+        log_usage(resources, file_stats)
         logging.info("Max resources: Run time: {time} CPU: {cpu}% RSS: {rss} VMS: {vms}"
                      "".format(time=format_time(time.time() - start_time),
                                cpu=max_resources['cpu'],
