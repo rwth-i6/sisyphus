@@ -24,7 +24,7 @@ Currently Sisyphus allows the recipe folder to be used in two different ways:
  #. The recipe folder as a single python package: This means that all imports start with ``from recipe.``,
     and the full name of each job will be based on the package structure **without** the recipe prefix.
  #. The recipe folder as location for different recipe packages: This means that there are individual
-    recipe packages that are located in the ``recipe` folder, and the imports start with the package name,
+    recipe packages that are located in the ``recipe`` folder, and the imports start with the package name,
     e.g. ``from i6_core.`` (see the `i6_core recipes <https://github.com/rwth-i6/i6_core>`_)
 
 Note that for new setups, variant #2 should always be preferred.
@@ -132,7 +132,7 @@ Now lets say the graph code is already very large, and you only want to run a su
 With an hierarchical structure, it is then possible to call the manager with a specific function,
 e.g. ``./sis m config.experiments2.run_experiment2`` to only build and run the sub-graph for experiment 2.
 
-The pipeline code in both the ``config`` and ``recipe`` folders can be arbitrary complex and structure, but it is
+The pipeline code in both the ``config`` and ``recipe`` folders can be arbitrary complex and structured freely, but it is
 important to keep in mind that sub-graph functions always have to be located within the ``config`` folder.
 
 
