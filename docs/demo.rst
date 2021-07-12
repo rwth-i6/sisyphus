@@ -4,7 +4,7 @@ Demo
 
 To run sisyphus you need to setup an experiment folder that contains all needed files (See :ref:`sec-structure`).
 
-An example directory is given in the example folder.
+An example directory is given in the `example folder <https://github.com/rwth-i6/sisyphus/tree/master/example>`_.
 It runs the workflow presented by the diagramm below
 
 .. mermaid::

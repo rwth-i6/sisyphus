@@ -7,7 +7,7 @@ Dryrun a Job without engine
 For debugging it is often annoying to submit a job to the engine just to see it crashing shortly after.
 If the job directory is already created just run the command that would be executed by Sisyphus manual::
 
-    sis worker work/path/to/job name_of_method
+    sis worker <work/path/to/job> <task_name>
 
 If this is not the case you want to switch into console mode and setup the job::
 

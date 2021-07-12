@@ -6,8 +6,13 @@
 Welcome to Sisyphus's documentation!
 ====================================
 
+Sispyhus is a workflow-manager that is targeted for NLP applications such as machine translation and automatic speech recognition.
+
+Project homepage: https://github.com/rwth-i6/sisyphus
+
+Example recipes: https://github.com/rwth-i6/i6_core
+
 .. toctree::
-   :hidden:
    :caption: Introduction
    :maxdepth: 2
 
@@ -15,14 +20,12 @@ Welcome to Sisyphus's documentation!
    demo.rst
 
 .. toctree::
-   :hidden:
    :caption: Installation
    :maxdepth: 2
 
    installation.rst
 
 .. toctree::
-   :hidden:
    :caption: Sisyphus Setup
    :maxdepth: 2
 
@@ -31,7 +34,6 @@ Welcome to Sisyphus's documentation!
    guidelines.rst
 
 .. toctree::
-   :hidden:
    :caption: User Guide
    :maxdepth: 2
 
@@ -40,19 +42,10 @@ Welcome to Sisyphus's documentation!
    faq.rst
 
 .. toctree::
-   :hidden:
    :caption: Internals
    :maxdepth: 2
 
    api.rst
-
-
-
-
-
-
-
-
 
 
 Indices and tables
