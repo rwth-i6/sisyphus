@@ -12,7 +12,7 @@ The connections between these jobs are either files or simple python objects.
 Concepts
 ========
 
-Sisyphus uses an `directed acyclic graph<https://en.wikipedia.org/wiki/Directed_acyclic_graph>`_ to define an experiment workflow.
+Sisyphus uses a `directed acyclic graph <https://en.wikipedia.org/wiki/Directed_acyclic_graph>`_ to define an experiment workflow.
 The "nodes" of the graph are "Jobs" that are executed on a local machine or in a cluster environments and the edges are physical "files"
 that are passed between jobs.
 This means that all edges leading into the node are the input files to a job, and the outgoing edges are files that the job
@@ -55,8 +55,8 @@ Manager
 -------
 
 The Sispyhus manager (``sis manager`` or ``sis m`` in short) is the "heart" of Sisyphus, and the part that the user usually interacts with.
-When starting the manager it will construct the graph calling a python function in the ``config``folder,
-usually a ``main`` function in  ``config/__init`` (see :ref:`sec-structure` for details on the setup structure).
+When starting the manager it will construct the graph calling a python function in the ``config`` folder,
+usually a ``main`` function in  ``config/__init__.py`` (see :ref:`sec-structure` for details on the setup structure).
 All jobs instances that are created when calling running the config code are stored, and added to the graph
 when they are needed to produce a certain output (= a Path object registered as output).
 The manager will then display which Jobs are ready to be executed.
