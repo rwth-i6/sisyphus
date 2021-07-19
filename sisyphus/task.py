@@ -221,8 +221,15 @@ class Task(object):
                 other_job_sizes = job.Job._sis_get_expected_file_sizes(i.creator)
                 # If the job has been cleaned up, no size info is available, but we can safely
                 # assume that enough time has passed so that all files are synced.
+                rel_path = i.rel_path()
                 if other_job_sizes:
-                    expected_sizes[i.rel_path()] = other_job_sizes[i.rel_path()]
+                    try:
+                        expected_sizes[rel_path] = other_job_sizes[rel_path]
+                    except KeyError:
+                        for k, v in other_job_sizes.items():
+                            if k.startswith(rel_path):
+                                expected_sizes[k] = v
+
 
         s = "\n".join("{0}\t{1}".format(*i) for i in expected_sizes.items())
         logging.debug("Expected file sizes:\n%s", s)
