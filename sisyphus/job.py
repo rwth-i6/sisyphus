@@ -716,9 +716,12 @@ class Job(metaclass=JobSingleton):
                         stats = literal_eval(f.read())["file_stats"]
                     except KeyError:
                         # Fairly unlikely to happen: A job from an earlier sisyphus run should be cleaned up.
-                        logging.warning("%s contains no file_stats (was created by an older version of sisyphus).")
+                        logging.warning("%s contains no file_stats (was created by an older version of sisyphus)." % fn)
                         stats = []
                         break
+                    except SyntaxError:
+                        logging.warning("%s contains a syntax error. Probably accessed file during writing. Trying again" % fn)
+                        stats = []
                 
                 if stats:
                     break
