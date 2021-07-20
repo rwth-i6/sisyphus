@@ -130,8 +130,6 @@ def file_caching(path):
 
 
 # Experimental settings
-# Log when a job output was used the last time, currently not active maintained
-ENABLE_LAST_USAGE = False
 # Add tags attached to job to work path, currently not active maintained
 JOB_USE_TAGS_IN_PATH = False
 # Start kernel to connect remotely, currently not active maintained

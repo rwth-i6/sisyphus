@@ -128,29 +128,7 @@ class Task(object):
             except FileNotFoundError:
                 logging.warning('Input path does not exist: %s' % i.get_path())
 
-            if i.creator and gs.ENABLE_LAST_USAGE:
-                # mark that input was used
-                try:
-                    os.unlink(os.path.join(i.creator, gs.JOB_LAST_USER, os.getlogin()))
-                except OSError as e:
-                    if e.errno not in (2, 13):
-                        # 2: file not found
-                        # 13: permission denied
-                        raise e
-
-                try:
-                    user_path = os.path.join(i.creator, gs.JOB_LAST_USER, os.getlogin())
-                    os.symlink(os.path.abspath(job._sis_path()), user_path)
-                    os.chmod(user_path, 0o775)
-                except OSError as e:
-                    if e.errno not in (2, 13, 17):
-                        # 2: file not found
-                        # 13: permission denied
-                        # 17: file exists
-                        raise e
-
         tools.get_system_informations(sys.stdout)
-
         sys.stdout.flush()
 
         try:
