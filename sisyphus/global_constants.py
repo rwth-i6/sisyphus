@@ -8,7 +8,6 @@ JOB_LOG_ENGINE = 'engine'
 JOB_SAVE = 'job.save'
 JOB_WORK_DIR = 'work'
 JOB_FINISHED_MARKER = 'finished'
-JOB_LAST_USER = 'last_user'
 JOB_FINISHED_ARCHIVE = 'finished.tar.gz'
 JOB_INFO = 'info'
 

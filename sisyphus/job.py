@@ -253,15 +253,12 @@ class Job(metaclass=JobSingleton):
                 gs.JOB_WORK_DIR,
                 gs.JOB_OUTPUT,
                 gs.JOB_INPUT,
-                gs.JOB_LOG_ENGINE,
-                gs.JOB_LAST_USER]:
+                gs.JOB_LOG_ENGINE]:
             path = self._sis_path(dirname)
             try:
                 os.makedirs(path)
             except FileExistsError:
                 assert os.path.isdir(path)
-
-        os.chmod(self._sis_path(gs.JOB_LAST_USER), 0o775)
 
         for dirname in self._sis_output_dirs:
             path = str(dirname)
