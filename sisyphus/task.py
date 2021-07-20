@@ -10,6 +10,7 @@ import sisyphus.tools as tools
 import sisyphus.global_settings as gs
 from . import job
 
+
 class Task(object):
     """
     Object to hold information what function should be run with which requirements.
@@ -122,12 +123,11 @@ class Task(object):
         :param sisyphus.worker.LoggingThread logging_thread:
         """
 
-        
         logging.debug("Task name: %s id: %s" % (self.name(), task_id))
         job = self._job
         logging.info("Start Job: %s Task: %s" % (job, self.name()))
-        logging.info("Inputs:\n%s", "\n".join( str(i) for i in self._job._sis_inputs))
-        
+        logging.info("Inputs:\n%s", "\n".join(str(i) for i in self._job._sis_inputs))
+
         try:
             self._wait_for_input_to_sync()
         except TimeoutError:
@@ -212,7 +212,7 @@ class Task(object):
             if expected_sizes is None:
                 logging.warning("This tasks job has already been cleanup up, shouldn't happen!")
                 expected_sizes = {}
-        else: 
+        else:
             for i in self._job._sis_inputs:
                 if not i.creator:
                     logging.info("Cannot check the size of %s, it's not created by sisyphus.", i)
@@ -229,7 +229,6 @@ class Task(object):
                         for k, v in other_job_sizes.items():
                             if k.startswith(rel_path):
                                 expected_sizes[k] = v
-
 
         s = "\n".join("{0}\t{1}".format(*i) for i in expected_sizes.items())
         logging.debug("Expected file sizes:\n%s", s)
@@ -255,7 +254,6 @@ class Task(object):
 
                 logging.info("%s not synced yet (current size %d, expected: %d).", path, cur_size, expected_size)
                 time.sleep(gs.WAIT_PERIOD_CHECK_FILE_SIZE)
-
 
     def task_name(self):
         return '%s.%s' % (self._job._sis_id(), self.name())

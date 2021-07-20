@@ -656,7 +656,7 @@ class Job(metaclass=JobSingleton):
     def _sis_get_file_stats(self) -> List[Tuple[str, float, int]]:
         """
         Returns a triple for every file below `work` and `output`: path, modification time, size.
-        
+
         Path is relative to the job dir, the modification time is epoch time.
 
         These stats are written to the `usage` files by the `LoggingThread`, and read by
@@ -674,10 +674,9 @@ class Job(metaclass=JobSingleton):
 
         return stats
 
-
     @staticmethod
-    def _sis_get_expected_file_sizes(job: Union[str,"Job"], task: str = None,
-                                     timeout = gs.MAX_WAIT_FILE_SYNC) -> Dict[str, int]:
+    def _sis_get_expected_file_sizes(job: Union[str, "Job"], task: str = None,
+                                     timeout=gs.MAX_WAIT_FILE_SYNC) -> Dict[str, int]:
         """
         Tries to obtain the expected file sizes for files below `output` and `work` from the usage
         files of the given job (or job dir). Returns None if the job had already been cleaned up.
@@ -706,7 +705,7 @@ class Job(metaclass=JobSingleton):
 
         m_times = defaultdict(int)
         sizes = dict()
-        
+
         exp = "{0}.{1}.*".format(gs.PLOGGING_FILE, task if task else "*")
         for fn in pathlib.Path(job_dir).glob(exp):
             start = time.time()
@@ -720,9 +719,10 @@ class Job(metaclass=JobSingleton):
                         stats = []
                         break
                     except SyntaxError:
-                        logging.warning("%s contains a syntax error. Probably accessed file during writing. Trying again" % fn)
+                        logging.warning("%s contains a syntax error. Probably accessed file during writing. "
+                                        "Assume it's not synced yet and try again later." % fn)
                         stats = []
-                
+
                 if stats:
                     break
                 if time.time() - start > timeout:
@@ -742,10 +742,9 @@ class Job(metaclass=JobSingleton):
 
         return sizes
 
-
     def _sis_runnable(self):
         """ True if all inputs are available, also checks if new inputs are requested """
- 
+
         if not self._sis_update_possible():
             # Short cut used for most jobs
             return self._sis_all_path_available()
