@@ -47,6 +47,8 @@ Cheatsheet
      #. ``rm <path/to/job.hash>/log.<task_name>.*``
  * - restart an interrupted task
    - ``rm <path/to/job.hash>/log.<task_name>.*``
+ * - restart/continue after a ``retry_error``
+   - ``rm <path/to/job.hash>/submit_log.<task_name>``
 
 
 `*(WARNING: this might run the job with different ENVIRONMENT variables)`
