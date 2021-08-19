@@ -231,8 +231,8 @@ class Manager(threading.Thread):
 
     def update_jobs(self, skip_finished=True):
         """ Return all jobs needed to finish output """
-        self.jobs = jobs = self.sis_graph.get_jobs_by_status(engine=self.job_engine, skip_finished=skip_finished)
-        return jobs
+        self.jobs = self.sis_graph.get_jobs_by_status(engine=self.job_engine, skip_finished=skip_finished)
+        return self.jobs
 
     def clear_states(self, state=gs.STATE_ERROR):
         # List errors/ interrupts

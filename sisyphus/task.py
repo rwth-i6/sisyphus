@@ -126,7 +126,6 @@ class Task(object):
         logging.debug("Task name: %s id: %s" % (self.name(), task_id))
         job = self._job
         logging.info("Start Job: %s Task: %s" % (job, self.name()))
-        logging.info("Inputs:\n%s", "\n".join(str(i) for i in self._job._sis_inputs))
 
         try:
             self._wait_for_input_to_sync()
@@ -207,7 +206,11 @@ class Task(object):
         expected_sizes = {}
         prev = self.get_prev_task()
 
+        logging.info("Inputs:\n%s", "\n".join(repr(i) for i in sorted(self._job._sis_inputs)))
+
         if prev:
+            # This is not the first task of this job, we can therefore assume all external inputs are synchronised.
+            # Checking only current job:
             expected_sizes = job.Job._sis_get_expected_file_sizes(self._job, task=prev.name())
             if expected_sizes is None:
                 logging.warning("This tasks job has already been cleanup up, shouldn't happen!")
@@ -230,19 +233,23 @@ class Task(object):
                             if k.startswith(rel_path):
                                 expected_sizes[k] = v
 
-        s = "\n".join("{0}\t{1}".format(*i) for i in expected_sizes.items())
-        logging.debug("Expected file sizes:\n%s", s)
+        logging.debug("Expected file sizes:\n"
+                      + "\n".join("{0}\t{1}".format(*i) for i in expected_sizes.items()))
 
         # Make sure the files have the required size
         logging.info("Waiting for the filesystem to sync files ...")
+        start = time.time()
         for path, expected_size in expected_sizes.items():
-
-            start = time.time()
             while True:
                 try:
                     cur_size = os.stat(path).st_size
                 except FileNotFoundError:
-                    cur_size = -1
+                    if prev:
+                        # It can happen that work files are removed if a previous tasks exists
+                        logging.info("%s was removed, skipping its size check")
+                        break
+                    else:
+                        cur_size = -1
 
                 if cur_size == expected_size:
                     logging.debug("%s is synced (size: %s)", path, cur_size)

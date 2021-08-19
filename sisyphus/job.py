@@ -675,6 +675,7 @@ class Job(metaclass=JobSingleton):
         return stats
 
     @staticmethod
+    @tools.cache_result(cache_time=120)
     def _sis_get_expected_file_sizes(job: Union[str, "Job"], task: str = None,
                                      timeout=gs.MAX_WAIT_FILE_SYNC) -> Dict[str, int]:
         """
@@ -707,10 +708,10 @@ class Job(metaclass=JobSingleton):
         sizes = dict()
 
         exp = "{0}.{1}.*".format(gs.PLOGGING_FILE, task if task else "*")
+        start = time.time()
         for fn in pathlib.Path(job_dir).glob(exp):
-            start = time.time()
             while True:
-                with open(fn) as f:
+                with open(str(fn)) as f:  # str is needed for python3.5
                     try:
                         stats = literal_eval(f.read())["file_stats"]
                     except KeyError:
@@ -726,8 +727,8 @@ class Job(metaclass=JobSingleton):
                 if stats:
                     break
                 if time.time() - start > timeout:
-                    logging.error("%s not synced for more than %ds, file_stats still empty.", fn, timeout)
-                    raise TimeoutError
+                    logging.warning("file_stats empty after more than %ds, ignoring %s", timeout, fn)
+                    break
                 logging.info("%s not synced yet, file_stats still empty.", fn)
                 time.sleep(gs.WAIT_PERIOD_CHECK_FILE_SIZE)
 
