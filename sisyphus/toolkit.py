@@ -149,7 +149,7 @@ def find_job(pattern):
     jobs = sis_graph.find(pattern, mode="job")
     if len(jobs) == 0:
         print("No job found")
-        return None
+        return []
     else:
         print("Jobs found:")
         for i, job in enumerate(jobs):

@@ -55,7 +55,7 @@ def add_subparsers(parsers):
     parser_clean_by_keep_value.set_defaults(func=clean_by_keep_value)
 
     parser_import_from_dir = sc_subparsers.add_parser('import_from_dir',
-                                                      help="Remove all jobs with a too low keep value")
+                                                      help="Import jobs with same hash from given directory")
     parser_import_from_dir.add_argument("--dir", default=[],
                                         action='append',
                                         help="Directories used as import source")
@@ -64,6 +64,17 @@ def add_subparsers(parsers):
     parser_import_from_dir.add_argument('argv', metavar='ARGV', type=str, nargs='*',
                                         help='All config files that will be loaded')
     parser_import_from_dir.set_defaults(func=import_from_dir)
+
+    parser_remove_job_and_descendants = sc_subparsers.add_parser(
+        'remove_job_and_descendants',
+        help="Remove all jobs that depend on any path matching the given string")
+    parser_remove_job_and_descendants.add_argument("--path", default=[], action='append',
+                                                   help="Try to match string with path")
+    parser_remove_job_and_descendants.add_argument("--job", default=[], action='append',
+                                                   help="Try to match string with job")
+    parser_remove_job_and_descendants.add_argument('argv', metavar='ARGV', type=str, nargs='*',
+                                                   help='All config files that will be loaded')
+    parser_remove_job_and_descendants.set_defaults(func=remove_job_and_descendants)
 
 
 def clean_unused(args):
@@ -143,6 +154,13 @@ def clean_by_keep_value(args):
 def import_from_dir(args):
     call = ['console', '--script', '-c',
             'tk.import_work_directory(%s, mode="symlink", use_alias=%s)' % (args.dir, args.use_alias)] + args.argv
+    call_sis(call)
+
+
+def remove_job_and_descendants(args):
+    find = ' + '.join(
+        ['tk.find_path(%s)' % repr(i) for i in args.path] + ['tk.find_job(%s)' % repr(i) for i in args.job])
+    call = ['console', '--script', '-c', 'tk.remove_job_and_descendants(%s)' % find] + args.argv
     call_sis(call)
 
 
