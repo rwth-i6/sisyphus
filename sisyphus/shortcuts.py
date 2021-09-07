@@ -23,6 +23,11 @@ def add_subparsers(parsers):
                                      help="Stop after writing the used path file")
     parser_clean_unused.add_argument("--skip_remove", default=False, action='store_true',
                                      help="To not remove found files, stop after writing the to remove file")
+    parser_clean_unused.add_argument("--mode", default='remove',
+                                     help="'remove' or 'move' defines if unneeded directories should "
+                                          "be moved or removed")
+    parser_clean_unused.add_argument("--move_postfix", default='.cleanup',
+                                     help="Which postfix should be attached to moved directories")
     parser_clean_unused.add_argument('argv', metavar='ARGV', type=str, nargs='*',
                                      help='All config files that will be loaded')
     parser_clean_unused.set_defaults(func=clean_unused)
@@ -49,7 +54,15 @@ def add_subparsers(parsers):
     parser_clean_by_keep_value.add_argument("--skip_remove", default=False, action='store_true',
                                             help="To not remove found files, stop after writing the to remove file")
     parser_clean_by_keep_value.add_argument("--keep_value", default=0, type=int,
-                                            help="Keep value, jobs with a smaller value will be removed")
+                                            help="Keep value, jobs with a smaller value will be removed. "
+                                                 "Jobs have a default keep value of %i, "
+                                                 "select an higher value to remove all jobs that don't have keep "
+                                                 "value set." % tk.gs.JOB_DEFAULT_KEEP_VALUE)
+    parser_clean_by_keep_value.add_argument("--mode", default='remove',
+                                            help="'remove' or 'move' defines if unneeded directories should "
+                                                 "be moved or removed")
+    parser_clean_by_keep_value.add_argument("--move_postfix", default='.cleanup',
+                                            help="Which postfix should be attached to moved directories")
     parser_clean_by_keep_value.add_argument('argv', metavar='ARGV', type=str, nargs='*',
                                             help='All config files that will be loaded')
     parser_clean_by_keep_value.set_defaults(func=clean_by_keep_value)
@@ -106,7 +119,8 @@ def clean_unused(args):
         return
 
     call = ['console', '--skip_config', '--script', '-c',
-            'tk.cleaner.remove_directories("%s", "Unused directories:")' % to_remove]
+            'tk.cleaner.remove_directories("%s", "Unused directories:", move_postfix="%s", mode="%s")' % (
+                to_remove, args.move_postfix, args.mode)]
     call_sis(call)
 
 
@@ -147,7 +161,8 @@ def clean_by_keep_value(args):
         return
 
     call = ['console', '--skip_config', '--script', '-c',
-            'tk.cleaner.remove_directories("%s", "To low keep value:")' % to_remove]
+            'tk.cleaner.remove_directories("%s", "Unused directories:", move_postfix="%s", mode="%s")' % (
+                to_remove, args.move_postfix, args.mode)]
     call_sis(call)
 
 
