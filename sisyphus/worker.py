@@ -126,7 +126,11 @@ class LoggingThread(Thread):
             # if (max_resources['rss'] > last_log_value and time.time() - last_log_time > 30) or \
             if time.time() - last_log_time > gs.PLOGGING_UPDATE_FILE_PERIOD or\
                     (max_resources['rss'] - last_log_value) / last_log_value > gs.PLOGGING_MIN_CHANGE:
-                log_usage(resources)
+                file_stats = []
+                from sisyphus.job import Job
+                if self._sis_disabled_file_size_check or self.job.path_available != Job.path_available:
+                    file_stats = None
+                log_usage(resources, file_stats)
                 last_log_value = max_resources['rss']
                 last_log_time = time.time()
 
@@ -139,10 +143,11 @@ class LoggingThread(Thread):
             #     self.task.check_state(gs.JOB_CLOSE_TO_MAX_MEM, task_id=self.task_id, update=True)
 
         file_stats = self.job._sis_get_file_stats()
-        logging.debug("File stats:")
-        for (path, mtime, size) in file_stats:
-            logging.debug("%s (size: %s, mtime: %s)", path, size,
-                          time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime)))
+        if file_stats is not None:
+            logging.debug("File stats:")
+            for (path, mtime, size) in file_stats:
+                logging.debug("%s (size: %s, mtime: %s)", path, size,
+                              time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime)))
 
         log_usage(resources, file_stats)
         logging.info("Max resources: Run time: {time} CPU: {cpu}% RSS: {rss} VMS: {vms}"

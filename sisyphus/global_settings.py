@@ -211,7 +211,7 @@ WAIT_PERIOD_MTIME_OF_INPUTS = 60
 # How many seconds a task should wait between checking if its inputs have the expected size
 WAIT_PERIOD_CHECK_FILE_SIZE = 10
 #: How many seconds to wait for inputs to be synced across the network before giving up
-MAX_WAIT_FILE_SYNC = 1800
+MAX_WAIT_FILE_SYNC = 300
 
 #: set true to automatically clean jobs in error state and retry
 CLEAR_ERROR = False

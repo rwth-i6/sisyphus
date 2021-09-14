@@ -218,6 +218,8 @@ class Job(metaclass=JobSingleton):
         self._sis_is_finished = False
         self._sis_setup_since_restart = False
 
+        self._sis_disabled_file_size_check = False
+
         self._sis_environment = None
         if gs.CLEANUP_ENVIRONMENT:
             self._sis_environment = tools.EnvironmentModifier()
@@ -663,6 +665,14 @@ class Job(metaclass=JobSingleton):
         Job._sis_get_expected_file_sizes.
 
         """
+
+        if self._sis_disabled_file_size_check:
+            return None
+
+        # Disable file size check if custom path_available function exists
+        if self.path_available != Job.path_available:
+            return None
+
         stats = []
         below_work = pathlib.Path(self._sis_path(gs.WORK_DIR)).rglob("*")
         below_output = pathlib.Path(self._sis_path(gs.OUTPUT_DIR)).rglob("*")
@@ -724,11 +734,16 @@ class Job(metaclass=JobSingleton):
                                         "Assume it's not synced yet and try again later." % fn)
                         stats = []
 
+                if stats is None:
+                    logging.info("%s has file_stats disabled" % fn)
+                    stats = []
+                    break
                 if stats:
                     break
                 if time.time() - start > timeout:
                     logging.warning("file_stats empty after more than %ds, ignoring %s", timeout, fn)
                     break
+
                 logging.info("%s not synced yet, file_stats still empty.", fn)
                 time.sleep(gs.WAIT_PERIOD_CHECK_FILE_SIZE)
 
