@@ -481,7 +481,6 @@ class Manager(threading.Thread):
         # Start job cleaner after updating the graph the first time
         if gs.JOB_AUTO_CLEANUP:
             self.job_cleaner = JobCleaner(sis_graph=self.sis_graph)
-            self.job_cleaner.start()
 
         # Skip first part if there is nothing todo
         if not (config_manager.reader_running() or self.jobs or self.ui):
@@ -544,6 +543,9 @@ class Manager(threading.Thread):
         if (not self._stop_loop) and (gs.CLEAR_ERROR or self.clear_errors_once):
             self.clear_states(state=gs.STATE_ERROR)
             self.clear_errors_once = False
+
+        if self.job_cleaner:
+            self.job_cleaner.start()
         return True
 
     @tools.default_handle_exception_interrupt_main_thread
