@@ -231,7 +231,7 @@ class Job(metaclass=JobSingleton):
 
         self._sis_quiet = False
         self._sis_cleanable_cache = False
-        self._sis_cleaned = False
+        self._sis_cleaned_or_not_cleanable = False
         self._sis_needed_for_which_targets = set()
 
         self._sis_stacktrace = []
@@ -303,7 +303,8 @@ class Job(metaclass=JobSingleton):
 
     def __getstate__(self):
         d = self.__dict__.copy()
-        for key in ['_sis_job_lock', '_sis_blocks', 'current_block', '_sis_cleanable_cache', '_sis_cleaned']:
+        for key in ['_sis_job_lock', '_sis_blocks', 'current_block', '_sis_cleanable_cache',
+                    '_sis_cleaned_or_not_cleanable']:
             if key in d:
                 del d[key]
         return d
@@ -323,7 +324,7 @@ class Job(metaclass=JobSingleton):
             self._sis_job_lock = self.get_lock()
         self._sis_blocks = set()
         self._sis_cleanable_cache = False
-        self._sis_cleaned = False
+        self._sis_cleaned_or_not_cleanable = False
         for i in self._sis_inputs:
             i.add_user(self)
         logging.debug('Set state %s' % state['_sis_id_cache'])
@@ -479,10 +480,10 @@ class Job(metaclass=JobSingleton):
                 return False
 
     def _sis_cleanable(self):
-        if self._sis_cleanable_cache:
-            return True
-        elif self._sis_cleaned:
+        if self._sis_cleaned_or_not_cleanable:
             return False
+        elif self._sis_cleanable_cache:
+            return True
         else:
             cleanable = not os.path.isfile(self._sis_path(gs.JOB_FINISHED_ARCHIVE)) and self._sis_finished()
             if cleanable:
@@ -516,11 +517,11 @@ class Job(metaclass=JobSingleton):
                         else:
                             break
                     self._sis_cleanable_cache = False
-                    self._sis_cleaned = True
-
+                    self._sis_cleaned_or_not_cleanable = True
                 except (OSError, subprocess.CalledProcessError) as e:
                     # probably not our directory, just pass
                     logging.warning('Could not clean up %s: %s' % (self._sis_path(), str(e)))
+                    self._sis_cleaned_or_not_cleanable = True
 
     def _sis_id(self):
         """
