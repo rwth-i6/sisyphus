@@ -1,3 +1,5 @@
+from typing import Any, Iterable
+
 from sisyphus.hash import sis_hash_helper
 from sisyphus.tools import try_get
 
@@ -159,3 +161,22 @@ class DelayedFallback(DelayedBase):
             return self.a.get()
         else:
             return try_get(self.b)
+
+
+class DelayedSlice(DelayedBase):
+
+    def __init__(self, iterable, index_start=0, index_end=-1, step=1):
+        """
+        :param Iterable[Any] iterable:
+        :param int|DelayedBase index_start:
+        :param int|DelayedBase index_end:
+        :param int|DelayedBase step:
+        """
+        self.iterable = iterable
+        self.index_start = index_start
+        self.index_end = index_end
+        self.step = step
+
+    def get(self):
+        return try_get(self.iterable)[try_get(self.index_start):try_get(self.index_end):try_get(self.step)]
+
