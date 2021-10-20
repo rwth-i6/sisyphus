@@ -599,11 +599,10 @@ class Manager(threading.Thread):
         # Stop config reader
         config_manager.cancel_all_reader()
 
-        self.check_output(write_output=self.link_outputs, update_all_outputs=True)
-
         self.job_engine.stop_engine()
         if self.job_cleaner:
             self.job_cleaner.close()
+        self.check_output(write_output=self.link_outputs, update_all_outputs=True)
 
 
 def create_aliases(jobs):
