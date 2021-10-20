@@ -542,7 +542,7 @@ class Job(metaclass=JobSingleton):
         """
         h = cls.hash(parsed_args)
         assert isinstance(h, str), 'hash return value must be str'
-        allowed_characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.-_'
+        allowed_characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.-_/'
         assert all(i in allowed_characters for i in h), \
             "hash should a only contain these characters: %s" % allowed_characters
         return h
