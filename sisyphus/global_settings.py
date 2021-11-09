@@ -392,6 +392,9 @@ def update_global_settings_from_env():
                 v = literal_eval(v)
             except Exception:
                 pass
+
+            if k == 'IMPORT_PATHS' and isinstance(v, str):
+                v = v.split(':')
             globals()[k] = v
 
 
