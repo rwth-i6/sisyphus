@@ -38,6 +38,7 @@ Useful examples::
     tk.cleaner?
 """
 
+import copy
 import glob
 import gzip
 import logging
@@ -54,7 +55,7 @@ from sisyphus.tools import sh, extract_paths
 import sisyphus.block
 from sisyphus.block import block, sub_block, set_root_block
 from sisyphus.async_workflow import async_run, async_gather, async_context
-from sisyphus.delayed_ops import Delayed
+from sisyphus.delayed_ops import Delayed, DelayedBase
 from sisyphus import cleaner
 
 from sisyphus.job_path import Path, Variable
@@ -956,3 +957,47 @@ def submit_next_task(job: Job, setup_directory=True):
         logging.warning('No task to run')
     else:
         cached_engine().submit(task)
+
+
+def remove_paths(obj):
+    """ The given obj will be copied and all Path, Variable, and Delayed objects
+    will be replaced the return value of its get() method.
+    """
+
+    def helper(obj, mapping):
+        if isinstance(obj, (int, float, str, bytes, bool, complex, type(None))):
+            return obj
+
+        if id(obj) in mapping:
+            ans = mapping[id(obj)]
+            assert ans is not None, "This should only happen if a tuple or frozenset \n"\
+                "is contained in itself which shouldn't be possible. \n" \
+                "Type: %s\nobj%s" % (type(obj), str(obj))
+            return ans
+
+        mapping[id(obj)] = obj
+        if isinstance(obj, list):
+            for i in range(len(obj)):
+                obj[i] = helper(obj[i], mapping)
+        elif isinstance(obj, set):
+            tmp = list(obj)
+            obj.clear()
+            for i in tmp:
+                obj.add(helper(i, mapping))
+        elif isinstance(obj, dict):
+            for i in list(obj):
+                obj[i] = helper(obj[i], mapping)
+        elif isinstance(obj, (tuple, frozenset)):
+            mapping[id(obj)] = None
+            obj = type(obj)(helper(o, mapping) for o in obj)
+            mapping[id(obj)] = obj
+        elif isinstance(obj, DelayedBase):
+            mapping[id(obj)] = obj = obj.get()
+        elif hasattr(obj, '__dict__'):
+            helper(obj.__dict__, mapping)
+        elif hasattr(obj, '__slots__'):
+            for k in obj.__slots__:
+                if hasattr(obj, k):
+                    setattr(obj, k, helper(getattr(obj, k), mapping))
+        return obj
+    return helper(copy.deepcopy(obj), {})
