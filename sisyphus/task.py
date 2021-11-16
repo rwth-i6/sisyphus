@@ -117,8 +117,11 @@ class Task(object):
 
         logging.info("Start Job: %s Task: %s" % (job, self.name()))
         logging.info("Inputs:")
-        for i in self._job._sis_inputs:
-            logging.info(str(i))
+        for i in sorted(self._job._sis_inputs):
+            if i.path_type == 'Path':
+                logging.info(i.get_path())
+            else:
+                logging.info("%s (Variable: %s, %s)" % (i.get_path(), str(i), type(i.get())))
 
             # each input must be at least X seconds old
             # if an input file is too young it's may not synced in a network filesystem yet
