@@ -377,7 +377,11 @@ class Task(object):
         maximal_file_age = gs.WAIT_PERIOD_JOB_FS_SYNC + gs.PLOGGING_UPDATE_FILE_PERIOD + gs.WAIT_PERIOD_JOB_CLEANUP
         if not os.path.isfile(usage_file):
             return None
-        return maximal_file_age > time.time() - os.path.getmtime(usage_file)
+        if maximal_file_age > time.time() - os.path.getmtime(usage_file):
+            return True
+
+        log_file = self._job._sis_path(gs.JOB_LOG + '.' + self.name(), task_id)
+        return os.path.isfile(log_file) and maximal_file_age > time.time() - os.path.getmtime(log_file)
 
     def _get_arg_idx_for_task_id(self, task_id):
         """
