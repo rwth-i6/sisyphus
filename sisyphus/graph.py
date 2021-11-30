@@ -459,13 +459,9 @@ class SISGraph(object):
             # List input paths
             for i in job._sis_inputs:
                 if i.creator is None:
-                    path = i.get_path()
-                    if os.path.isfile(path) or os.path.isdir(path):
-                        path_state = gs.STATE_INPUT_PATH
-                    else:
-                        path_state = gs.STATE_INPUT_MISSING
+                    path_state = gs.STATE_INPUT_PATH if i.available() else gs.STATE_INPUT_MISSING
                     with lock:
-                        states[path_state].add(path)
+                        states[path_state].add(i.get_path())
             assert new_state is not None
             with lock:
                 states[new_state].add(job)
