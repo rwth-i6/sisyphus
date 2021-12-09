@@ -22,7 +22,7 @@ from typing import List, Iterator
 
 from sisyphus import block, tools
 from sisyphus.task import Task
-from sisyphus.job_path import Path, Variable
+from sisyphus.job_path import AbstractPath, Path, Variable
 from sisyphus.tools import finished_results_cache
 
 # Definition of constants
@@ -1019,11 +1019,11 @@ class Job(metaclass=JobSingleton):
 
     def add_input(self, path):
         """
-        :param Path path:
+        :param AbstractPath path:
         :return: path
-        :rtype: Path
+        :rtype: AbstractPath
         """
-        assert isinstance(path, Path)
+        assert isinstance(path, AbstractPath)
         self._sis_inputs.add(path)
         self._sis_get_all_inputs(clear_cache=True)
         path.add_user(self)
@@ -1039,7 +1039,7 @@ class Job(metaclass=JobSingleton):
         :param path: path to check
         :return:
         """
-        assert isinstance(path, Path)
+        assert isinstance(path, AbstractPath)
         assert path.creator == self
         return self._sis_finished()
 
@@ -1059,7 +1059,7 @@ class Job(metaclass=JobSingleton):
 
         if getattr(self, name) is None:
             setattr(self, name, value)
-            if isinstance(value, Path):
+            if isinstance(value, AbstractPath):
                 self.add_input(value)
 
     def output_path(self, filename, directory=False, cached=False):
