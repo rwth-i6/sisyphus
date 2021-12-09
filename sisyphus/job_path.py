@@ -32,16 +32,16 @@ class VariableNotSet(Exception):
     pass
 
 
-class Path(DelayedBase):
+class AbstractPath(DelayedBase):
     """
-    Object do hold the connecting path to files:
+    Base class for Path and Variable.
+    Their main function is to connect the outputs of a Job to the input of another Job.
 
-    that are exchanged between jobs
-    each path can have a creator or a direct pass to the target and many users.
+    Side node: Parts of the code structure can be explained by the fact that the current
+    implementation of this class use to be the Path class and Variable its subclass.
     """
 
     _sis_path = True
-    path_type = 'Path'
     cacheing_enabled = False
 
     # Update RelPath in toolkit if position of hash_overwrite is changed
@@ -256,6 +256,11 @@ class Path(DelayedBase):
         if not hasattr(self, 'users'):
             self.users = set()
 
+    def copy(self):
+        new = Path('')
+        new.__setstate__(self.__getstate__())
+        return new
+
     def __fspath__(self) -> str:
         return self.get_cached_path()
 
@@ -343,7 +348,22 @@ class Path(DelayedBase):
         return file_zipped
 
 
-class Variable(Path):
+class Path(AbstractPath):
+    """
+    Object do hold the connecting path to files:
+
+    that are exchanged between jobs
+    each path can have a creator or a direct pass to the target and many users.
+    """
+    path_type = 'Path'
+
+    def __add__(self, other):
+        new = self.copy()
+        new.path = new.path + other
+        return new
+
+
+class Variable(AbstractPath):
     path_type = 'Variable'
 
     def __init__(self, path, creator=None, pickle=False, backup=None):
