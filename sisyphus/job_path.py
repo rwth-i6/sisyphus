@@ -362,6 +362,12 @@ class Path(AbstractPath):
         new.path = new.path + other
         return new
 
+    def join_right(self, other):
+        """ Joins local path with given string using os.path.join """
+        new = self.copy()
+        new.path = os.path.join(new.path, other)
+        return new
+
 
 class Variable(AbstractPath):
     path_type = 'Variable'
