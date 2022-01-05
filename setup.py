@@ -10,5 +10,5 @@ setup(
     author="Jan-Thorsten Peter",
     author_email="jtpeter@apptek.com",
     url="https://github.com/rwth-i6/sisyphus",
-    install_requires=['psutil']
+    install_requires=['psutil', 'flask']
 )
