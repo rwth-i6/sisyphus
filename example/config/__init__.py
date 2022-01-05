@@ -18,7 +18,8 @@ def main():
 
 
 async def async_main():
-    input_data = tk.Path('data/5lines.txt', tags={'5lines'})
+    input_data = tk.Path('data', tags={'5lines'})
+    input_data = input_data.join_right('5lines.txt')
     spliter = parallel.LineSpliter(input_data)
     # Test if requesting gpu works
     spliter.set_rqmt('run', rqmt={'cpu': 1, 'mem': 2, 'gpu': 1})
