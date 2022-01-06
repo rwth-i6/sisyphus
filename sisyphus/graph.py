@@ -1,7 +1,7 @@
 from sisyphus.tools import cache_result, extract_paths
 import sisyphus.global_settings as gs
 from sisyphus.job import Job
-from sisyphus.job_path import Path
+from sisyphus.job_path import AbstractPath
 from sisyphus.block import Block
 import sisyphus.tools as tools
 import sisyphus.hash
@@ -68,7 +68,7 @@ class OutputTarget:
 
 class OutputPath(OutputTarget):
     def __init__(self, output_path, sis_path):
-        assert isinstance(sis_path, Path)
+        assert isinstance(sis_path, AbstractPath)
         self._output_path = output_path
         self._sis_path = sis_path
         super().__init__(output_path, sis_path)
@@ -616,7 +616,7 @@ class SISGraph(object):
                 for name, value in obj.items():
                     assert is_literal(name), "Can not export %s (type: %s) as directory key" % (name, type(name))
                     yield from runner(value, path + [name], only_check=only_check)
-            elif isinstance(obj, Path):
+            elif isinstance(obj, AbstractPath):
                 yield from runner(obj.creator, path + ['creator'], only_check=only_check)
             else:
                 try:

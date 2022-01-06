@@ -11,7 +11,7 @@ from threading import Semaphore
 import sisyphus.global_settings as gs
 from sisyphus.logging_format import color_end_marker, color_mapping
 from sisyphus.job import Job
-from sisyphus.job_path import Path
+from sisyphus.job_path import AbstractPath
 from sisyphus.manager import create_aliases
 from sisyphus import toolkit as tk
 
@@ -154,7 +154,7 @@ class SisyphusDisplay:
             if k is None:
                 button = v
             else:
-                if isinstance(v, Path):
+                if isinstance(v, AbstractPath):
                     label = '%s %s<%s>' % (k, type(v).__name__, repr(v))
                 else:
                     label = '%s %s' % (k, pprint.pformat(v))

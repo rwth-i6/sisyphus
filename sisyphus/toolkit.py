@@ -57,7 +57,7 @@ from sisyphus.async_workflow import async_run, async_gather, async_context
 from sisyphus.delayed_ops import Delayed
 from sisyphus import cleaner
 
-from sisyphus.job_path import Path, Variable
+from sisyphus.job_path import AbstractPath, Path, Variable
 from sisyphus.job import Job
 from sisyphus import graph
 import sisyphus.global_settings as gs
@@ -167,8 +167,8 @@ def register_output(name, value, export_graph=False):
     :param Path value:
     :param bool export_graph:
     """
-    assert isinstance(value, Path), (
-        "Can only register Path objects as output, "
+    assert isinstance(value, AbstractPath), (
+        "Can only register Path or Variable objects as output, "
         "but %s is of type %s.\n%s" % (name, type(value), str(value)))
     sis_graph.add_target(graph.OutputPath(name, value))
     if export_graph:
@@ -236,8 +236,8 @@ def setup_path(package: str) -> RelPath:
 def dump(obj: Any, filename: str):
     """ Dumps object using pickle in zipped file, creates directory if needed
 
-    :param obj: Object to pickle
-    :param str filename: Path to pickled file
+    :param obj: object to pickle
+    :param str filename: path to pickled file
     """
     outfile_dir = os.path.dirname(filename)
     if not os.path.isdir(outfile_dir):
@@ -249,8 +249,8 @@ def dump(obj: Any, filename: str):
 def load_file(path: str) -> Any:
     """ Load object from pickled file, works with zipped and unzipped files
 
-    :param str path: Path to pickled file
-    :return: Unpickled object
+    :param str path: path to pickled file
+    :return: unpickled object
     """
     fopen = gzip.open(path, 'rb') if zipped(path) else open(path, 'rb')
     with fopen as f:
@@ -269,7 +269,7 @@ def running_in_worker():
 def load_job(path: str) -> Job:
     """ Load job from job directory even if it is already cleaned up
 
-    :param path(str): Path to job directory
+    :param path(str): path to job directory
     :return (Job):
     """
     def load_tar(filename):
@@ -359,7 +359,8 @@ def run_job(job: Job, task_name: str = None, task_id: int = 1, force_resume: boo
         traceback.print_exc()
 
 
-def remove_job_and_descendants(jobs: Union[str, Path, Job, List[Union[str, Path, Job]]], mode: str = 'remove') -> bool:
+def remove_job_and_descendants(jobs: Union[str, AbstractPath, Job, List[Union[str, AbstractPath, Job]]],
+                               mode: str = 'remove') -> bool:
     """
     Remove all jobs that depend on the given jobs/paths.
 
@@ -372,12 +373,12 @@ def remove_job_and_descendants(jobs: Union[str, Path, Job, List[Union[str, Path,
     delete_list = []
     not_setup_list = []
 
-    if isinstance(jobs, (str, Path, Job)):
+    if isinstance(jobs, (str, AbstractPath, Job)):
         jobs = [jobs]
 
     for source in jobs:
         # Make sure source is a string matching the _sis_contains_required_inputs pattern
-        if isinstance(source, Path):
+        if isinstance(source, AbstractPath):
             source = str(source)
         elif isinstance(source, Job):
             source = os.path.join(gs.BASE_DIR, source._sis_path())
@@ -523,7 +524,7 @@ def print_graph(targets=None, required_inputs=None):
     required_inputs_str = set()
     if required_inputs:
         for i in required_inputs:
-            if isinstance(i, Path):
+            if isinstance(i, AbstractPath):
                 required_inputs_str.add(i.get_path())
             elif isinstance(i, Job):
                 required_inputs_str.add(os.path.join(gs.BASE_DIR, i._sis_path()))
@@ -532,7 +533,7 @@ def print_graph(targets=None, required_inputs=None):
             else:
                 assert False
 
-    if isinstance(targets, (Path, Job)):
+    if isinstance(targets, (AbstractPath, Job)):
         targets = [targets]
 
     if not targets:
@@ -543,7 +544,7 @@ def print_graph(targets=None, required_inputs=None):
         targets.sort()
 
     for target in targets:
-        if isinstance(target, Path):
+        if isinstance(target, AbstractPath):
             creator = target.creator
             path = target
             if creator is None:
@@ -638,7 +639,7 @@ def compare_graph(obj1, obj2, traceback=None, visited=None):
     elif isinstance(obj1, Job):
         if obj1._sis_id() != obj2._sis_id():
             yield from compare_graph(obj1._sis_kwargs, obj2._sis_kwargs, traceback[:], visited)
-    elif isinstance(obj1, Path):
+    elif isinstance(obj1, AbstractPath):
         if obj1.path != obj2.path:
             yield traceback + [(obj1.path, obj2.path)]
         else:
@@ -722,7 +723,7 @@ def _replace_graph_objects_helper(current, replace_function=None, visited=None):
     if isinstance(current, Job):
         kwargs = _replace_graph_objects_helper(current._sis_kwargs, replace_function, visited)
         next = type(current)(**kwargs)
-    elif isinstance(current, Path):
+    elif isinstance(current, AbstractPath):
         creator = _replace_graph_objects_helper(current.creator, replace_function, visited)
         # TODO tage care of other attributes
         next = type(current)(current.path, creator)

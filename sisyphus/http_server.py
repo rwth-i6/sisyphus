@@ -11,7 +11,7 @@ import threading
 import time
 
 from sisyphus.job import Job
-from sisyphus.job_path import Path
+from sisyphus.job_path import AbstractPath
 from sisyphus.tools import cache_result
 from sisyphus.visualize import visualize_block
 import sisyphus.global_settings as gs
@@ -173,7 +173,7 @@ def object_to_html(obj):
     elif isinstance(obj, dict):
         table = sorted([(object_to_html(k), object_to_html(v)) for k, v in obj.items()])
         return render_template("table.html", table=table)
-    elif isinstance(obj, Path):
+    elif isinstance(obj, AbstractPath):
         if obj.creator:
             return '%s : <a href="/info/%s">%s</a>' % (obj.path,
                                                        obj.creator._sis_id(),
