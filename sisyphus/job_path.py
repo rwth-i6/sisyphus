@@ -192,15 +192,6 @@ class AbstractPath(DelayedBase):
     def get(self):
         return self.get_path()
 
-    def __str__(self):
-        return self.get_cached_path()
-
-    def __repr__(self):
-        if gs.LEGACY_PATH_CONVERSION:
-            return repr(str(self))
-        else:
-            return '<Path %s>' % self.get_path()
-
     def __lt__(self, other):
         """
         Define smaller then other by first comparing the creator sis id, next the path
@@ -208,7 +199,7 @@ class AbstractPath(DelayedBase):
         :param other:
         :return:
         """
-        if not isinstance(other, Path):
+        if not isinstance(other, AbstractPath):
             assert False, "Cannot compare path to none path"
 
         def creator_to_str(c):
@@ -256,40 +247,41 @@ class AbstractPath(DelayedBase):
         if not hasattr(self, 'users'):
             self.users = set()
 
+
+class Path(AbstractPath):
+    """
+    Object do hold the connecting path to files:
+
+    that are exchanged between jobs
+    each path can have a creator or a direct pass to the target and many users.
+    """
+    path_type = 'Path'
+
+    def __str__(self):
+        return self.get_cached_path()
+
+    def __repr__(self):
+        if gs.LEGACY_PATH_CONVERSION:
+            return repr(str(self))
+        else:
+            return '<Path %s>' % self.get_path()
+
     def copy(self):
         new = Path('')
         new.__setstate__(self.__getstate__())
         return new
 
-    def __fspath__(self) -> str:
-        return self.get_cached_path()
+    def copy_append(self, suffix):
+        """ Returns a copy of this path with the given suffix appended to it """
+        new = self.copy()
+        new.path += suffix
+        return new
 
-    # Filesystem functions
-    def __fs_directory__(self):
-        """ Returns all items that should be listed by virtual filesystem
-        :param job:
-        :return:
-        """
-        yield 'file'
-        yield 'f'
-        if self.creator is not None:
-            yield 'creator'
-            yield 'c'
-            yield '_' + self.creator._sis_id().replace(os.path.sep, '_')
-        yield 'users'
-        yield 'u'
-
-    def __fs_get__(self, step):
-        if 'file'.startswith(step):
-            return 'symlink', self.get_path()
-        elif self.creator and \
-                ('creator'.startswith(step) or (
-                    '_' + self.creator._sis_id().replace(os.path.sep, '_')).startswith(step)):
-            return None, self.creator
-        elif 'users'.startswith(step):
-            return None, self.users
-        else:
-            raise KeyError(step)
+    def join_right(self, other):
+        """ Joins local path with given string using os.path.join """
+        new = self.copy()
+        new.path = os.path.join(new.path, other)
+        return new
 
     def size(self):
         """ Return file size if file exists, else return None """
@@ -347,26 +339,35 @@ class AbstractPath(DelayedBase):
 
         return file_zipped
 
+    # Filesystem functions
+    def __fs_directory__(self):
+        """ Returns all items that should be listed by virtual filesystem
+        :param job:
+        :return:
+        """
+        yield 'file'
+        yield 'f'
+        if self.creator is not None:
+            yield 'creator'
+            yield 'c'
+            yield '_' + self.creator._sis_id().replace(os.path.sep, '_')
+        yield 'users'
+        yield 'u'
 
-class Path(AbstractPath):
-    """
-    Object do hold the connecting path to files:
+    def __fs_get__(self, step):
+        if 'file'.startswith(step):
+            return 'symlink', self.get_path()
+        elif self.creator and \
+                ('creator'.startswith(step) or (
+                    '_' + self.creator._sis_id().replace(os.path.sep, '_')).startswith(step)):
+            return None, self.creator
+        elif 'users'.startswith(step):
+            return None, self.users
+        else:
+            raise KeyError(step)
 
-    that are exchanged between jobs
-    each path can have a creator or a direct pass to the target and many users.
-    """
-    path_type = 'Path'
-
-    def __add__(self, other):
-        new = self.copy()
-        new.path = new.path + other
-        return new
-
-    def join_right(self, other):
-        """ Joins local path with given string using os.path.join """
-        new = self.copy()
-        new.path = os.path.join(new.path, other)
-        return new
+    def __fspath__(self) -> str:
+        return self.get_cached_path()
 
 
 class Variable(AbstractPath):
