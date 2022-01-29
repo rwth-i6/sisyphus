@@ -161,7 +161,7 @@ class EngineBase:
         call = task.get_worker_call()
         logpath = os.path.relpath(task.path(gs.JOB_LOG_ENGINE))
         task_ids = [task_id for task_id in task.task_ids()
-                    if task.state(self, task_id, True) in [gs.STATE_RUNNABLE, gs.STATE_INTERRUPTED]]
+                    if task.state(self, task_id, True) in [gs.STATE_RUNNABLE, gs.STATE_INTERRUPTED_RESUMABLE]]
 
         # update rqmts and collect them
         rqmt_to_ids = {}

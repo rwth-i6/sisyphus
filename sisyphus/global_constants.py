@@ -34,7 +34,8 @@ STATE_INPUT_MISSING = 'input_missing'
 STATE_WAITING = 'waiting'  # Job is waiting for other jobs to finish
 STATE_RUNNABLE = 'runnable'  # Job can be started
 STATE_HOLD = 'hold'  # Do not start this job
-STATE_INTERRUPTED = 'interrupted'  # task was started, but couldn't finish
+STATE_INTERRUPTED_RESUMABLE = 'interrupted_resumable'  # task was interrupted and can be resumed
+STATE_INTERRUPTED_NOT_RESUMABLE = 'interrupted_not_resumable'  # task was interrupted and can't be resumed
 STATE_ERROR = 'error'  # Job/task return a non zero return value
 STATE_FINISHED = 'finished'  # job/task finished successful
 

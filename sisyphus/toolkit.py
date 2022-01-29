@@ -919,7 +919,8 @@ def run(obj: Any, quiet: bool = False):
 
     def get_jobs():
         """ Helper function to get all relevant jobs"""
-        filter_list = (gs.STATE_WAITING, gs.STATE_RUNNABLE, gs.STATE_INTERRUPTED, gs.STATE_ERROR)
+        filter_list = (gs.STATE_WAITING, gs.STATE_RUNNABLE, gs.STATE_INTERRUPTED_RESUMABLE,
+                       gs.STATE_INTERRUPTED_NOT_RESUMABLE, gs.STATE_ERROR)
         return {k: v for k, v in temp_graph.get_jobs_by_status(skip_finished=True).items() if k in filter_list}
 
     jobs = get_jobs()
@@ -927,7 +928,7 @@ def run(obj: Any, quiet: bool = False):
     while jobs:
         # Collect all jobs that can be run
         todo_list = jobs.get(gs.STATE_RUNNABLE, set())
-        todo_list.update(jobs.get(gs.STATE_INTERRUPTED, set()))
+        todo_list.update(jobs.get(gs.STATE_INTERRUPTED_RESUMABLE, set()))
 
         # Stop loop if no jobs can be run
         if not todo_list:

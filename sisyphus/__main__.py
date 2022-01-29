@@ -57,7 +57,7 @@ def main():
                                      "state when the manager runs the first time")
     parser_manager.add_argument("-cio", dest="clear_interrupts_once", action="store_true",
                                 default=False,
-                                help="Move jobs aside that are in an interrupt "
+                                help="Move jobs aside that are in a not resumable interrupt "
                                      "state when the manager runs the first time")
     parser_manager.add_argument("-io", dest="ignore_once", action="store_true",
                                 default=False,
