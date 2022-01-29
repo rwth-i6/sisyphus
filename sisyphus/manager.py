@@ -164,7 +164,8 @@ for pos, state in enumerate([gs.STATE_INPUT_PATH,
                              gs.STATE_QUEUE,
                              gs.STATE_RUNNING,
                              gs.STATE_RUNNABLE,
-                             gs.STATE_INTERRUPTED,
+                             gs.STATE_INTERRUPTED_RESUMABLE,
+                             gs.STATE_INTERRUPTED_NOT_RESUMABLE,
                              gs.STATE_UNKNOWN,
                              gs.STATE_QUEUE_ERROR,
                              gs.STATE_RETRY_ERROR,
@@ -282,12 +283,13 @@ class Manager(threading.Thread):
 
         if state in [gs.STATE_INPUT_MISSING,
                      gs.STATE_RETRY_ERROR,
+                     gs.STATE_INTERRUPTED_NOT_RESUMABLE,
                      gs.STATE_ERROR]:
             logging.error(info_string)
             if state == gs.STATE_ERROR and gs.PRINT_ERROR:
                 job._sis_print_error(gs.PRINT_ERROR_TASKS,
                                      gs.PRINT_ERROR_LINES)
-        elif state in [gs.STATE_INTERRUPTED, gs.STATE_UNKNOWN]:
+        elif state in [gs.STATE_INTERRUPTED_RESUMABLE, gs.STATE_UNKNOWN]:
             logging.warning(info_string)
         elif state in [gs.STATE_QUEUE,
                        gs.STATE_HOLD,
@@ -327,7 +329,7 @@ class Manager(threading.Thread):
                                                                            gs.STATE_RUNNING,
                                                                            gs.STATE_QUEUE,
                                                                            gs.STATE_UNKNOWN,
-                                                                           gs.STATE_INTERRUPTED]]):
+                                                                           gs.STATE_INTERRUPTED_RESUMABLE]]):
             # check again to avoid caching effects
             time.sleep(gs.WAIT_PERIOD_CACHE)
             self.update_jobs()
@@ -335,7 +337,7 @@ class Manager(threading.Thread):
                                                          gs.STATE_RUNNING,
                                                          gs.STATE_QUEUE,
                                                          gs.STATE_UNKNOWN,
-                                                         gs.STATE_INTERRUPTED]
+                                                         gs.STATE_INTERRUPTED_RESUMABLE]
                         ]):
                 logging.info("There is nothing I can do, good bye!")
                 return False
@@ -390,7 +392,7 @@ class Manager(threading.Thread):
             else:
                 logging.debug('Skip unresumable task')
 
-        self.thread_pool.map(f, self.jobs.get(gs.STATE_INTERRUPTED, []))
+        self.thread_pool.map(f, self.jobs.get(gs.STATE_INTERRUPTED_RESUMABLE, []))
 
     def run_jobs(self):
         """
@@ -511,8 +513,8 @@ class Manager(threading.Thread):
                     self.clear_errors_once = False
                     self.print_state_overview(verbose=False)
                 answer = None
-        if (gs.STATE_INTERRUPTED in self.jobs) and self.clear_interrupts_once:
-            self.clear_states(state=gs.STATE_INTERRUPTED)
+        if (gs.STATE_INTERRUPTED_NOT_RESUMABLE in self.jobs) and self.clear_interrupts_once:
+            self.clear_states(state=gs.STATE_INTERRUPTED_NOT_RESUMABLE)
             self.clear_interrupts_once = False
 
         if self.start_computations:

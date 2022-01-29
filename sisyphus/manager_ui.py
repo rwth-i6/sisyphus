@@ -379,11 +379,12 @@ class SisyphusDisplay:
                          gs.STATE_RETRY_ERROR,
                          gs.STATE_ERROR]:
                 attri = 'error'
-            elif state in [gs.STATE_INTERRUPTED, gs.STATE_UNKNOWN]:
+            elif state in [gs.STATE_INTERRUPTED_NOT_RESUMABLE, gs.STATE_UNKNOWN]:
                 attri = 'warning'
             elif state in [gs.STATE_QUEUE,
                            gs.STATE_RUNNING,
                            gs.STATE_RUNNABLE,
+                           gs.STATE_INTERRUPTED_RESUMABLE,
                            gs.STATE_FINISHED
                            ]:
                 attri = 'info'

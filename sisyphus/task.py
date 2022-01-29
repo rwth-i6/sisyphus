@@ -316,7 +316,8 @@ class Task(object):
                 for engine_state in (
                         gs.STATE_ERROR,
                         gs.STATE_QUEUE_ERROR,
-                        gs.STATE_INTERRUPTED,
+                        gs.STATE_INTERRUPTED_RESUMABLE,
+                        gs.STATE_INTERRUPTED_NOT_RESUMABLE,
                         gs.STATE_RUNNABLE,
                         gs.STATE_QUEUE,
                         gs.STATE_RUNNING,
@@ -359,7 +360,10 @@ class Task(object):
                             return gs.STATE_RETRY_ERROR
                         else:
                             # Task was started, but isn't running anymore => interrupted
-                            return gs.STATE_INTERRUPTED
+                            if self._resume is None:
+                                return gs.STATE_INTERRUPTED_NOT_RESUMABLE
+                            else:
+                                return gs.STATE_INTERRUPTED_RESUMABLE
                     else:
                         return gs.STATE_RUNNABLE
                 else:

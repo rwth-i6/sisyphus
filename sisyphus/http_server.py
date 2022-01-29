@@ -41,9 +41,9 @@ def state_to_color(state):
         return 'Green'
     elif state == gs.STATE_RUNNING:
         return 'GreenYellow'
-    elif state in [gs.STATE_ERROR, gs.STATE_UNKNOWN, gs.STATE_INTERRUPTED]:
+    elif state in [gs.STATE_ERROR, gs.STATE_UNKNOWN, gs.STATE_INTERRUPTED_NOT_RESUMABLE]:
         return 'Red'
-    elif state in [gs.STATE_QUEUE, gs.STATE_RUNNABLE]:
+    elif state in [gs.STATE_QUEUE, gs.STATE_RUNNABLE, gs.STATE_INTERRUPTED_RESUMABLE]:
         return 'SteelBlue'
     elif state == gs.STATE_WAITING:
         return 'Yellow'
@@ -220,7 +220,8 @@ def show_job_informations(sis_id):
                     continue
                 for tid in t.task_ids():
                     s = t.state(g_sis_engine, tid)
-                    if s in [gs.STATE_INTERRUPTED, gs.STATE_ERROR, gs.STATE_FINISHED,
+                    if s in [gs.STATE_INTERRUPTED_NOT_RESUMABLE, gs.STATE_INTERRUPTED_RESUMABLE,
+                             gs.STATE_ERROR, gs.STATE_FINISHED,
                              gs.STATE_RUNNING, gs.STATE_RETRY_ERROR]:
                         ll = []
                         try:
@@ -230,7 +231,8 @@ def show_job_informations(sis_id):
                             if e.errno != 2:
                                 raise e
                         lines = ll[:10]
-                        if s in [gs.STATE_INTERRUPTED, gs.STATE_ERROR, gs.STATE_FINISHED]:
+                        if s in [gs.STATE_INTERRUPTED_NOT_RESUMABLE, gs.STATE_INTERRUPTED_RESUMABLE,
+                                 gs.STATE_ERROR, gs.STATE_FINISHED]:
                             lines.extend(ll[max(len(ll) - 10, 10):])
                         task_logs['%s.%d' % (t.name(), tid)] = ''.join(lines)
 
