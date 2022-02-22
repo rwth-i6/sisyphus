@@ -104,7 +104,7 @@ class JobSingleton(type):
                 tags.update(p.tags)
 
         # check cache
-        if sis_id in created_jobs:
+        if sis_id in created_jobs and vars(created_jobs[sis_id]):
             job = created_jobs[sis_id]
         else:
             # create new object
