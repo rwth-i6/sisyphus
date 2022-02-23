@@ -103,7 +103,14 @@ class ConfigManager:
 
         for filename in filenames:
             self.load_config_file(filename)
+
+        # TODO: Make this more deteministic
+        # continue_reader doesn't guarantee that all config readers had a chance to run, so we run in multiple times
+        # to increase the chance that all readers continued as far as possible
         self.continue_readers()
+        for i in filenames:
+            self.continue_readers()
+            self.continue_readers()
 
     def run_async_step(self):
         # If stop() is called before run_forever() is called,
