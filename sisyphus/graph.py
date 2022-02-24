@@ -649,8 +649,8 @@ class SISGraph(object):
             if len(t.required_full_list) == 1:
                 current[t.name] = t.required_full_list[0]
             else:
-                for pos, path in enumerate(t.required_full_list):
-                    current["%s_%02i" % (t.name, pos)] = path
+                for pos, required_path in enumerate(t.required_full_list):
+                    current["%s_%02i" % (t.name, pos)] = required_path
 
         for step in path:
             if isinstance(current, dict):
