@@ -105,6 +105,7 @@ The config folder has the following structure:
 
         # register the output
         tk.register_output("experiments1/an_output_file", job3.output)
+        return job1.output, job2.output, job3.output
 
 ``experiments2.py:``
 
@@ -131,6 +132,19 @@ When the pipelines are defined this way, a ``./sis m`` call will create the full
 Now lets say the graph code is already very large, and you only want to run a sub-graph.
 With an hierarchical structure, it is then possible to call the manager with a specific function,
 e.g. ``./sis m config.experiments2.run_experiment2`` to only build and run the sub-graph for experiment 2.
+
+It is also possible to define asynchronous workflows which allow halting the calculation of the graph to wait until the requested jobs are finished. This allows to easily make the graph dependent on intermediate results. Given the code example above it could work like this:
+
+.. code:: python
+
+    from config.experiments1 import run_experiments1
+    from config.experiments2 import run_experiments2
+
+    async def main():
+        job1_output, job2_output, job3_output = run_experiments1()
+        await tk.async_run(job2_output)  # The workflow will pause here until the output of job2 is available
+        if job2_output.get() < some_other_value:  # Assuming Job2 returns a Variable
+            run_experiments2()
 
 The pipeline code in both the ``config`` and ``recipe`` folders can be arbitrary complex and structured freely, but it is
 important to keep in mind that sub-graph functions always have to be located within the ``config`` folder.
