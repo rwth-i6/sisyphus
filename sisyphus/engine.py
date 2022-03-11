@@ -102,6 +102,9 @@ class EngineBase:
         else:
             # never submitted so far, use default values
             rqmt = default_rqmt
+        rqmt = gs.check_engine_limits(rqmt, task)
+        if 'mem' in rqmt:
+            rqmt['mem'] = tools.str_to_GB(rqmt['mem'])
         return rqmt
 
     def job_state(self, job):
