@@ -418,7 +418,6 @@ class Task(object):
         if 'time' in rresources:
             rresources['time'] = tools.str_to_hours(rresources['time'])
         new_rqmt = self._update_rqmt(initial_rqmt=initial_rqmt, last_usage=last_usage)
-        new_rqmt = gs.check_engine_limits(new_rqmt, self)
         return new_rqmt
 
     def get_process_logging_path(self, task_id):
