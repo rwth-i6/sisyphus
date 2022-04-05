@@ -46,8 +46,9 @@ async def async_run(obj: Any):
 async def __async_helper_set_config(awaitable, thread_name):
     config_manager.add_reader_thread(thread_name)
     config_manager.current_config = thread_name
-    await awaitable
+    ret = await awaitable
     config_manager.remove_reader_thread(thread_name)
+    return ret
 
 
 async def async_gather(*aws):
