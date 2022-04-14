@@ -10,7 +10,7 @@ import socket
 def engine():
     from sisyphus.engine import EngineSelector
     from sisyphus.localengine import LocalEngine
-    return LocalEngine(cpu=4, gpu=1, mem=6)
+    return LocalEngine(cpus=4, gpus=1, mem=6)
     # Example how to use the engine selector, normally the 'long' engine would be a grid engine e.g. SGE
     # noinspection PyUnreachableCode
     return EngineSelector(engines={'short': LocalEngine(cpu=6, gpu=1),
