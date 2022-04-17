@@ -13,8 +13,8 @@ def engine():
     return LocalEngine(cpus=4, gpus=1, mem=6)
     # Example how to use the engine selector, normally the 'long' engine would be a grid engine e.g. SGE
     # noinspection PyUnreachableCode
-    return EngineSelector(engines={'short': LocalEngine(cpu=6, gpu=1),
-                                   'long': LocalEngine(cpu=8, gpu=1)},
+    return EngineSelector(engines={'short': LocalEngine(cpus=6, gpus=1),
+                                   'long': LocalEngine(cpus=8, gpus=1)},
                           default_engine='long')
 
 
