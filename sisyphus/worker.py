@@ -183,10 +183,8 @@ def worker_helper(args):
         task_id = gs.active_engine.get_task_id(args.task_id)
         log_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.JOB_LOG, args.task_name, task_id)
 
-        argv = sys.argv[sys.argv.index(gs.CMD_WORKER):]
-        del argv[argv.index('--redirect_output')]
-
-        call = gs.SIS_COMMAND + argv
+        call = sys.argv
+        del call[call.index('--redirect_output')]
 
         is_not_first = os.path.isfile(log_file)
         with open(log_file, 'a') as logfile:
