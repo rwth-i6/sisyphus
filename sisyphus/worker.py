@@ -7,6 +7,7 @@ import psutil
 import pwd
 import socket
 import sys
+import shutil
 import subprocess
 import time
 from threading import Thread, Condition
@@ -179,19 +180,23 @@ def worker_helper(args):
     """ This program is run on the client side when running the job """
 
     # Redirect stdout and stderr by starting a subprocess
+    # Starting a subprocess was the only reliable way I found to redirect all outputs to a file,
+    # including the output of other subprocesses. Let me know if you have a nicer solution to this problem.
     if args.redirect_output:
         task_id = gs.active_engine.get_task_id(args.task_id)
         log_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.JOB_LOG, args.task_name, task_id)
 
+        # Make sure Sisyphus is called again with the same python executable.
+        # Adding the executable in front of the call could cause problems with the worker_wrapper
+        if shutil.which(os.path.basename(sys.executable)) != sys.executable:
+            os.environ['PATH'] = os.path.dirname(sys.executable) + ':' + os.environ['PATH']
+
         call = sys.argv
         del call[call.index('--redirect_output')]
 
-        is_not_first = os.path.isfile(log_file)
         with open(log_file, 'a') as logfile:
-            if is_not_first:
+            if logfile.tell() > 0:
                 logfile.write('\n' + ('#' * 80) + '\nRETRY OR CONTINUE TASK\n' + ('#' * 80) + '\n\n')
-            # There is probably a better way to redirect the output without starting a subprocess, but all others
-            # that I tried did not catch all of the output
             subprocess.check_call(call, stdout=logfile, stderr=logfile)
         return
 
