@@ -224,7 +224,7 @@ class Job(metaclass=JobSingleton):
         self._sis_inputs = set()
         self.__init__(*args, **kwargs)
 
-        self._sis_inputs.update({p for p in tools.extract_paths(self.__dict__) if p.creator != self})
+        self._sis_inputs.update({p for p in tools.extract_paths([self.__dict__, args, kwargs]) if p.creator != self})
 
         for i in self._sis_inputs:
             i.add_user(self)
