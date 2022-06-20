@@ -78,36 +78,30 @@ def extract_paths(args: Any) -> Set:
     :rtype: set
     """
     out = set()
-    visited_obj_ids = set()
-    queue = [args]
-    while queue:
-        obj = queue.pop()
-        if id(obj) in visited_obj_ids:
-            continue
-        visited_obj_ids.add(id(obj))
-        if isinstance(obj, Block) or isinstance(obj, enum.Enum):
-            continue
-        if hasattr(obj, '_sis_path') and obj._sis_path is True:
-            out.add(obj)
-        elif isinstance(obj, (list, tuple, set)):
-            queue.extend(obj)
-        elif isinstance(obj, dict):
-            for k, v in obj.items():
-                if not type(k) == str or not k.startswith('_sis_'):
-                    queue.append(v)
-        elif hasattr(obj, '__sis_state__') and not inspect.isclass(obj):
-            queue.append(obj.__sis_state__())
-        elif hasattr(obj, '__getstate__') and not inspect.isclass(obj):
-            queue.append(obj.__getstate__())
-        elif hasattr(obj, '__dict__'):
-            for k, v in obj.__dict__.items():
-                if not type(k) == str or not k.startswith('_sis_'):
-                    queue.append(v)
-        elif hasattr(obj, '__slots__'):
-            for k in obj.__slots__:
-                if hasattr(obj, k) and not k.startswith('_sis_'):
-                    a = getattr(obj, k)
-                    queue.append(a)
+    if isinstance(args, Block) or isinstance(args, enum.Enum):
+        return out
+    if hasattr(args, '_sis_path') and args._sis_path is True:
+        out = {args}
+    elif isinstance(args, (list, tuple, set)):
+        for a in args:
+            out = out.union(extract_paths(a))
+    elif isinstance(args, dict):
+        for k, v in args.items():
+            if not type(k) == str or not k.startswith('_sis_'):
+                out = out.union(extract_paths(v))
+    elif hasattr(args, '__sis_state__') and not inspect.isclass(args):
+        out = out.union(extract_paths(args.__sis_state__()))
+    elif hasattr(args, '__getstate__') and not inspect.isclass(args):
+        out = out.union(extract_paths(args.__getstate__()))
+    elif hasattr(args, '__dict__'):
+        for k, v in args.__dict__.items():
+            if not type(k) == str or not k.startswith('_sis_'):
+                out = out.union(extract_paths(v))
+    elif hasattr(args, '__slots__'):
+        for k in args.__slots__:
+            if hasattr(args, k) and not k.startswith('_sis_'):
+                a = getattr(args, k)
+                out = out.union(extract_paths(a))
     return out
 
 
