@@ -78,13 +78,13 @@ def extract_paths(args: Any) -> Set:
     :rtype: set
     """
     out = set()
-    visited_obj_ids = set()
+    visited_obj_ids = {}  # id -> obj  # keep ref to obj alive, to avoid having same id for different objs
     queue = [args]
     while queue:
         obj = queue.pop()
         if id(obj) in visited_obj_ids:
             continue
-        visited_obj_ids.add(id(obj))
+        visited_obj_ids[id(obj)] = obj
         if isinstance(obj, Block) or isinstance(obj, enum.Enum):
             continue
         if hasattr(obj, '_sis_path') and obj._sis_path is True:
