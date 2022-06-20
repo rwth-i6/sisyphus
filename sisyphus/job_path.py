@@ -57,7 +57,7 @@ class AbstractPath(DelayedBase):
                                         Gets path as input and must be pickleable
         """
 
-        if path.startswith(os.path.abspath('.')) and gs.WARNING_ABSPATH:
+        if gs.WARNING_ABSPATH and path.startswith(gs.BASE_DIR):
             logging.warning('Creating absolute path inside current work directory: %s '
                             '(disable with WARNING_ABSPATH=False)' % path)
         assert isinstance(path, str)
