@@ -79,9 +79,10 @@ def sis_hash_helper(obj, _visited=None, _add_to_visited=True):
     :rtype: bytes
     """
     if _visited is None:
-        _visited = {}  # id -> bytes
+        # keep ref to obj alive to avoid having the same id for different objs
+        _visited = {}  # id -> (bytes, obj)
     if id(obj) in _visited:
-        return _visited[id(obj)]
+        return _visited[id(obj)][0]
 
     # Store type to ensure it's unique
     byte_list = [type(obj).__qualname__.encode()]
@@ -101,7 +102,7 @@ def sis_hash_helper(obj, _visited=None, _add_to_visited=True):
         # sort items to ensure they are always in the same order
         byte_list += sorted(
             sis_hash_helper(
-                x, _visited=_visited, _add_to_visited=False)  # tuple is temp object, same id() for all items
+                x, _visited=_visited, _add_to_visited=False)  # tuple is temp object, don't store
             for x in obj.items())
     elif isfunction(obj):
         # Handle functions
@@ -124,5 +125,5 @@ def sis_hash_helper(obj, _visited=None, _add_to_visited=True):
         # it's most likely not that important.
         byte_str = hashlib.sha256(byte_str).digest()
     if _add_to_visited:
-        _visited[id(obj)] = byte_str
+        _visited[id(obj)] = (byte_str, obj)
     return byte_str
