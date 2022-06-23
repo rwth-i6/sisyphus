@@ -500,22 +500,29 @@ class Manager(threading.Thread):
         config_manager.print_config_reader()
 
         answer = None
-        if gs.STATE_ERROR in self.jobs:
-            if self.clear_errors_once:
-                self.clear_states(state=gs.STATE_ERROR)
-                self.clear_errors_once = False
-            elif self.ignore_once:
-                pass
-            else:
-                answer = self.input('Clear jobs in error state? [y/N] ')
-                if answer.lower() == 'y':
-                    self.clear_states(state=gs.STATE_ERROR)
-                    self.clear_errors_once = False
-                    self.print_state_overview(verbose=False)
-                answer = None
-        if (gs.STATE_INTERRUPTED_NOT_RESUMABLE in self.jobs) and self.clear_interrupts_once:
+
+        def clear_error():
+            self.clear_states(state=gs.STATE_ERROR)
+            self.clear_errors_once = False
+
+        def clear_interrupted():
             self.clear_states(state=gs.STATE_INTERRUPTED_NOT_RESUMABLE)
             self.clear_interrupts_once = False
+
+        def maybe_clear_state(state, always_clear, action):
+            if state in self.jobs:
+                if always_clear:
+                    action()
+                elif not self.ignore_once:
+
+                    answer = self.input(f'Clear jobs in {state} state? [y/N] ')
+
+                    if answer.lower() == 'y':
+                        action()
+                        self.print_state_overview(verbose=False)
+
+        maybe_clear_state(gs.STATE_ERROR, self.clear_errors_once, clear_error)
+        maybe_clear_state(gs.STATE_INTERRUPTED_NOT_RESUMABLE, self.clear_interrupts_once, clear_interrupted)
 
         if self.start_computations:
             answer = 'y'
