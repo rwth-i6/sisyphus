@@ -121,7 +121,7 @@ class AbstractPath(DelayedBase):
                 creator = None
                 path = overwrite
         if hasattr(creator, '_sis_id'):
-            creator = os.path.join(self.creator._sis_id(), gs.JOB_OUTPUT)
+            creator = os.path.join(creator._sis_id(), gs.JOB_OUTPUT)
         return b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
 
     @finished_results_cache.caching(get_key=lambda self, debug_info=None: ('available', self.rel_path()))
