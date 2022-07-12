@@ -70,6 +70,7 @@ class AbstractPath(DelayedBase):
         self._tags = tags
 
         self._available = available
+        self._sis_hash_cache = None
 
     def keep_value(self, value):
         if self.creator:
@@ -103,22 +104,24 @@ class AbstractPath(DelayedBase):
         self.users.add(user)
 
     def _sis_hash(self):
-        if self.hash_overwrite is None:
-            creator = self.creator
-            path = self.path
-        else:
-            overwrite = self.hash_overwrite
-            assert_msg = "sis_hash for path must be str or tuple of length 2"
-            if isinstance(overwrite, tuple):
-                assert len(overwrite) == 2, assert_msg
-                creator, path = overwrite
+        if not self._sis_hash_cache:
+            if self.hash_overwrite is None:
+                creator = self.creator
+                path = self.path
             else:
-                assert isinstance(overwrite, str), assert_msg
-                creator = None
-                path = overwrite
-        if hasattr(creator, '_sis_id'):
-            creator = os.path.join(creator._sis_id(), gs.JOB_OUTPUT)
-        return b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
+                overwrite = self.hash_overwrite
+                assert_msg = "sis_hash for path must be str or tuple of length 2"
+                if isinstance(overwrite, tuple):
+                    assert len(overwrite) == 2, assert_msg
+                    creator, path = overwrite
+                else:
+                    assert isinstance(overwrite, str), assert_msg
+                    creator = None
+                    path = overwrite
+            if hasattr(creator, '_sis_id'):
+                creator = os.path.join(creator._sis_id(), gs.JOB_OUTPUT)
+            self._sis_hash_cache = b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
+        return self._sis_hash_cache
 
     @finished_results_cache.caching(get_key=lambda self, debug_info=None: ('available', self.rel_path()))
     def available(self, debug_info=None):
@@ -192,19 +195,7 @@ class AbstractPath(DelayedBase):
         if not isinstance(other, AbstractPath):
             assert False, "Cannot compare path to none path"
 
-        def creator_to_str(c):
-            if isinstance(c, str):
-                return c
-            elif hasattr(c, '_sis_id'):
-                return c._sis_id()
-            elif c is None:
-                return str(c)
-            else:
-                assert False, "User of path is not a job"
-
-        s = "%s %s" % (creator_to_str(self.creator), self.path)
-        o = "%s %s" % (creator_to_str(other.creator), other.path)
-        return s < o
+        return self._sis_hash() < other._sis_hash()
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -214,9 +205,7 @@ class AbstractPath(DelayedBase):
         if len(self.__dict__) == len(other.__dict__) == 0:
             return True
 
-        creator_equal = self.creator == other.creator
-        path_equal = self.path == other.path
-        return creator_equal and path_equal
+        return self._sis_hash() == other._sis_hash()
 
     def __hash__(self):
         # TODO Check how uninitialized object should behave here
