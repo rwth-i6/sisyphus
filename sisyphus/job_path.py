@@ -64,7 +64,6 @@ class AbstractPath(DelayedBase):
         self.creator = creator
         self.users = set()
 
-        assert not isinstance(creator, str)
         self.path = path
         self.cached = cached
         self.hash_overwrite = hash_overwrite
@@ -85,8 +84,6 @@ class AbstractPath(DelayedBase):
         if self._tags is None:
             if self.creator is None:
                 return set()
-            elif isinstance(self.creator, str):
-                return set()
             else:
                 return self.creator.tags
         else:
@@ -106,7 +103,6 @@ class AbstractPath(DelayedBase):
         self.users.add(user)
 
     def _sis_hash(self):
-        assert not isinstance(self.creator, str)
         if self.hash_overwrite is None:
             creator = self.creator
             path = self.path
@@ -135,7 +131,7 @@ class AbstractPath(DelayedBase):
             return self._available(self)
 
         path = self.get_path()
-        if self.creator is None or isinstance(self.creator, str):
+        if self.creator is None:
             return os.path.isfile(path) or os.path.isdir(path)
         else:
             job_path_available = self.creator.path_available(self)
@@ -150,7 +146,6 @@ class AbstractPath(DelayedBase):
     # TODO Move this to toolkit cleanup together with job method
     def get_needed_jobs(self, visited):
         """ Return all jobs leading to this path """
-        assert(not isinstance(self.creator, str)), "This should only occur during running of worker"
         if self.creator is None:
             return set()
         else:
@@ -164,12 +159,7 @@ class AbstractPath(DelayedBase):
         if self.creator is None:
             return self.path
         else:
-            # creator path is in work dir
-            if isinstance(self.creator, str):
-                creator_path = os.path.join(self.creator, gs.JOB_OUTPUT)
-            else:
-                creator_path = self.creator._sis_path(gs.JOB_OUTPUT)
-            return os.path.join(creator_path, self.path)
+            return f"{self.creator._sis_path(gs.JOB_OUTPUT)}/{self.path}"
 
     def get_path(self) -> str:
         """
