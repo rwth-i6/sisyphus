@@ -208,9 +208,11 @@ class AbstractPath(DelayedBase):
         return self._sis_hash() == other._sis_hash()
 
     def __hash__(self):
-        # TODO Check how uninitialized object should behave here
-        return hash((self.__dict__.get('creator'),
-                     self.__dict__.get('path')))
+        if hasattr(self, '_sis_hash_cache'):
+            # Add prefix to avoid collision with sis_hash string
+            return hash(b'HASH # ' + self._sis_hash())
+        else:
+            return super().__hash__()
 
     def __getstate__(self):
         """  Skips exporting users
