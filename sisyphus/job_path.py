@@ -70,7 +70,6 @@ class AbstractPath(DelayedBase):
         self._tags = tags
 
         self._available = available
-        self._sis_hash_cache = None
 
     def keep_value(self, value):
         if self.creator:
@@ -104,24 +103,22 @@ class AbstractPath(DelayedBase):
         self.users.add(user)
 
     def _sis_hash(self):
-        if not self._sis_hash_cache:
-            if self.hash_overwrite is None:
-                creator = self.creator
-                path = self.path
+        if self.hash_overwrite is None:
+            creator = self.creator
+            path = self.path
+        else:
+            overwrite = self.hash_overwrite
+            assert_msg = "sis_hash for path must be str or tuple of length 2"
+            if isinstance(overwrite, tuple):
+                assert len(overwrite) == 2, assert_msg
+                creator, path = overwrite
             else:
-                overwrite = self.hash_overwrite
-                assert_msg = "sis_hash for path must be str or tuple of length 2"
-                if isinstance(overwrite, tuple):
-                    assert len(overwrite) == 2, assert_msg
-                    creator, path = overwrite
-                else:
-                    assert isinstance(overwrite, str), assert_msg
-                    creator = None
-                    path = overwrite
-            if hasattr(creator, '_sis_id'):
-                creator = os.path.join(creator._sis_id(), gs.JOB_OUTPUT)
-            self._sis_hash_cache = b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
-        return self._sis_hash_cache
+                assert isinstance(overwrite, str), assert_msg
+                creator = None
+                path = overwrite
+        if hasattr(creator, '_sis_id'):
+            creator = os.path.join(creator._sis_id(), gs.JOB_OUTPUT)
+        return b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
 
     @finished_results_cache.caching(get_key=lambda self, debug_info=None: ('available', self.rel_path()))
     def available(self, debug_info=None):
