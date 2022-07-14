@@ -192,7 +192,22 @@ class AbstractPath(DelayedBase):
         if not isinstance(other, AbstractPath):
             assert False, "Cannot compare path to none path"
 
-        return self._sis_hash() < other._sis_hash()
+        if gs.USE_SIS_HASH_FOR_PATH_COMPARISON:
+            return self._sis_hash() < other._sis_hash()
+
+        def creator_to_str(c):
+            if isinstance(c, str):
+                return c
+            elif hasattr(c, '_sis_id'):
+                return c._sis_id()
+            elif c is None:
+                return str(c)
+            else:
+                assert False, "User of path is not a job"
+
+        s = "%s %s" % (creator_to_str(self.creator), self.path)
+        o = "%s %s" % (creator_to_str(other.creator), other.path)
+        return s < o
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -202,14 +217,22 @@ class AbstractPath(DelayedBase):
         if len(self.__dict__) == len(other.__dict__) == 0:
             return True
 
-        return self._sis_hash() == other._sis_hash()
+        if gs.USE_SIS_HASH_FOR_PATH_COMPARISON:
+            return self._sis_hash() == other._sis_hash()
+
+        creator_equal = self.creator == other.creator
+        path_equal = self.path == other.path
+        return creator_equal and path_equal
 
     def __hash__(self):
-        if hasattr(self, '_sis_hash_cache'):
-            # Add prefix to avoid collision with sis_hash string
-            return hash(b'HASH # ' + self._sis_hash())
+        if gs.USE_SIS_HASH_FOR_PATH_COMPARISON:
+            if hasattr(self, 'creator'):  # uninitialized object have no creator and calling sis_hash would fail
+                # Add prefix to avoid collision with sis_hash string
+                return hash(b'HASH # ' + self._sis_hash())
+            else:
+                return super().__hash__()
         else:
-            return super().__hash__()
+            return hash((self.__dict__.get('creator'), self.__dict__.get('path')))
 
     def __getstate__(self):
         """  Skips exporting users
