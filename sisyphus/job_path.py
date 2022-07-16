@@ -124,7 +124,7 @@ class AbstractPath(DelayedBase):
         else:
             creator, path = self.hash_overwrite
         if hasattr(creator, '_sis_id'):
-            creator = os.path.join(creator._sis_id(), gs.JOB_OUTPUT)
+            creator = f"{creator._sis_id()}/{gs.JOB_OUTPUT}"
         return b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
 
     @finished_results_cache.caching(get_key=lambda self, debug_info=None: ('available', self.rel_path()))
@@ -177,7 +177,7 @@ class AbstractPath(DelayedBase):
         if os.path.isabs(path):
             return path
         else:
-            return os.path.join(gs.BASE_DIR, path)
+            return f"{gs.BASE_DIR}/{path}"
 
     def get_cached_path(self) -> str:
         if Path.cacheing_enabled and self.cached:
@@ -278,12 +278,12 @@ class Path(AbstractPath):
         return new
 
     def join_right(self, other):
-        """ Joins local path with given string using os.path.join """
+        """ Joins local path with given string using '/' """
         new = self.copy()
         if self.hash_overwrite:
             c, o = self.hash_overwrite
-            new.hash_overwrite = (c, os.path.join(o, other))
-        new.path = os.path.join(new.path, other)
+            new.hash_overwrite = (c, f"{o}/{other}")
+        new.path = f"{new.path}/{other}"
         return new
 
     def size(self):
