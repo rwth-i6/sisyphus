@@ -279,12 +279,7 @@ class Path(AbstractPath):
 
     def join_right(self, other):
         """ Joins local path with given string using '/' """
-        new = self.copy()
-        if self.hash_overwrite:
-            c, o = self.hash_overwrite
-            new.hash_overwrite = (c, f"{o}/{other}")
-        new.path = f"{new.path}/{other}"
-        return new
+        return self.copy_append('/' + other)
 
     def size(self):
         """ Return file size if file exists, else return None """
