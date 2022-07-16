@@ -71,6 +71,21 @@ class AbstractPath(DelayedBase):
 
         self._available = available
 
+    @property
+    def hash_overwrite(self):
+        return self._hash_overwrite
+
+    @hash_overwrite.setter
+    def hash_overwrite(self, value):
+        if value is not None:
+            assert_msg = "sis_hash for path must be str or tuple of length 2"
+            if isinstance(value, tuple):
+                assert len(value) == 2, assert_msg
+            else:
+                assert isinstance(value, str), assert_msg
+                value = (None, value)
+        self._hash_overwrite = value
+
     def keep_value(self, value):
         if self.creator:
             self.creator.keep_value(value)
@@ -107,15 +122,7 @@ class AbstractPath(DelayedBase):
             creator = self.creator
             path = self.path
         else:
-            overwrite = self.hash_overwrite
-            assert_msg = "sis_hash for path must be str or tuple of length 2"
-            if isinstance(overwrite, tuple):
-                assert len(overwrite) == 2, assert_msg
-                creator, path = overwrite
-            else:
-                assert isinstance(overwrite, str), assert_msg
-                creator = None
-                path = overwrite
+            creator, path = self.hash_overwrite
         if hasattr(creator, '_sis_id'):
             creator = os.path.join(creator._sis_id(), gs.JOB_OUTPUT)
         return b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
@@ -264,12 +271,18 @@ class Path(AbstractPath):
     def copy_append(self, suffix):
         """ Returns a copy of this path with the given suffix appended to it """
         new = self.copy()
+        if self.hash_overwrite:
+            c, o = self.hash_overwrite
+            new.hash_overwrite = (c, o + suffix)
         new.path += suffix
         return new
 
     def join_right(self, other):
         """ Joins local path with given string using os.path.join """
         new = self.copy()
+        if self.hash_overwrite:
+            c, o = self.hash_overwrite
+            new.hash_overwrite = (c, os.path.join(o, other))
         new.path = os.path.join(new.path, other)
         return new
 

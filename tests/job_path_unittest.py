@@ -65,6 +65,29 @@ class PathTest(unittest.TestCase):
         self.assertEqual(path._sis_hash(),
                          b"(Path, (tuple, (str, 'foo'), (str, 'bar')))")
 
+    def test_hash_overwrite_modify(self):
+        path = Path('out', hash_overwrite='foo')
+        path_join = path.join_right('bar')
+        path_append = path.copy_append('bar')
+        self.assertEqual(path._sis_hash(),
+                         b"(Path, (tuple, (NoneType), (str, 'foo')))")
+        self.assertEqual(path_join._sis_hash(),
+                         b"(Path, (tuple, (NoneType), (str, 'foo/bar')))")
+        self.assertEqual(path_append._sis_hash(),
+                         b"(Path, (tuple, (NoneType), (str, 'foobar')))")
+
+        mjob = MockJob('test/me.1234')
+        path = Path('lm.gz', mjob, hash_overwrite=('foo', 'bar'))
+        path_join = path.join_right('baz')
+        path_append = path.copy_append('baz')
+
+        self.assertEqual(path._sis_hash(),
+                         b"(Path, (tuple, (str, 'foo'), (str, 'bar')))")
+        self.assertEqual(path_join._sis_hash(),
+                         b"(Path, (tuple, (str, 'foo'), (str, 'bar/baz')))")
+        self.assertEqual(path_append._sis_hash(),
+                         b"(Path, (tuple, (str, 'foo'), (str, 'barbaz')))")
+
     def test_pickle(self):
         def pickle_and_check(path):
             with tk.mktemp() as pickle_path:
