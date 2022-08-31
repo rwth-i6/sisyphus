@@ -89,6 +89,15 @@ def add_subparsers(parsers):
                                                    help='All config files that will be loaded')
     parser_remove_job_and_descendants.set_defaults(func=remove_job_and_descendants)
 
+    parser_setup_job_directory = sc_subparsers.add_parser(
+        "setup_job_directory",
+        help="setup a job that is marked as runnable manually"
+    )
+    parser_setup_job_directory.add_argument("--job", help="job path")
+    parser_setup_job_directory.add_argument('argv', metavar='ARGV', type=str, nargs='*',
+                                                   help='All config files that will be loaded')
+    parser_setup_job_directory.set_defaults(func=setup_job_directory)
+
 
 def clean_unused(args):
     if args.load_used_path:
@@ -178,6 +187,12 @@ def remove_job_and_descendants(args):
     call = ['console', '--script', '-c', 'tk.remove_job_and_descendants(%s)' % find] + args.argv
     call_sis(call)
 
+
+def setup_job_directory(args):
+    for conf_file in args.argv:
+        call = ['console', conf_file, '--script', '-c',
+                'tk.setup_job_directory(tk.sis_graph.find("%s")[0])' % (args.job)]
+        call_sis(call)
 
 def call_sis(call):
     p = subprocess.Popen(tk.gs.SIS_COMMAND + call, start_new_session=True)
