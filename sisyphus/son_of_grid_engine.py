@@ -332,7 +332,7 @@ class SonOfGridEngine(EngineBase):
             return self.queue_state()
 
         task_infos = defaultdict(list)
-        for job in etree.getiterator('job_list'):
+        for job in etree.iter('job_list'):
             job_info = {}
             for attr in job:
                 text = attr.text
