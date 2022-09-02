@@ -292,7 +292,7 @@ def cleanup_keep_value(min_keep_value, load_from: str = '', mode: str = 'remove'
         job_dirs = extract_keep_values_from_graph()
 
     to_remove = find_too_low_keep_value(job_dirs, min_keep_value)
-    remove_directories(to_remove, 'Keep value is too low', move_postfix='.cleanup', mode=mode, force=False)
+    remove_directories(to_remove, 'Remove jobs with lower keep value than min', move_postfix='.cleanup', mode=mode, force=False)
 
 
 def cleanup_unused(load_from: str = '', job_dirs=None):
