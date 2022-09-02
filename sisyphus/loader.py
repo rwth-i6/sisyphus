@@ -44,8 +44,6 @@ class ConfigManager:
         toolkit.set_root_block(filename)
 
         filename = filename.replace(os.path.sep, '.')  # allows to use tab completion for file selection
-        assert filename.split('.')[0] == "config", "Config files must be located in the config directory " \
-                                                   "or named config.py: " + filename
         assert all(part.isidentifier() for part in filename.split('.')), "Config name is invalid: %s" % filename
         module_name, function_name = filename.rsplit('.', 1)
         try:
