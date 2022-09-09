@@ -43,6 +43,11 @@ class ConfigManager:
 
         toolkit.set_root_block(filename)
 
+        # maybe remove import path prefix such as "recipe/"
+        for load_path in gs.IMPORT_PATHS:
+            if load_path.endswith('/') and filename.startswith(load_path):
+                filename = filename[len(load_path):]
+                break
         filename = filename.replace(os.path.sep, '.')  # allows to use tab completion for file selection
         assert all(part.isidentifier() for part in filename.split('.')), "Config name is invalid: %s" % filename
         module_name, function_name = filename.rsplit('.', 1)
