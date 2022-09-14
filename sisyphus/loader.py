@@ -69,18 +69,18 @@ class ConfigManager:
                 raise
             else:
                 if gs.WARNING_NO_FUNCTION_CALLED:
-                    logging.warning("No function named 'py' found in config file '%s'"
-                                    " (hide warning by setting WARNING_NO_FUNCTION_CALLED=False)" % config_name)
+                    logging.warning("No function named 'py' found in module '%s'"
+                                    " (hide warning by setting WARNING_NO_FUNCTION_CALLED=False)" % module_name)
         if f:
             res = f(*parameters)
 
         task = None
         if inspect.iscoroutine(res):
             # Run till the first await command is found
-            logging.info('Loading async config: %s' % config_name)
+            logging.info('Loading async config: %s (loaded module: %s)' % (config_name, module_name))
             task = self.loop.create_task(res)
         else:
-            logging.info('Loaded config: %s' % config_name)
+            logging.info('Loaded config: %s (loaded module: %s)' % (config_name, module_name))
 
         assert self.current_config
         self._config_readers.append((self.current_config, task))
