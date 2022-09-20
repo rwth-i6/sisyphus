@@ -856,7 +856,7 @@ class Job(metaclass=JobSingleton):
         return inputs
 
     def _sis_contains_required_inputs(self, required_inputs, include_job_path=False):
-        """ Returns true if all requiered inputs are used or created by this job
+        """ Returns true if all required inputs are used or created by this job
         :param required_inputs:
         :param include_job_path:
         :return:
