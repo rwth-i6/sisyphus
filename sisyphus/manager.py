@@ -422,10 +422,10 @@ class Manager(threading.Thread):
         else:
             self.thread_pool.map(f, self.jobs.get(gs.STATE_RUNNABLE, []))
 
-    def check_output(self, write_output=False, update_all_outputs=False):
+    def check_output(self, write_output=False, update_all_outputs=False, force_update=False):
         targets = self.sis_graph.targets if update_all_outputs else self.sis_graph.active_targets
         for target in targets:
-            target.update_requirements()
+            target.update_requirements(write_output=write_output, force=force_update)
             if target.is_done():
                 target.run_when_done(write_output=write_output)
                 self.sis_graph.remove_from_active_targets(target)
@@ -535,12 +535,12 @@ class Manager(threading.Thread):
             elif answer.lower() == 'y':
                 self.link_outputs = True
                 create_aliases(self.sis_graph.jobs())
-                self.check_output(write_output=self.link_outputs, update_all_outputs=True)
+                self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
                 break
             elif answer.lower() == 'u':
                 self.link_outputs = True
                 create_aliases(self.sis_graph.jobs())
-                self.check_output(write_output=self.link_outputs, update_all_outputs=True)
+                self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
             elif answer.lower() == 'n':
                 self.stop()
                 return False
@@ -611,7 +611,7 @@ class Manager(threading.Thread):
         self.job_engine.stop_engine()
         if self.job_cleaner:
             self.job_cleaner.close()
-        self.check_output(write_output=self.link_outputs, update_all_outputs=True)
+        self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
 
 
 def create_aliases(jobs):
