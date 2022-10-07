@@ -1,10 +1,10 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 
 setup(
     name='sisyphus',
     version='1.0.0',
-    packages=['sisyphus'],
+    packages=['sisyphus', 'sisyphus.templates'],
     license='Mozilla Public License Version 2.0',
     long_description=open('README.md').read(),
     author="Jan-Thorsten Peter",
