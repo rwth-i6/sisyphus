@@ -5,11 +5,12 @@ These settings can be overwritten via a ``settings.py`` file in the current dire
 
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
-import sys
+import importlib.util
 import logging
+import sys
+
 import sisyphus.hash
 from sisyphus.global_constants import *
-import os
 
 
 def engine():
@@ -317,72 +318,49 @@ LEGACY_VARIABLE_CONVERSION = False
 #: Raise an exception if a Variable is accessed which is not set yet
 RAISE_VARIABLE_NOT_SET_EXCEPTION = False
 
+# Parameter used for debugging or profiling
+MEMORY_PROFILE_LOG = None
+
+USE_UI = True
+
+# Set to False to disable Warning of unset engine
+ENGINE_NOT_SETUP_WARNING = True
 
 # Internal functions
-def update_global_settings_from_text(text, filename):
-    """
-    :param str text:
-    :param str filename:
-    :return: nothing
-    """
-    # create basically empty globals
-    globals_ = {
-        '__builtins__': globals()['__builtins__'],
-        '__file__': filename,
-        '__name__': filename,
-        '__package__': None,
-        '__doc__': None,
-    }
-    globals_keys = list(globals_.keys())
-
-    # it might be useful to change the default environment by modifying the existing set/dict
-    # thus we need to add it to the globals, but not to globals_keys
-    globals_['DEFAULT_ENVIRONMENT_KEEP'] = DEFAULT_ENVIRONMENT_KEEP
-    globals_['DEFAULT_ENVIRONMENT_SET'] = DEFAULT_ENVIRONMENT_SET
-
-    # compile is needed for a nice trace back
-    exec(compile(text, filename, "exec"), globals_)
-
-    for k, v in globals_.items():
-        if k not in globals_keys:
-            globals()[k] = v
-
-    if AUTO_SET_JOB_INIT_ATTRIBUTES:
-        import logging
-        logging.warning('AUTO_SET_JOB_INIT_ATTRIBUTES is deprecated, please set the attributes manually '
-                        'you might want to use self.set_attrs(locals())')
-
-
-def update_global_settings_from_file(filename):
-    """
-    :param str filename:
-    :return: nothing
-    """
-    # skip if settings file doesn't exist
-    globals()['GLOBAL_SETTINGS_FILE'] = filename
-
-    content = ''
-    try:
-        with open(filename, encoding='utf-8') as f:
-            content = f.read()
-    except IOError as e:
-        if e.errno != 2:
-            raise e
-
-    globals()['GLOBAL_SETTINGS_FILE_CONTENT'] = content
-    update_global_settings_from_text(content, filename)
-
-
-GLOBAL_SETTINGS_COMMANDLINE = []
 ENVIRONMENT_SETTINGS = {}
 ENVIRONMENT_SETTINGS_PREFIX = 'SIS_'
 
+#: Stores content of all given settings file allowing to log and recreate them if necessary
+GLOBAL_SETTINGS_FILE_CONTENT = ''
+
+
+def update_global_settings_from_file(filename):
+    """ Loads setting file and updates state of global_settings with its content
+
+    :param str filename:
+    :return: nothing
+    """
+    global GLOBAL_SETTINGS_FILE_CONTENT
+
+    try:
+        with open(filename, encoding='utf-8') as f:
+            content = f.read()
+    except FileNotFoundError as e:
+        import logging
+        logging.warning(f"Settings file '{filename}' does not exist, ignoring it ({e}).")
+    else:
+        exec(compile(content, filename, 'exec'), globals())
+        GLOBAL_SETTINGS_FILE_CONTENT += f"##### Settings file: {filename} #####\n{content}\n"
+
 
 def update_global_settings_from_env():
-    """
+    """ Updates global_settings from environment variables
     :return: nothing
     """
     from ast import literal_eval
+    global GLOBAL_SETTINGS_FILE_CONTENT
+
+    content = []
     for k, v in os.environ.items():
         if k.startswith(ENVIRONMENT_SETTINGS_PREFIX):
             ENVIRONMENT_SETTINGS[k] = v
@@ -396,15 +374,19 @@ def update_global_settings_from_env():
             if k == 'IMPORT_PATHS' and isinstance(v, str):
                 v = v.split(':')
             globals()[k] = v
+            content.append(f"{k} = {repr(v)}\n")
+
+    if content:
+        GLOBAL_SETTINGS_FILE_CONTENT += "##### Settings from environment #####\n" + ''.join(content)
 
 
-# Parameter used for debugging or profiling
-MEMORY_PROFILE_LOG = None
-
-USE_UI = True
-
-# Set to False to disable Warning of unset engine
-ENGINE_NOT_SETUP_WARNING = True
-
-update_global_settings_from_file(GLOBAL_SETTINGS_FILE_DEFAULT)
+GLOBAL_SETTINGS_FILE = os.environ.get(ENVIRONMENT_SETTINGS_PREFIX + 'GLOBAL_SETTINGS_FILE',
+                                      GLOBAL_SETTINGS_FILE_DEFAULT)
+for settings_file in GLOBAL_SETTINGS_FILE.split(':'):
+    if settings_file:
+        update_global_settings_from_file(settings_file)
 update_global_settings_from_env()
+
+if AUTO_SET_JOB_INIT_ATTRIBUTES:
+    logging.warning('AUTO_SET_JOB_INIT_ATTRIBUTES is deprecated, please set the attributes manually '
+                    'you might want to use self.set_attrs(locals())')
