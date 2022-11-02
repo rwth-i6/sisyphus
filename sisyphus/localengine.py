@@ -217,6 +217,8 @@ class LocalEngine(threading.Thread, EngineBase):
                     logging.warning(' Running task: %s %i PID: %s' % (task_name, task_id, value[0].pid))
 
     def submit_call(self, call, logpath, rqmt, name, task_name, task_ids):
+        if rqmt.get('parallel_tasks', None):
+            raise NotImplementedError('Parallel tasks are not implemented for local engine')
         # run one thread for each task id
         for task_id in task_ids:
             call_with_id = call[:] + [str(task_id)]
