@@ -148,6 +148,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         out.append('--time=%s' % task_time)
         out.append('--export=all')
 
+        if rqmt.get('parallel_tasks', None):
+            out.append('--ntasks=%s' % rqmt['parallel_tasks'])
+
         sbatch_args = rqmt.get('sbatch_args', [])
         if isinstance(sbatch_args, str):
             sbatch_args = sbatch_args.split()

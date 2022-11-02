@@ -52,7 +52,7 @@ def try_to_multiply(y, x, backup_value=None):
 
 class SonOfGridEngine(EngineBase):
 
-    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=None):
+    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=None, pe_name="mpi"):
         """
 
         :param dict default_rqmt: dictionary with the default rqmts
@@ -61,6 +61,7 @@ class SonOfGridEngine(EngineBase):
         :param list[str] ignore_jobs: list of job ids that will be ignored during status updates.
                                       Useful if a job is stuck inside of SGE and can not be deleted.
                                       Job should be listed as "job_number.task_id" e.g.: ['123.1', '123.2', '125.1']
+        :param str pe_name: used for parallel environment (PE), when parallel_tasks is set to rqmt
         """
         self._task_info_cache_last_update = 0
         self.gateway = gateway
@@ -69,6 +70,7 @@ class SonOfGridEngine(EngineBase):
         if ignore_jobs is None:
             ignore_jobs = []
         self.ignore_jobs = ignore_jobs
+        self.pe_name = pe_name
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -171,6 +173,10 @@ class SonOfGridEngine(EngineBase):
 
         out.append('-l')
         out.append('h_rt=%s' % task_time)
+
+        if rqmt.get('parallel_tasks', None):
+            out.extend(['-pe', self.pe_name, str(rqmt['parallel_tasks'])])
+
         qsub_args = rqmt.get('qsub_args', [])
         if isinstance(qsub_args, str):
             qsub_args = qsub_args.split()
