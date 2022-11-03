@@ -61,9 +61,9 @@ class SonOfGridEngine(EngineBase):
         :param list[str] ignore_jobs: list of job ids that will be ignored during status updates.
                                       Useful if a job is stuck inside of SGE and can not be deleted.
                                       Job should be listed as "job_number.task_id" e.g.: ['123.1', '123.2', '125.1']
-        :param str pe_name: used to select parallel environment (PE), when parallel_tasks is set in rqmt,
-                            as `-pe <pe_name> <parallel_tasks>`.
-                            The default "mpi" is somewhat arbitrarily choosen as we have it in our environment.
+        :param str pe_name: used to select parallel environment (PE), when multi_node_slots is set in rqmt,
+                            as `-pe <pe_name> <multi_node_slots>`.
+                            The default "mpi" is somewhat arbitrarily chosen as we have it in our environment.
         """
         self._task_info_cache_last_update = 0
         self.gateway = gateway
@@ -176,8 +176,8 @@ class SonOfGridEngine(EngineBase):
         out.append('-l')
         out.append('h_rt=%s' % task_time)
 
-        if rqmt.get('parallel_tasks', None):
-            out.extend(['-pe', self.pe_name, str(rqmt['parallel_tasks'])])
+        if rqmt.get('multi_node_slots', None):
+            out.extend(['-pe', self.pe_name, str(rqmt['multi_node_slots'])])
 
         qsub_args = rqmt.get('qsub_args', [])
         if isinstance(qsub_args, str):
