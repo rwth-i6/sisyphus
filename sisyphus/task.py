@@ -26,6 +26,9 @@ class Task(object):
                 "gpu": number of gpus
                 "mem": amount of memory, in GB
                 "time": amount of time, in hours
+                "multi_node_slots": amount of slots, distributed potentially over multiple nodes.
+                                    E.g. maps to `--ntasks <multi_node_slots>` parameter for Slurm,
+                                    and to `-pe <pe_name> <multi_node_slots>` for SGE (SGE parallel environment (PE)).
         :param typing.Sequence[typing.Union[typing.List[object],object]] args: job arguments
         :param bool mini_task: will be run on engine for short jobs if True
         :param (dict[str],dict[str])->dict[str] update_rqmt: function to update job requirements for interrupted jobs
