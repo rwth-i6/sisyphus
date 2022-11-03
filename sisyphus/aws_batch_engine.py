@@ -133,8 +133,8 @@ class AWSBatchEngine(EngineBase):
         # TODO time
         # time = rqmt.get('mem', 1)
 
-        if rqmt.get('parallel_tasks', None):
-            raise NotImplementedError('Parallel tasks are not implemented for AWS Batch')
+        if rqmt.get('multi_node_slots', None):
+            raise NotImplementedError('Multi-node slots are not implemented for AWS Batch')
 
         for task_id in task_ids:
             call_with_id = call[:] + [str(task_id)]

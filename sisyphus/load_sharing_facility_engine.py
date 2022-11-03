@@ -115,8 +115,8 @@ class LoadSharingFacilityEngine(EngineBase):
 
         out.append('-W %s' % task_time)
 
-        if rqmt.get('parallel_tasks', None):
-            raise NotImplementedError('Parallel tasks are not implemented for LSF')
+        if rqmt.get('multi_node_slots', None):
+            raise NotImplementedError('Multi-node slots are not implemented for LSF')
 
         bsub_args = rqmt.get('bsub_args', [])
         if isinstance(bsub_args, str):
