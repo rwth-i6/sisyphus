@@ -37,6 +37,9 @@ class DelayedBase:
     def __rmul__(self, other):
         return DelayedMul(other, self)
 
+    def __truediv__(self, other):
+        return DelayedDiv(self, other)
+
     def __mod__(self, other):
         return DelayedMod(self, other)
 
@@ -94,6 +97,9 @@ class DelayedMul(DelayedBase):
     def get(self):
         return try_get(self.a) * try_get(self.b)
 
+class DelayedDiv(DelayedBase):
+    def get(self):
+        return try_get(self.a) / try_get(self.b)
 
 class DelayedMod(DelayedBase):
     def get(self):
