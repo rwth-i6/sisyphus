@@ -186,3 +186,18 @@ class DelayedSlice(DelayedBase):
     def get(self):
         return try_get(self.iterable)[try_get(self.index_start):try_get(self.index_end):try_get(self.step)]
 
+
+class DelayedJoin(DelayedBase):
+
+    def __init__(self, iterable, separator):
+        """
+
+        :param Iterable[DelayedBase|str] iterable:
+        :param str separator:
+        """
+        self.iterable = iterable
+        self.separator = separator
+
+    def get(self):
+        return self.separator.join([try_get(obj) for obj in self.iterable])
+

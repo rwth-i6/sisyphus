@@ -57,20 +57,34 @@ class AbstractPath(DelayedBase):
                                         Gets path as input and must be pickleable
         """
 
-        if path.startswith(os.path.abspath('.')) and gs.WARNING_ABSPATH:
+        if gs.WARNING_ABSPATH and path.startswith(gs.BASE_DIR) and not hash_overwrite:
             logging.warning('Creating absolute path inside current work directory: %s '
                             '(disable with WARNING_ABSPATH=False)' % path)
         assert isinstance(path, str)
         self.creator = creator
         self.users = set()
 
-        assert not isinstance(creator, str)
         self.path = path
         self.cached = cached
         self.hash_overwrite = hash_overwrite
         self._tags = tags
 
         self._available = available
+
+    @property
+    def hash_overwrite(self):
+        return self._hash_overwrite
+
+    @hash_overwrite.setter
+    def hash_overwrite(self, value):
+        if value is not None:
+            assert_msg = "sis_hash for path must be str or tuple of length 2"
+            if isinstance(value, tuple):
+                assert len(value) == 2, assert_msg
+            else:
+                assert isinstance(value, str), assert_msg
+                value = (None, value)
+        self._hash_overwrite = value
 
     def keep_value(self, value):
         if self.creator:
@@ -84,8 +98,6 @@ class AbstractPath(DelayedBase):
     def tags(self):
         if self._tags is None:
             if self.creator is None:
-                return set()
-            elif isinstance(self.creator, str):
                 return set()
             else:
                 return self.creator.tags
@@ -106,22 +118,13 @@ class AbstractPath(DelayedBase):
         self.users.add(user)
 
     def _sis_hash(self):
-        assert not isinstance(self.creator, str)
         if self.hash_overwrite is None:
             creator = self.creator
             path = self.path
         else:
-            overwrite = self.hash_overwrite
-            assert_msg = "sis_hash for path must be str or tuple of length 2"
-            if isinstance(overwrite, tuple):
-                assert len(overwrite) == 2, assert_msg
-                creator, path = overwrite
-            else:
-                assert isinstance(overwrite, str), assert_msg
-                creator = None
-                path = overwrite
+            creator, path = self.hash_overwrite
         if hasattr(creator, '_sis_id'):
-            creator = os.path.join(self.creator._sis_id(), gs.JOB_OUTPUT)
+            creator = f"{creator._sis_id()}/{gs.JOB_OUTPUT}"
         return b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
 
     @finished_results_cache.caching(get_key=lambda self, debug_info=None: ('available', self.rel_path()))
@@ -135,7 +138,7 @@ class AbstractPath(DelayedBase):
             return self._available(self)
 
         path = self.get_path()
-        if self.creator is None or isinstance(self.creator, str):
+        if self.creator is None:
             return os.path.isfile(path) or os.path.isdir(path)
         else:
             job_path_available = self.creator.path_available(self)
@@ -150,7 +153,6 @@ class AbstractPath(DelayedBase):
     # TODO Move this to toolkit cleanup together with job method
     def get_needed_jobs(self, visited):
         """ Return all jobs leading to this path """
-        assert(not isinstance(self.creator, str)), "This should only occur during running of worker"
         if self.creator is None:
             return set()
         else:
@@ -164,12 +166,7 @@ class AbstractPath(DelayedBase):
         if self.creator is None:
             return self.path
         else:
-            # creator path is in work dir
-            if isinstance(self.creator, str):
-                creator_path = os.path.join(self.creator, gs.JOB_OUTPUT)
-            else:
-                creator_path = self.creator._sis_path(gs.JOB_OUTPUT)
-            return os.path.join(creator_path, self.path)
+            return f"{self.creator._sis_path(gs.JOB_OUTPUT)}/{self.path}"
 
     def get_path(self) -> str:
         """
@@ -180,7 +177,7 @@ class AbstractPath(DelayedBase):
         if os.path.isabs(path):
             return path
         else:
-            return os.path.join(gs.BASE_DIR, path)
+            return f"{gs.BASE_DIR}/{path}"
 
     def get_cached_path(self) -> str:
         if Path.cacheing_enabled and self.cached:
@@ -274,14 +271,15 @@ class Path(AbstractPath):
     def copy_append(self, suffix):
         """ Returns a copy of this path with the given suffix appended to it """
         new = self.copy()
+        if self.hash_overwrite:
+            c, o = self.hash_overwrite
+            new.hash_overwrite = (c, o + suffix)
         new.path += suffix
         return new
 
     def join_right(self, other):
-        """ Joins local path with given string using os.path.join """
-        new = self.copy()
-        new.path = os.path.join(new.path, other)
-        return new
+        """ Joins local path with given string using '/' """
+        return self.copy_append('/' + other)
 
     def size(self):
         """ Return file size if file exists, else return None """

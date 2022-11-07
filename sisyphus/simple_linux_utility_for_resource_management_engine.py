@@ -148,6 +148,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         out.append('--time=%s' % task_time)
         out.append('--export=all')
 
+        if rqmt.get('multi_node_slots', None):
+            out.append('--ntasks=%s' % rqmt['multi_node_slots'])
+
         sbatch_args = rqmt.get('sbatch_args', [])
         if isinstance(sbatch_args, str):
             sbatch_args = sbatch_args.split()

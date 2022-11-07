@@ -4,4 +4,4 @@ repos:
     hooks:
     - id: flake8
 default_language_version:
-   python: python3.5
+   python: python3.6

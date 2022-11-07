@@ -7,7 +7,7 @@ A workflow manager in Python.
 
 ## Requirements
 
-Sisyphus requires a Python >=3.5 installation with the following additional libraries:
+Sisyphus requires a Python >=3.6 installation with the following additional libraries:
 
     pip3 install -r requirements.txt
 

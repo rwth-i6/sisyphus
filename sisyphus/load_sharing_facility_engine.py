@@ -114,6 +114,10 @@ class LoadSharingFacilityEngine(EngineBase):
         task_time = try_to_multiply(rqmt['time'], 60)  # convert to minutes if possible
 
         out.append('-W %s' % task_time)
+
+        if rqmt.get('multi_node_slots', None):
+            raise NotImplementedError('Multi-node slots are not implemented for LSF')
+
         bsub_args = rqmt.get('bsub_args', [])
         if isinstance(bsub_args, str):
             bsub_args = bsub_args.split()

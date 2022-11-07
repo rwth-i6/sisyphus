@@ -132,6 +132,10 @@ class AWSBatchEngine(EngineBase):
         mem = int(rqmt.get('mem', 1) * 1024)  # AWS uses MiB
         # TODO time
         # time = rqmt.get('mem', 1)
+
+        if rqmt.get('multi_node_slots', None):
+            raise NotImplementedError('Multi-node slots are not implemented for AWS Batch')
+
         for task_id in task_ids:
             call_with_id = call[:] + [str(task_id)]
 

@@ -37,7 +37,7 @@ class OutputTarget:
         self.required_full_list = sorted(list(self._required))
         self.name = name
 
-    def update_requirements(self):
+    def update_requirements(self, write_output=True, force=False):
         self._required = {out for out in self._required if not out.available()}
 
     @property
@@ -157,9 +157,9 @@ class OutputReport(OutputTarget):
         self._required = extract_paths(self._report_values)
         self.required_full_list = sorted(list(self._required))
 
-    def update_requirements(self, write_output=True):
+    def update_requirements(self, write_output=True, force=False):
         """ Update current report if enough time as passed since last update """
-        if time.time() - self._last_update < self._update_frequency:
+        if not force and time.time() - self._last_update < self._update_frequency:
             return
         else:
             self._last_update = time.time()
@@ -489,69 +489,77 @@ class SISGraph(object):
                     if path.creator:
                         nodes.append(path.creator)
 
+        if gs.GRAPH_WORKER == 1:
+            visited_set = set()
+            visited_list = []
+            queue = list(reversed(nodes))
+            while queue:
+                job = queue.pop(-1)
+                if id(job) in visited_set:
+                    continue
+                visited_set.add(id(job))
+                job._sis_runnable()
+
+                if bottom_up:
+                    # execute in reverse order at the end
+                    visited_list.append(job)
+                else:
+                    res = f(job)
+                    # Stop if function has a not None but false return value
+                    if res is not None and not res:
+                        continue
+
+                for path in job._sis_inputs:
+                    if path.creator:
+                        if id(path.creator) not in visited_set:
+                            queue.append(path.creator)
+
+            if bottom_up:
+                for job in reversed(visited_list):
+                    f(job)
+
+            return visited_set
+
         visited = {}
         finished = 0
 
-        if gs.GRAPH_WORKER == 1:
-            # Run in main thread if only one graph worker is given anyway
-            def runner(job):
-                """
-                :param Job job:
-                """
-                # make sure all inputs are updated
-                job._sis_runnable()
+        pool_lock = threading.Lock()
+        finished_lock = threading.Lock()
+        pool = self.pool
 
-                if bottom_up:
+        # recursive function to run through tree
+        def runner(job):
+            """
+            :param Job job:
+            """
+            sis_id = job._sis_id()
+            with pool_lock:
+                if sis_id not in visited:
+                    visited[sis_id] = pool.apply_async(
+                        tools.default_handle_exception_interrupt_main_thread(runner_helper), (job,))
+
+        def runner_helper(job):
+            """
+            :param Job job:
+            """
+            # make sure all inputs are updated
+            job._sis_runnable()
+            nonlocal finished
+
+            if bottom_up:
+                for path in job._sis_inputs:
+                    if path.creator:
+                        runner(path.creator)
+                f(job)
+            else:
+                res = f(job)
+                # Stop if function has a not None but false return value
+                if res is None or res:
                     for path in job._sis_inputs:
                         if path.creator:
                             runner(path.creator)
-                    f(job)
-                else:
-                    res = f(job)
-                    # Stop if function has a not None but false return value
-                    if res is None or res:
-                        for path in job._sis_inputs:
-                            if path.creator:
-                                runner(path.creator)
-
-        else:
-            pool_lock = threading.Lock()
-            finished_lock = threading.Lock()
-            pool = self.pool
-
-            # recursive function to run through tree
-            def runner(job):
-                """
-                :param Job job:
-                """
-                sis_id = job._sis_id()
-                with pool_lock:
-                    if sis_id not in visited:
-                        visited[sis_id] = pool.apply_async(
-                            tools.default_handle_exception_interrupt_main_thread(runner_helper), (job,))
-
-            def runner_helper(job):
-                """
-                :param Job job:
-                """
-                # make sure all inputs are updated
-                job._sis_runnable()
-                nonlocal finished
-
-                if bottom_up:
-                    for path in job._sis_inputs:
-                        if path.creator:
-                            runner(path.creator)
-                    f(job)
-                else:
-                    res = f(job)
-                    # Stop if function has a not None but false return value
-                    if res is None or res:
-                        for path in job._sis_inputs:
-                            if path.creator:
-                                runner(path.creator)
-                with finished_lock:
-                    finished += 1
+            with finished_lock:
+                finished += 1
 
         for node in nodes:
             runner(node)

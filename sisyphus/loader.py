@@ -43,9 +43,12 @@ class ConfigManager:
 
         toolkit.set_root_block(filename)
 
+        # maybe remove import path prefix such as "recipe/"
+        for load_path in gs.IMPORT_PATHS:
+            if load_path.endswith('/') and filename.startswith(load_path):
+                filename = filename[len(load_path):]
+                break
         filename = filename.replace(os.path.sep, '.')  # allows to use tab completion for file selection
-        assert filename.split('.')[0] == "config", "Config files must be located in the config directory " \
-                                                   "or named config.py: " + filename
         assert all(part.isidentifier() for part in filename.split('.')), "Config name is invalid: %s" % filename
         module_name, function_name = filename.rsplit('.', 1)
         try:
@@ -66,18 +69,18 @@ class ConfigManager:
                 raise
             else:
                 if gs.WARNING_NO_FUNCTION_CALLED:
-                    logging.warning("No function named 'py' found in config file '%s'"
-                                    " (hide warning by setting WARNING_NO_FUNCTION_CALLED=False)" % config_name)
+                    logging.warning("No function named 'py' found in module '%s'"
+                                    " (hide warning by setting WARNING_NO_FUNCTION_CALLED=False)" % module_name)
         if f:
             res = f(*parameters)
 
         task = None
         if inspect.iscoroutine(res):
             # Run till the first await command is found
-            logging.info('Loading async config: %s' % config_name)
+            logging.info('Loading async config: %s (loaded module: %s)' % (config_name, module_name))
             task = self.loop.create_task(res)
         else:
-            logging.info('Loaded config: %s' % config_name)
+            logging.info('Loaded config: %s (loaded module: %s)' % (config_name, module_name))
 
         assert self.current_config
         self._config_readers.append((self.current_config, task))
