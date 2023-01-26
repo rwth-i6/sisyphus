@@ -45,7 +45,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         PER_NODE = "per_node"
 
     def __init__(self, default_rqmt, gateway=None, has_memory_resource=True, auto_clean_eqw=True,
-                 ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_CPU):
+                 ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_NODE):
         """
 
         :param dict default_rqmt: dictionary with the default rqmts
