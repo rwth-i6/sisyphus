@@ -35,7 +35,10 @@ Sisyphus requires a Python >=3.6 installation with the following additional libr
 
 ## Setup
 
-* Add `sis` to the `PATH` env, or symlink it, or call it directly.
+* After the requirements are installed, install `sis`. This can be done with
+  ```
+  pip3 install git+https://github.com/rwth-i6/sisyphus.git
+  ```
 * The current directory (`pwd`), when you run `sis`, should have a file `settings.py` (see `example` dir).
 * Create a directory `work` in the current dir.
   All data created while running the jobs will be stored there.
@@ -49,9 +52,9 @@ Sisyphus requires a Python >=3.6 installation with the following additional libr
 Can be found here: [sisyphus-workflow-manager.readthedocs.io](https://sisyphus-workflow-manager.readthedocs.io/).
 
 
-# Example 
+# Example
 
-A short toy workflow example is given in the example directory. 
+A short toy workflow example is given in the example directory.
 
 To run sisyphus on the example workflow change into the `/example` directory and run `../sis manager`
 
