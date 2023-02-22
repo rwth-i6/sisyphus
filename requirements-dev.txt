@@ -1,4 +1,7 @@
-psutil
-ipython
+better_exchook
 flake8
+Sphinx
+sphinx-rtd-theme
+sphinxcontrib-mermaid
 tox
+urwid
