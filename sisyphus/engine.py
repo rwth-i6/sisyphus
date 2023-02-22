@@ -172,8 +172,8 @@ class EngineBase:
             if key not in rqmt_to_ids:
                 rqmt_to_ids[key] = (rqmt, set())
             rqmt_, ids = rqmt_to_ids[key]
-            assert(task_id not in ids)
-            assert(rqmt == rqmt_)
+            assert task_id not in ids
+            assert rqmt == rqmt_
             ids.add(task_id)
 
         # the actuary job submitting part

@@ -194,4 +194,3 @@ class DelayedJoin(DelayedBase):
 
     def get(self):
         return self.separator.join([try_get(obj) for obj in self.iterable])
-

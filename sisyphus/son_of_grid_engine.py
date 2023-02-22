@@ -102,7 +102,7 @@ class SonOfGridEngine(EngineBase):
             o = o.split(b'\n')
             if o[-1] != b'':
                 print(o[-1])
-                assert(False)
+                assert False
             return o[:-1]
 
         out = fix_output(out)
@@ -282,8 +282,8 @@ class SonOfGridEngine(EngineBase):
                 self.reset_cache()
             else:
                 sjob_id = sout[2].decode().split('.')
-                assert(len(sjob_id) == 2)
-                assert(sjob_id[1] == '%i-%i:%i' % (start_id, end_id, step_size))
+                assert len(sjob_id) == 2
+                assert sjob_id[1] == '%i-%i:%i' % (start_id, end_id, step_size)
                 job_id = sjob_id[0]
 
                 logging.info("Submitted with job_id: %s %s" % (job_id, name))

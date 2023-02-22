@@ -49,7 +49,7 @@ def str_to_GB(m):
         elif m[-1] == 'K':
             m = float(m[:-1]) / 1024. / 1024.
         else:
-            assert(False)
+            assert False
     return m
 
 
@@ -64,7 +64,7 @@ def str_to_hours(t):
         t = float(t)
     except ValueError:
         t = t.split(':')
-        assert(len(t) == 3)
+        assert len(t) == 3
         t = int(t[0]) * 3600 + int(t[1]) * 60 + int(t[2])
         t /= 3600.0
     return t

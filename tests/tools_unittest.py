@@ -27,7 +27,7 @@ class ExecuteInDir(unittest.TestCase):
         try:
             with execute_in_dir(recipe_test_dir):
                 self.assertEqual(os.path.join(cwd, recipe_test_dir), os.getcwd())
-                assert(False)
+                assert False
         except AssertionError:
             self.assertEqual(cwd, os.getcwd())
         self.assertEqual(cwd, os.getcwd())

@@ -61,7 +61,7 @@ class LoadSharingFacilityEngine(EngineBase):
             o = o.split(b'\n')
             if o[-1] != b'':
                 print(o[-1])
-                assert(False)
+                assert False
             return o[:-1]
 
         out = fix_output(out)
@@ -150,7 +150,7 @@ class LoadSharingFacilityEngine(EngineBase):
                     job_id = self.submit_helper(call, logpath, rqmt, name, task_name, submitstring[:-1])
                     submitted.append((submitlist, job_id))
                     entrycounter, submitstring, submitlist = (0, '', [])
-        assert(start_id is not None)
+        assert start_id is not None
         if end_id is None:
             end_id = start_id
         submitstring += '%i-%i,' % (start_id, end_id)

@@ -114,7 +114,7 @@ def input_path(path: Union[Path, str]) -> Path:
     if isinstance(path, str):
         return Path(path)
     else:
-        assert(isinstance(path, Path))
+        assert isinstance(path, Path)
         return path
 
 
