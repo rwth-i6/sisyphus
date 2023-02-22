@@ -2,7 +2,6 @@
 
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 import collections
-from sisyphus.hash import *
 import enum
 import functools
 import inspect

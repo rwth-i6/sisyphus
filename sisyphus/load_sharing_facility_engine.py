@@ -6,8 +6,6 @@ import subprocess
 import time
 import logging
 
-import getpass  # used to get username
-
 from collections import defaultdict, namedtuple
 
 import sisyphus.global_settings as gs
