@@ -9,8 +9,8 @@ setup(
     author="Jan-Thorsten Peter",
     author_email="jtpeter@apptek.com",
     url="https://github.com/rwth-i6/sisyphus",
-    install_requires=['psutil', 'flask'],
-    entry_points = {
-        "console_scripts": ["sisyphus=sisyphus.__main__:main","sis=sisyphus.__main__:main"]
+    install_requires=['psutil', 'flask', 'ipython'],
+    entry_points={
+        "console_scripts": ["sisyphus=sisyphus.__main__:main", "sis=sisyphus.__main__:main"]
     }
 )
