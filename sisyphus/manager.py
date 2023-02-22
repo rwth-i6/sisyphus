@@ -64,7 +64,7 @@ def manager(args):
     # try to load fuse filesystem
     filesystem = None
     if args.filesystem:
-        warnings.warn("The filesystem is planed to be removed. Let the authors know if you still need it!",
+        warnings.warn("The filesystem is planned to be removed. Let the authors know if you still need it!",
                       category=DeprecationWarning)
         import sisyphus.filesystem as filesystem
 
