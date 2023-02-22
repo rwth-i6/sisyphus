@@ -73,7 +73,7 @@ def visualize_block(block, engine, vis_url_prefix):
         return False, 'Failed to create visual representation. The graph contains more than %i nodes which exceeds ' \
                       'the limit of %i (VIS_MAX_NODES_PER_VIEW)' % (len(merged_labels), gs.VIS_MAX_NODES_PER_VIEW)
 
-    merged_links = set((merge_inputs_mapping[l[0]], l[1]) for l in links)
+    merged_links = set((merge_inputs_mapping[link[0]], link[1]) for link in links)
     merged_counts = collections.Counter(dict((merge_inputs_mapping[k], v) for k, v in counts.items()))
 
     # output inputs and the links from the creators to the inputs
@@ -84,12 +84,12 @@ def visualize_block(block, engine, vis_url_prefix):
 
     # output input-links
     common_inputs = set()
-    for l in merged_links:
-        if merged_counts[l[0]] <= gs.VIS_RELATIVE_MERGE_THRESHOLD * len(block.filtered_children()) or \
-           merged_counts[l[0]] <= gs.VIS_ABSOLUTE_MERGE_THRESHOLD:
-            result.append('"%s" -> "%s";\n' % l)
+    for link in merged_links:
+        if merged_counts[link[0]] <= gs.VIS_RELATIVE_MERGE_THRESHOLD * len(block.filtered_children()) or \
+           merged_counts[link[0]] <= gs.VIS_ABSOLUTE_MERGE_THRESHOLD:
+            result.append('"%s" -> "%s";\n' % link)
         else:
-            common_inputs.add(l[0])
+            common_inputs.add(link[0])
 
     # output common-inputs
     if len(common_inputs) > 0:

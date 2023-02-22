@@ -90,7 +90,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             o = o.split(b'\n')
             if o[-1] != b'':
                 print(o[-1])
-                assert(False)
+                assert False
             return o[:-1]
 
         out = fix_output(out)
