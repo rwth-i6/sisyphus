@@ -133,8 +133,6 @@ def file_caching(path):
 # Experimental settings
 # Add tags attached to job to work path, currently not active maintained
 JOB_USE_TAGS_IN_PATH = False
-# Start kernel to connect remotely, currently not active maintained
-START_KERNEL = False
 # Link all computed outputs to this directory for easy sharing in a team
 TEAM_SHARE_DIR = None  # If set results will be linked to this directory
 
