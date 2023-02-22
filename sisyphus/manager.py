@@ -113,13 +113,6 @@ def manager(args):
         else:
             manager.unpause()
 
-        kernel_connect_file = None
-        if gs.START_KERNEL:
-            kernel_connect_file = init_IPython_kernel(user_ns={'manager': manager,
-                                                               'job_engine': job_engine,
-                                                               'tk': toolkit,
-                                                               'sis_graph': sis_graph})
-
         try:
             if args.filesystem:
                 # Start main loop
@@ -140,11 +133,6 @@ def manager(args):
                 manager.run()
         except KeyboardInterrupt:
             logging.info('Got user interrupt signal stop engine and exit')
-            if kernel_connect_file:
-                try:
-                    os.remove(kernel_connect_file)
-                except (IOError, OSError):
-                    pass
 
             # Print traceback in debug mode
             if logging.root.isEnabledFor(logging.DEBUG):
@@ -667,46 +655,3 @@ def start_http_server(sis_graph, sis_engine, port, thread=True):
                              sis_engine=sis_engine,
                              port=port,
                              thread=thread)
-
-
-def init_IPython_kernel(user_ns={}):
-    try:
-        from ipykernel.kernelapp import IPKernelApp
-        import atexit
-        import socket
-
-        ip = socket.gethostbyname(socket.gethostname())
-        connection_file = "%s/ipython-kernel-%s-%s.json" % (os.path.abspath('.'), ip, os.getpid())
-
-        def cleanup_connection_file():
-            try:
-                os.remove(connection_file)
-            except (IOError, OSError):
-                pass
-        atexit.register(cleanup_connection_file)
-    except Exception as e:
-        logging.error("Error while loading IPython kernel, continue without. %s" % e)
-        return
-    try:
-        app = IPKernelApp.instance(user_ns=user_ns)
-
-        # disable signals since they need to run in the main thread
-        app.init_signal = lambda: None
-        app.initialize(['-f', connection_file])
-        app.kernel.pre_handler_hook = lambda: None
-        app.kernel.post_handler_hook = lambda: None
-        from IPython.core.autocall import ZMQExitAutocall
-
-        class KeepAlive(ZMQExitAutocall):
-            def __call__(self):
-                super().__call__(True)
-        app.shell.exiter = KeepAlive()
-
-        # start thread
-        thread = threading.Thread(target=app.start)
-        thread.daemon = True
-        thread.start()
-        return connection_file
-    except Exception as e:
-        logging.error("Error while starting IPython kernel, continue without. %s" % e)
-        return
