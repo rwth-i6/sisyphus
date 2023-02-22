@@ -2,8 +2,9 @@ import asyncio
 import logging
 import os
 import sys
-import time
 import threading
+import time
+import warnings
 
 from multiprocessing.pool import ThreadPool
 
@@ -63,6 +64,8 @@ def manager(args):
     # try to load fuse filesystem
     filesystem = None
     if args.filesystem:
+        warnings.warn("The filesystem is planed to be removed. Let the authors know if you still need it!",
+                      category=DeprecationWarning)
         import sisyphus.filesystem as filesystem
 
     # Ensure this thread has a event loop
