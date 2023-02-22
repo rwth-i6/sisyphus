@@ -7,7 +7,8 @@ import unittest
 import collections
 
 from sisyphus import job_path
-from sisyphus.tools import execute_in_dir, cache_result, sis_hash, sis_hash_helper, hardlink_or_copy
+from sisyphus.tools import execute_in_dir, cache_result, sis_hash, hardlink_or_copy
+from sisyphus.hash import sis_hash_helper
 import sisyphus.global_settings as gs
 
 sys.path.append(gs.TEST_DIR)
