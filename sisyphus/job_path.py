@@ -4,6 +4,7 @@ import os
 import logging
 import gzip
 import pickle
+import warnings
 from functools import wraps
 
 import sisyphus.tools as tools
@@ -191,7 +192,7 @@ class AbstractPath(DelayedBase):
 
     def __lt__(self, other):
         """
-        Define smaller then other by first comparing the creator sis id, next the path
+        Define smaller than other by first comparing the creator sis id, next the path
 
         :param other:
         :return:
@@ -264,12 +265,13 @@ class Path(AbstractPath):
             return '<Path %s>' % self.get_path()
 
     def copy(self):
+        """ Creates a copy of this Path """
         new = Path('')
         new.__setstate__(self.__getstate__())
         return new
 
     def copy_append(self, suffix):
-        """ Returns a copy of this path with the given suffix appended to it """
+        """ Returns a copy of this Path with the given suffix appended to it and updates hash_overwrite"""
         new = self.copy()
         if self.hash_overwrite:
             c, o = self.hash_overwrite
@@ -278,26 +280,33 @@ class Path(AbstractPath):
         return new
 
     def join_right(self, other):
-        """ Joins local path with given string using '/' """
+        """ Returns copy of local Path joined with given string using '/' and updates hash_overwrite"""
         return self.copy_append('/' + other)
 
     def size(self):
-        """ Return file size if file exists, else return None """
+        """ DEPRECATED: Return file size if file exists, else return None """
+        warnings.warn("Path.size() is deprecated, accessing files should be done explicitly",
+                      category=DeprecationWarning)
+
         assert self.available(), "Path not ready: %s" % str(self.get_path())
         return os.path.getsize(self.get_path())
 
     def estimate_text_size(self):
-        """ Returns estimated size of a text file
+        """ DEPRECATED: Returns rough estimated size of a text file
         file is not zipped => return original size
         file is zipped => multiply size by 3.5
         """
+        warnings.warn("Path.estimate_text_size() is deprecated, accessing files should be done explicitly",
+                      category=DeprecationWarning)
         if self.is_zipped():
             return int(self.size() * 3.5)
         else:
             return self.size()
 
     def lines(self):
-        """ Returns the number of lines in file """
+        """ DEPRECATED: Returns the number of lines in file """
+        warnings.warn("Path.lines() is deprecated, accessing files should be done explicitly",
+                      category=DeprecationWarning)
 
         if self.is_zipped():
             f = gzip.open(str(self))
@@ -309,12 +318,14 @@ class Path(AbstractPath):
         return i
 
     def is_zipped(self):
-        """ Returns if file is zipped:
+        """ DEPRECATED: Returns if file is zipped:
 
         Returns:
         None if file doesn't exists
         true if file is zipped
         false otherwise"""
+        warnings.warn("Path.is_zipped() is deprecated, accessing files should be done explicitly",
+                      category=DeprecationWarning)
 
         if not self.available():
             return None
