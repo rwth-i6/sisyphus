@@ -5,7 +5,6 @@ These settings can be overwritten via a ``settings.py`` file in the current dire
 
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
-import importlib.util
 import logging
 import sys
 

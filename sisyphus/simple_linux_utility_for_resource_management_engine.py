@@ -8,12 +8,10 @@ import math
 import os
 import subprocess
 import time
-from xml.dom import minidom
-import xml.etree.cElementTree
 
 import sisyphus.global_settings as gs
 from sisyphus.engine import EngineBase
-from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE, STATE_QUEUE_ERROR
+from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE
 
 ENGINE_NAME = 'slurm'
 TaskInfo = namedtuple('TaskInfo', ["job_id", "task_id", "state"])

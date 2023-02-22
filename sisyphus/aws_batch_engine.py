@@ -19,14 +19,10 @@ import json
 import time
 import logging
 
-import getpass  # used to get username
-import math
 import threading
 from multiprocessing.pool import ThreadPool
 
-from xml.dom import minidom
-import xml.etree.cElementTree
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 
 import sisyphus.global_settings as gs
 from sisyphus.engine import EngineBase

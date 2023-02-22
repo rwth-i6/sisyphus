@@ -7,9 +7,9 @@ import pickle
 import warnings
 from functools import wraps
 
-import sisyphus.tools as tools
 import sisyphus.global_settings as gs
 from sisyphus.delayed_ops import DelayedBase
+from sisyphus.hash import sis_hash_helper
 from sisyphus.tools import finished_results_cache
 
 
@@ -126,7 +126,7 @@ class AbstractPath(DelayedBase):
             creator, path = self.hash_overwrite
         if hasattr(creator, '_sis_id'):
             creator = f"{creator._sis_id()}/{gs.JOB_OUTPUT}"
-        return b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
+        return b'(Path, ' + sis_hash_helper((creator, path)) + b')'
 
     @finished_results_cache.caching(get_key=lambda self, debug_info=None: ('available', self.rel_path()))
     def available(self, debug_info=None):
