@@ -518,6 +518,22 @@ def job_info(job: Job):
     print("Work dir: %s" % job._sis_path(gs.WORK_DIR))
 
 
+def show_jobs_in_webserver(port: int, jobs: List[Job]):
+    """ Start web server on given port which displays given loaded jobs """
+    from sisyphus import http_server
+
+    web_graph = graph.SISGraph()
+    for job in jobs:
+        if job._sis_outputs:
+            output = next(iter(job._sis_outputs.values()))
+            web_graph.add_target(graph.OutputPath(str(job), output))
+        else:
+            print(f"Skipping {job} since this job has no output")
+    engine = cached_engine()
+    engine.start_engine()
+    http_server.start(sis_graph=web_graph, sis_engine=engine, port=port, thread=False)
+
+
 def print_graph(targets=None, required_inputs=None):
     visited = {}
     # create dictionary with available paths
