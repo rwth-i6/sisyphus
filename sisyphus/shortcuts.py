@@ -89,6 +89,15 @@ def add_subparsers(parsers):
                                                    help='All config files that will be loaded')
     parser_remove_job_and_descendants.set_defaults(func=remove_job_and_descendants)
 
+    parser_show_jobs_in_webserver = sc_subparsers.add_parser(
+        'show_jobs_in_webserver',
+        help="Start webserver which shows all given jobs")
+    parser_show_jobs_in_webserver.add_argument("--port", required=True,
+                                               help="Port for webserver to listen on")
+    parser_show_jobs_in_webserver.add_argument("--job", default=[], action='append',
+                                               help="path to job directory, can be given multiple times")
+    parser_show_jobs_in_webserver.set_defaults(func=show_job_in_webserver)
+
 
 def clean_unused(args):
     if args.load_used_path:
@@ -176,6 +185,14 @@ def remove_job_and_descendants(args):
     find = ' + '.join(
         ['tk.find_path(%s)' % repr(i) for i in args.path] + ['tk.find_job(%s)' % repr(i) for i in args.job])
     call = ['console', '--script', '-c', 'tk.remove_job_and_descendants(%s)' % find] + args.argv
+    call_sis(call)
+
+
+def show_job_in_webserver(args):
+    call = ['console', '--script']
+    for job in args.job:
+        call += ['--load', job]
+    call += ['-c', f'tk.show_jobs_in_webserver({args.port}, jobs)']
     call_sis(call)
 
 
