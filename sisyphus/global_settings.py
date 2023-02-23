@@ -7,6 +7,7 @@ These settings can be overwritten via a ``settings.py`` file in the current dire
 
 import logging
 import sys
+from typing import Dict
 
 import sisyphus.hash
 from sisyphus.global_constants import *
@@ -58,46 +59,33 @@ def worker_wrapper(job, task_name, call):
     return call
 
 
-def update_engine_rqmt(initial_rqmt, last_usage):
-    """ Update requirements after a job got interrupted.
+def update_engine_rqmt(last_rqmt: Dict, last_usage: Dict):
+    """ Update requirements after a job got interrupted, double limits if needed
 
-    :param dict[str] initial_rqmt: requirements that are requested first
+    :param dict[str] last_rqmt: requirements that are requested first
     :param dict[str] last_usage: information about the last usage by the task
     :return: updated requirements
     :rtype: dict[str]
     """
+    out = last_rqmt.copy()
 
-    # Contains the resources requested for interrupted run
-    requested_resources = last_usage.get('requested_resources', {})
-    requested_time = requested_resources.get('time', initial_rqmt.get('time', 1))
-    requested_memory = requested_resources.get('mem', initial_rqmt.get('mem', 1))
-
-    # How much was actually used
+    # Did we run out of time?
+    requested_time = last_rqmt.get('time')
     used_time = last_usage.get('used_time', 0)
+    if requested_time and requested_time - used_time < 0.1:
+        out['time'] = requested_time * 2
+
+    # Did it (nearly) break the memory limits?
+    requested_memory = last_rqmt.get('mem')
     used_memory = last_usage.get('max', {}).get('rss', 0)
-
-    # Did it (nearly) break the limits?
-    out_of_memory = last_usage.get('out_of_memory') or requested_memory - used_memory < 0.25
-    out_of_time = requested_time - used_time < 0.1
-
-    # Double limits if needed
-    if out_of_time:
-        requested_time = max(initial_rqmt.get('time', 0), requested_time * 2)
-
-    if out_of_memory:
-        requested_memory = max(initial_rqmt.get('mem', 0), requested_memory * 2)
-
-    # create updated rqmt dict
-    out = initial_rqmt.copy()
-    out.update(requested_resources)
-    out['time'] = requested_time
-    out['mem'] = requested_memory
+    if requested_memory and last_usage.get('out_of_memory') or requested_memory - used_memory < 0.25:
+        out['mem'] = requested_memory * 2
 
     return out
 
 
 # noinspection PyUnusedLocal
-def check_engine_limits(current_rqmt, task):
+def check_engine_limits(current_rqmt: Dict, task):
     """ Check if requested requirements break and hardware limits and reduce them.
     By default ignored, a possible check for limits could look like this::
 
