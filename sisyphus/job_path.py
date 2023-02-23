@@ -241,7 +241,8 @@ class AbstractPath(DelayedBase):
 
     def __setstate__(self, state):
         assert 'users' not in state
-        self.__dict__.update(state)
+        for k, v in state.items():
+            setattr(self, k, v)
         if not hasattr(self, 'users'):
             self.users = set()
 
