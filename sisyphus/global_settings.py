@@ -62,8 +62,8 @@ def worker_wrapper(job, task_name, call):
 def update_engine_rqmt(last_rqmt: Dict, last_usage: Dict):
     """ Update requirements after a job got interrupted, double limits if needed
 
-    :param dict[str] last_rqmt: requirements that are requested first
-    :param dict[str] last_usage: information about the last usage by the task
+    :param dict[str] last_rqmt: requirements that where requested for previous run of this task
+    :param dict[str] last_usage: information about the used resources of previous run (mainly memory and time)
     :return: updated requirements
     :rtype: dict[str]
     """
