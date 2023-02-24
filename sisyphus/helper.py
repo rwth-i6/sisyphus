@@ -13,7 +13,10 @@ def console(args):
                }
 
     if args.load:
-        jobs = [sisyphus.toolkit.load_job(i) for i in args.load]
+        jobs = []
+        for job in args.load:
+            sisyphus.toolkit.set_root_block(job)
+            jobs.append(sisyphus.toolkit.load_job(job))
         user_ns['jobs'] = jobs
         for i, job in enumerate(jobs):
             print("jobs[%i]: %s" % (i, job))
