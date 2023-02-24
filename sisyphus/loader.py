@@ -40,7 +40,6 @@ class ConfigManager:
             parameters = []
 
         self.current_config = os.path.abspath(filename)
-
         toolkit.set_root_block(filename)
 
         # maybe remove import path prefix such as "recipe/"
@@ -59,9 +58,9 @@ class ConfigManager:
                 sys.excepthook = sys.excepthook_org
             raise
 
-        f = res = None
+        func = None
         try:
-            f = getattr(config, function_name)
+            func = getattr(config, function_name)
         except AttributeError:
             if function_name != 'py':
                 # If filename ends on py and no function is found we assume we should only read the config file
@@ -71,21 +70,28 @@ class ConfigManager:
                 if gs.WARNING_NO_FUNCTION_CALLED:
                     logging.warning("No function named 'py' found in module '%s'"
                                     " (hide warning by setting WARNING_NO_FUNCTION_CALLED=False)" % module_name)
-        if f:
-            res = f(*parameters)
 
         task = None
-        if inspect.iscoroutine(res):
+        if inspect.iscoroutinefunction(func):
             # Run till the first await command is found
+
+            async def set_root_block(root_block, used_config, async_func):
+                toolkit.set_root_block(root_block)
+                self.current_config = used_config
+                await async_func
+                self.current_config = None
+
             logging.info('Loading async config: %s (loaded module: %s)' % (config_name, module_name))
-            task = self.loop.create_task(res)
-        else:
+            task = self.loop.create_task(set_root_block(filename, self.current_config, func(*parameters)))
+        elif func:
+            func(*parameters)
             logging.info('Loaded config: %s (loaded module: %s)' % (config_name, module_name))
+        self.continue_readers()
 
         assert self.current_config
+        self.current_config = None
         self._config_readers.append((self.current_config, task))
         self.continue_readers()
-        self.current_config = None
         return task
 
     def load_configs(self, filenames=None):

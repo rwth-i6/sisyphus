@@ -333,6 +333,12 @@ class Job(metaclass=JobSingleton):
         self._sis_cleaned_or_not_cleanable = False
         for i in self._sis_inputs:
             i.add_user(self)
+
+        if block.active_blocks:
+            for b in block.active_blocks:
+                b.add_job(self)
+                self._sis_add_block(b)
+
         logging.debug('Set state %s' % state['_sis_id_cache'])
 
     def __getnewargs__(self):
