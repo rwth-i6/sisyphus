@@ -299,8 +299,11 @@ class Job(metaclass=JobSingleton):
                     f.write('PARAMETER: %s: %s\n' % (key, value))
                 except UnicodeEncodeError as e:
                     f.write('PARAMETER: %s: <UnicodeEncodeError: %s>\n' % (key, e))
+            if self._sis_aliases:
+                for alias in self._sis_aliases:
+                    f.write('ALIAS: %s\n' % alias)
             if self._sis_stacktrace:
-                f.write("STACKTRACE:\n")
+                f.write('STACKTRACE:\n')
                 f.writelines(traceback.format_list(self._sis_stacktrace[0]))
         self._sis_setup_since_restart = True
 
