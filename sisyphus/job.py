@@ -194,8 +194,8 @@ class Job(metaclass=JobSingleton):
         for key, arg in parsed_args.items():
             if isinstance(arg, Job):
                 logging.warning(
-                    "A Job instance was used as argument \"%s\" in \"%s\", this might result in undesired behavior" %
-                    (key, self.__class__))
+                    "The Job %s was used as argument \"%s\" in \"%s\", this might result in undesired behavior" %
+                    (str(arg)[3:], key, self.__class__))
 
         self._sis_aliases = None
         self._sis_alias_prefixes = set()
