@@ -302,9 +302,9 @@ class Job(metaclass=JobSingleton):
             if self._sis_aliases:
                 for alias in self._sis_aliases:
                     f.write('ALIAS: %s\n' % alias)
-            if self._sis_stacktrace:
+            for stacktrace in self._sis_stacktrace:
                 f.write('STACKTRACE:\n')
-                f.writelines(traceback.format_list(self._sis_stacktrace[0]))
+                f.writelines(traceback.format_list(stacktrace))
         self._sis_setup_since_restart = True
 
     def __getstate__(self):
