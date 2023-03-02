@@ -29,7 +29,12 @@ def check_is_worker(get_func):
 
 
 class VariableNotSet(Exception):
-    """Variable is not set"""
+    """ Variable is not set"""
+    pass
+
+
+class NoBackup:
+    """ Used to mark that a Variable has no backup value set """
     pass
 
 
@@ -383,7 +388,7 @@ class Path(AbstractPath):
 class Variable(AbstractPath):
     path_type = 'Variable'
 
-    def __init__(self, path, creator=None, pickle=False, backup=None):
+    def __init__(self, path, creator=None, pickle=False, backup=NoBackup):
         """ Encapsulates pickleable python objects to allow python objects to be used
         as output/input of jobs. Use the set and get method to interact with it.
 
@@ -408,12 +413,13 @@ class Variable(AbstractPath):
                                                           < gs.CACHE_FINISHED_RESULTS_MAX_SIZE))
     def get(self):
         if not self.is_set():
-            if gs.RAISE_VARIABLE_NOT_SET_EXCEPTION:
-                raise VariableNotSet("Variable is not set (%s)" % self.get_path())
-            if self.backup is None:
-                return "<UNFINISHED VARIABLE: %s>" % self.get_path()
-            else:
+            if self.backup != NoBackup:
                 return self.backup
+            elif gs.RAISE_VARIABLE_NOT_SET_EXCEPTION:
+                raise VariableNotSet("Variable is not set (%s)" % self.get_path())
+            else:
+                return "<UNFINISHED VARIABLE: %s>" % self.get_path()
+
         if self.pickle:
             with gzip.open(self.get_path(), 'rb') as f:
                 v = pickle.load(f)

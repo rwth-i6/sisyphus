@@ -300,7 +300,7 @@ LEGACY_PATH_CONVERSION = False
 #: Enabling it can cause bugs which are hard to find.
 LEGACY_VARIABLE_CONVERSION = False
 
-#: Raise an exception if a Variable is accessed which is not set yet
+#: Raise an exception if a Variable is accessed which is not set yet and has no backup value
 RAISE_VARIABLE_NOT_SET_EXCEPTION = True
 
 # Parameter used for debugging or profiling
