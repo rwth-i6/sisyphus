@@ -89,8 +89,8 @@ class ConfigManager:
         self.continue_readers()
 
         assert self.current_config
-        self.current_config = None
         self._config_readers.append((self.current_config, task))
+        self.current_config = None
         self.continue_readers()
         return task
 
