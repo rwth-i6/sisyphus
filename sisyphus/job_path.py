@@ -416,7 +416,8 @@ class Variable(AbstractPath):
             if self.backup != NoBackup:
                 return self.backup
             elif gs.RAISE_VARIABLE_NOT_SET_EXCEPTION:
-                raise VariableNotSet("Variable is not set (%s)" % self.get_path())
+                raise VariableNotSet("Variable is not set (%s) and RAISE_VARIABLE_NOT_SET_EXCEPTION == True"
+                                     % self.get_path())
             else:
                 return "<UNFINISHED VARIABLE: %s>" % self.get_path()
 
