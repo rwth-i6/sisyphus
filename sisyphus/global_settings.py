@@ -297,11 +297,11 @@ DELAYED_CHECK_FOR_WORKER = False
 LEGACY_PATH_CONVERSION = False
 
 #: Changes str and repr conversions of Variable to contain only the variable content if available.
-#: Planed to be set to False by default in the future since it can causes bugs which are hard to find.
+#: Enabling it can cause bugs which are hard to find.
 LEGACY_VARIABLE_CONVERSION = False
 
 #: Raise an exception if a Variable is accessed which is not set yet
-RAISE_VARIABLE_NOT_SET_EXCEPTION = False
+RAISE_VARIABLE_NOT_SET_EXCEPTION = True
 
 # Parameter used for debugging or profiling
 MEMORY_PROFILE_LOG = None
