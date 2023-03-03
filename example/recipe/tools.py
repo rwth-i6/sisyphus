@@ -1,19 +1,18 @@
 from sisyphus import *
 import os
-from typing import List
+from typing import List, Any, Dict, Iterable, Union
 
 
 class Pipeline(Job):
     """ This job takes a text file as input and pipes it through all given commands """
 
     # Everything given to the constructor will be used to compute a hash for this job.
-    def __init__(self, text: tk.Path, pipeline: List):
+    def __init__(self, text: tk.Path, pipeline: List[Any]):
         # You can validating the inputs to spot errors earlier
         assert text, "No text given"
         assert isinstance(text, tk.Path), "Given input"
         assert pipeline
 
-        #
         self.text = text
         self.pipeline = pipeline
 
@@ -21,7 +20,7 @@ class Pipeline(Job):
 
     # Task should return a list, a generator, or something else Sisyphus can iterator over containing all
     # tasks of this job. In this example the job has only one task calling the `run` function
-    def tasks(self):
+    def tasks(self) -> Iterable[Task]:
         # Getting the size of the given input file to estimate how much time we need.
         # tasks() is only called when all inputs are available, we can therefore assume all input files exist.
         size = os.path.getsize(self.text.get_path())
@@ -42,7 +41,7 @@ class Pipeline(Job):
                      rqmt={'time': time, 'mem': 2, 'cpu': 2},  # Requirements needed to run this task
                      tries=3)]  # 3 tries if pipe result is empty or pipe failed
 
-    # This function will be call when the job is started
+    # This function will be called when the job is started
     def run(self):
         self.pipe = ' | '.join([str(i) for i in self.pipeline])
         # self.sh will run the given string in a shell. Before executing it the string format function will be called
@@ -54,7 +53,7 @@ class Pipeline(Job):
 
 # Jobs are regular python classes, meaning you can just subclass an existing class to reuse it's code
 class Head(Pipeline):
-    def __init__(self, text, length, check_output_length=True):
+    def __init__(self, text: tk.Path, length: Union[int, str, tk.Delayed], check_output_length: bool = True):
         # tk.Delayed takes any object and converts it into a Delayed object which allows us to define operations
         # which will only be computed at runtime. Here we want to delay formatting since the value of length
         # isn't known before length is computed.
@@ -63,15 +62,15 @@ class Head(Pipeline):
         self.check_output_length = check_output_length
 
     def run(self):
-        super.run()
+        super().run()
         if self.check_output_length:
             output_length = int(self.sh('cat {out} | wc -l', capture_output=True))
-            assert self.length.get() == output_length, "Created output file is to short"
+            assert self.length.get() == output_length, "Created output file length does not match"
 
     # This is how the computed hash can be modified, since `check_output_length` does not change the output
     # of this job we can exclude it from the hash computation
     @classmethod
-    def hash(cls, parsed_args):
+    def hash(cls, parsed_args: Dict[str, Any]) -> str:
         args = parsed_args.copy()
         del args['check_output_length']
         return super().hash(args)
@@ -79,7 +78,7 @@ class Head(Pipeline):
 
 # Here is a Job with multiple Variables as output
 class WordCount(Job):
-    def __init__(self, text):
+    def __init__(self, text: tk.Path):
         self.text = text
         self.character = self.output_var('char')
         self.lines = self.output_var('lines')
@@ -93,5 +92,5 @@ class WordCount(Job):
         self.character.set(int(c))
 
     # Here is an example of task returning a generator
-    def tasks(self):
+    def tasks(self) -> Iterable[Task]:
         yield Task('run')

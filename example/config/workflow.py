@@ -16,17 +16,17 @@ async def main():
 
     # Count lines, lines is a Variable meaning once it's computed its value can be accessed using .get()
     # or by converting it into a string
-    lines = tools.WordCount(sentences).lines
+    num_lines = tools.WordCount(sentences).lines
 
     # You can run computations on these variables even though they are not computed yet.
     # The requested computation is stored in a wrapper object and only resolved when .get() is called
     # or the object is converted into a string. An exception is raised if you call get() on an unfinished Variable
     # which doesn't have a backup value.
-    middle = lines // 2
+    middle = num_lines // 2
     first_half = tools.Head(sentences, middle).out
-    tk.register_output('first_half', first_half)
 
     # Tell Sisyphus that this output is needed and should be linked inside the output directory
+    tk.register_output('first_half', first_half)
     tk.register_output('sentences', sentences)
 
     # Split each paragraph into a new line and again register output
