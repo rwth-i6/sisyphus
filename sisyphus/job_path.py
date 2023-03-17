@@ -63,9 +63,14 @@ class AbstractPath(DelayedBase):
                                         Gets path as input and must be pickleable
         """
 
-        if gs.WARNING_ABSPATH and path.startswith(gs.BASE_DIR) and not hash_overwrite:
-            logging.warning('Creating absolute path inside current work directory: %s '
-                            '(disable with WARNING_ABSPATH=False)' % path)
+        if gs.WARNING_ABSPATH and not hash_overwrite and path.startswith(gs.BASE_DIR):
+            if (
+                    path.startswith(os.path.join(gs.BASE_DIR, gs.ALIAS_DIR)) or
+                    path.startswith(os.path.join(gs.BASE_DIR, gs.OUTPUT_DIR)) or
+                    path.startswith(os.path.join(gs.BASE_DIR, gs.WORK_DIR))
+            ):
+                logging.warning('Creating absolute path inside current work directory: %s '
+                                '(disable with WARNING_ABSPATH=False)' % path)
         assert isinstance(path, str)
         self.creator = creator
         self.users = set()
