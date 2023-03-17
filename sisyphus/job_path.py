@@ -65,9 +65,9 @@ class AbstractPath(DelayedBase):
 
         if gs.WARNING_ABSPATH and not hash_overwrite and path.startswith(gs.BASE_DIR):
             if (
-                    path.startswith(os.path.join(gs.BASE_DIR, gs.ALIAS_DIR)) or
-                    path.startswith(os.path.join(gs.BASE_DIR, gs.OUTPUT_DIR)) or
-                    path.startswith(os.path.join(gs.BASE_DIR, gs.WORK_DIR))
+                path.startswith(os.path.join(gs.BASE_DIR, gs.ALIAS_DIR))
+                or path.startswith(os.path.join(gs.BASE_DIR, gs.OUTPUT_DIR))
+                or path.startswith(os.path.join(gs.BASE_DIR, gs.WORK_DIR))
             ):
                 logging.warning('Creating absolute path inside current work directory: %s '
                                 '(disable with WARNING_ABSPATH=False)' % path)
