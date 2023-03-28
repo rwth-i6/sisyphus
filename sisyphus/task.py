@@ -191,7 +191,7 @@ class Task(object):
                 self.finished(task_id, True)
             sys.stdout.flush()
             sys.stderr.flush()
-            logging.info("Job finished successful")
+            logging.info("Job finished successfully")
 
     def task_name(self):
         return '%s.%s' % (self._job._sis_id(), self.name())
