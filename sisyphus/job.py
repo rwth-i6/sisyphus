@@ -147,17 +147,20 @@ class JobSingleton(type):
 
 class Job(metaclass=JobSingleton):
     """
-    Object do hold the job descriptions.
+    Object to hold the job descriptions.
+
     You derive your own job classes from this base class.
+
     All the arguments of ``__init__`` will be taken into account for the hash.
     In your derived class, you need to overwrite the ``tasks`` method.
     """
 
     __sis_version__ = None
 
-    # This dict can be used to extent existing jobs with new parameters without changing it's hash.
+    # This dict can be used to extend existing jobs with new parameters without changing the hash.
+    #
     # If the new parameter is called 'foo' and old behavior would be reached by setting it to 'bar'
-    # Hash exclude should be {'foo': 'bar'}
+    # __sis_hash_exclude__ should be {'foo': 'bar'}.
     __sis_hash_exclude__ = {}
     # This list can be used to replace hash values e.g. if it is set to [('key_name', 'foo', 'bar')]
     # the parameter key_name='foo' will be changed to return the same hash as key_name='bar'
