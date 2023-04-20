@@ -148,9 +148,9 @@ class JobSingleton(type):
 class Job(metaclass=JobSingleton):
     """
     Object to hold the job descriptions.
-    
+
     You derive your own job classes from this base class.
-    
+
     All the arguments of ``__init__`` will be taken into account for the hash.
     In your derived class, you need to overwrite the ``tasks`` method.
     """
