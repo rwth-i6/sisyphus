@@ -614,6 +614,8 @@ class Job(metaclass=JobSingleton):
                             base_dir = os.path.dirname(local_path)
                             if not os.path.isdir(base_dir):
                                 os.makedirs(base_dir)
+                        # resolve all intermediate links
+                        import_path = os.path.realpath(import_path)
                         # link job directory to local work directory
                         if not os.path.islink(local_path):
                             if mode == 'copy':
