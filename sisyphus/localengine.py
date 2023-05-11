@@ -71,12 +71,13 @@ class LocalEngine(threading.Thread, EngineBase):
     CPU and GPU are always checked, all other requirements only if given during initialisation.
     """
 
-    def __init__(self, cpus=1, gpus=0, **kwargs):
+    def __init__(self, cpus=1, gpus=0, available_gpuids="", **kwargs):
         """ The parameter cpus and gpus are kept for backwards compatibility, if cpu and gpu are given
         they will overwrite the values of cpus and gpus.
 
         :param int cpus: number of CPUs that can be used
         :param int gpus: number of GPUs that can be used
+        :param str available_gpuids: comma separated list of all CUDA_VISIBLE_DEVICES for this engine
         :param **kwargs: other consumable resources e.g. mem (in GB)
         """
         # resources
@@ -86,6 +87,8 @@ class LocalEngine(threading.Thread, EngineBase):
         self.max_resources = {'cpu': cpus, 'gpu': gpus}
         self.max_resources.update(kwargs)
         self.free_resources = self.max_resources.copy()
+        assert len(available_gpuids.split(",")) == gpus
+        self.available_gpus = {g: True for g in available_gpuids.split(",")}
 
         self.running_subprocess = []
         self.started = False
@@ -109,14 +112,19 @@ class LocalEngine(threading.Thread, EngineBase):
     def get_default_rqmt(self, task):
         return LOCAL_DEFAULTS
 
-    def start_task(self, task):
+    def start_task(self, task, selected_gpus):
         """
         :param TaskQueueInstance task:
+        :param str selected_gpus:
         :rtype: psutil.Process
         """
         # Start new task
         call = task.call[:]
-        sp = subprocess.Popen(call, start_new_session=True)
+        env = os.environ.copy()
+        if len(selected_gpus) > 0:
+            env["CUDA_VISIBLE_DEVICES"] = selected_gpus
+        logging.warning(f"Start Task {task} with call {call}")
+        sp = subprocess.Popen(call, env=env, start_new_session=True)
         self.running_subprocess.append(sp)
         pid = sp.pid
         process = psutil.Process(pid)
@@ -134,7 +142,7 @@ class LocalEngine(threading.Thread, EngineBase):
 
             logging.debug('Check for finished tasks')
             with self.running_tasks as running_tasks:
-                for process, task in list(running_tasks.values()):
+                for process, task, _ in list(running_tasks.values()):
                     logging.debug('Task state: %s %i PID: %s %s' % (task.task_name, task.task_id,
                                                                     process.pid, process.is_running()))
                     if not process.is_running():
@@ -157,12 +165,28 @@ class LocalEngine(threading.Thread, EngineBase):
         for key, max_available in self.max_resources.items():
             free = self.free_resources[key]
             assert 0 <= free <= max_available
+        # reserve specific GPUs
+        selected_devices = []
+        for name, free in self.available_gpus.items():
+            if len(selected_devices) == rqmt.get("gpu", 0):
+                return ",".join(selected_devices)
+            if free:
+                self.available_gpus[name] = False
+                selected_devices.append(name)
+                logging.warning(f"reserving GPU{name}")
+        assert len(selected_devices) == rqmt.get("gpu", 0)
+        return ",".join(selected_devices)
 
-    def release_resources(self, rqmt):
+
+    def release_resources(self, rqmt, selected_devices):
         self.free_resources = {key: free + rqmt.get(key, 0) for key, free in self.free_resources.items()}
         for key, max_available in self.max_resources.items():
             free = self.free_resources[key]
             assert 0 <= free <= max_available
+        if selected_devices != "":
+            for name in selected_devices.split(","):
+                self.available_gpus[name] = True
+                logging.warning(f"releasing GPU{name}")
 
     @tools.default_handle_exception_interrupt_main_thread
     def run(self):
@@ -184,7 +208,7 @@ class LocalEngine(threading.Thread, EngineBase):
                         with self.running_tasks as running_tasks:
                             # if enough free resources => run job
                             if self.enough_free_resources(next_task.rqmt):
-                                self.reserve_resources(next_task.rqmt)
+                                selected_gpus = self.reserve_resources(next_task.rqmt)
                                 name = (next_task.name, next_task.task_id)
                                 logging.debug('Start task %s' % str(name))
                                 try:
@@ -193,8 +217,8 @@ class LocalEngine(threading.Thread, EngineBase):
                                     logging.warning('Could not delete %s from waiting queue. '
                                                     'This should not happen! Probably a bug...' % str(name))
                                 # Start job:
-                                process = self.start_task(next_task)
-                                running_tasks[name] = (process, next_task)
+                                process = self.start_task(next_task, selected_gpus)
+                                running_tasks[name] = (process, next_task, selected_gpus)
                                 next_task = None
                                 wait = False
 
@@ -232,6 +256,7 @@ class LocalEngine(threading.Thread, EngineBase):
 
     def task_done(self, running_tasks, task):
         name = (task.name, task.task_id)
+        selected_gpus = running_tasks[name][2]
         logging.debug('Task Done %s' % str(name))
         try:
             del running_tasks[name]
@@ -240,7 +265,7 @@ class LocalEngine(threading.Thread, EngineBase):
                 'Could not delete %s from waiting queue. This should not happen! Probably a bug...' % str(name))
 
         # release used resources
-        self.release_resources(task.rqmt)
+        self.release_resources(task.rqmt, selected_gpus)
 
     def task_state(self, task, task_id):
         name = task.task_name()
@@ -297,7 +322,7 @@ class LocalEngine(threading.Thread, EngineBase):
 
             with self.running_tasks as running_tasks:
                 name = (task_instance.name, task_id)
-                running_tasks[name] = (process, task_instance)
+                running_tasks[name] = (process, task_instance, "")
                 self.reserve_resources(rqmt)
             logging.debug('Loaded job: %i %s %s' % (pid, process.cmdline(), task_instance.call))
             return True
