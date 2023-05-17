@@ -71,7 +71,7 @@ class LocalEngine(threading.Thread, EngineBase):
     CPU and GPU are always checked, all other requirements only if given during initialisation.
     """
 
-    def __init__(self, cpus=1, gpus=0, **kwargs):
+    def __init__(self, cpus=1, gpus=0, available_gpus="", **kwargs):
         """ The parameter cpus and gpus are kept for backwards compatibility, if cpu and gpu are given
         they will overwrite the values of cpus and gpus.
 
@@ -86,9 +86,8 @@ class LocalEngine(threading.Thread, EngineBase):
         self.max_resources = {'cpu': cpus, 'gpu': gpus}
         self.max_resources.update(kwargs)
         self.free_resources = self.max_resources.copy()
-        cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "")
-        assert gpus == 0 or len(cuda_visible_devices.split(",")) == gpus
-        self.available_gpus = {g: True for g in cuda_visible_devices.split(",") if g != ""}
+        assert gpus == 0 or len(available_gpus.split(",")) == gpus
+        self.available_gpus = {g: True for g in available_gpus.split(",") if g != ""}
 
         self.running_subprocess = []
         self.started = False
