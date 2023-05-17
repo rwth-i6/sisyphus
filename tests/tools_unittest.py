@@ -7,7 +7,8 @@ import unittest
 import collections
 
 from sisyphus import job_path
-from sisyphus.tools import execute_in_dir, cache_result, sis_hash, sis_hash_helper, hardlink_or_copy
+from sisyphus.tools import execute_in_dir, cache_result, sis_hash, hardlink_or_copy
+from sisyphus.hash import sis_hash_helper
 import sisyphus.global_settings as gs
 
 sys.path.append(gs.TEST_DIR)
@@ -26,7 +27,7 @@ class ExecuteInDir(unittest.TestCase):
         try:
             with execute_in_dir(recipe_test_dir):
                 self.assertEqual(os.path.join(cwd, recipe_test_dir), os.getcwd())
-                assert(False)
+                assert False
         except AssertionError:
             self.assertEqual(cwd, os.getcwd())
         self.assertEqual(cwd, os.getcwd())

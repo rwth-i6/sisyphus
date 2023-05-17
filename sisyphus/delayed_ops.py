@@ -37,6 +37,18 @@ class DelayedBase:
     def __rmul__(self, other):
         return DelayedMul(other, self)
 
+    def __truediv__(self, other):
+        return DelayedTrueDiv(self, other)
+
+    def __rtruediv__(self, other):
+        return DelayedTrueDiv(other, self)
+
+    def __floordiv__(self, other):
+        return DelayedFloorDiv(self, other)
+
+    def __rfloordiv__(self, other):
+        return DelayedFloorDiv(other, self)
+
     def __mod__(self, other):
         return DelayedMod(self, other)
 
@@ -93,6 +105,16 @@ class DelayedSub(DelayedBase):
 class DelayedMul(DelayedBase):
     def get(self):
         return try_get(self.a) * try_get(self.b)
+
+
+class DelayedTrueDiv(DelayedBase):
+    def get(self):
+        return try_get(self.a) / try_get(self.b)
+
+
+class DelayedFloorDiv(DelayedBase):
+    def get(self):
+        return try_get(self.a) // try_get(self.b)
 
 
 class DelayedMod(DelayedBase):
@@ -180,3 +202,17 @@ class DelayedSlice(DelayedBase):
     def get(self):
         return try_get(self.iterable)[try_get(self.index_start):try_get(self.index_end):try_get(self.step)]
 
+
+class DelayedJoin(DelayedBase):
+
+    def __init__(self, iterable, separator):
+        """
+
+        :param Iterable[DelayedBase|str] iterable:
+        :param str separator:
+        """
+        self.iterable = iterable
+        self.separator = separator
+
+    def get(self):
+        return self.separator.join([try_get(obj) for obj in self.iterable])

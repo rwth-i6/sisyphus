@@ -26,6 +26,9 @@ class Task(object):
                 "gpu": number of gpus
                 "mem": amount of memory, in GB
                 "time": amount of time, in hours
+                "multi_node_slots": amount of slots, distributed potentially over multiple nodes.
+                                    E.g. maps to `--ntasks <multi_node_slots>` parameter for Slurm,
+                                    and to `-pe <pe_name> <multi_node_slots>` for SGE (SGE parallel environment (PE)).
         :param typing.Sequence[typing.Union[typing.List[object],object]] args: job arguments
         :param bool mini_task: will be run on engine for short jobs if True
         :param (dict[str],dict[str])->dict[str] update_rqmt: function to update job requirements for interrupted jobs
@@ -188,7 +191,7 @@ class Task(object):
                 self.finished(task_id, True)
             sys.stdout.flush()
             sys.stderr.flush()
-            logging.info("Job finished successful")
+            logging.info("Job finished successfully")
 
     def task_name(self):
         return '%s.%s' % (self._job._sis_id(), self.name())
@@ -403,26 +406,20 @@ class Task(object):
             start = (chunk_size + 1) * overflow + chunk_size * (task_id - 1 - overflow)
             return range(start, start + chunk_size)
 
-    def update_rqmt(self, initial_rqmt, submit_history, task_id):
+    def update_rqmt(self, last_rqmt, task_id):
         """ Update task requirements of interrupted job """
-        initial_rqmt = initial_rqmt.copy()
-        initial_rqmt['mem'] = tools.str_to_GB(initial_rqmt['mem'])
-        initial_rqmt['time'] = tools.str_to_hours(initial_rqmt['time'])
+        last_rqmt = last_rqmt.copy()
+        # Make sure mem and time are numbers and not str
+        last_rqmt['mem'] = tools.str_to_GB(last_rqmt['mem'])
+        last_rqmt['time'] = tools.str_to_hours(last_rqmt['time'])
         usage_file = self._job._sis_path(gs.PLOGGING_FILE + '.' + self.name(), task_id, abspath=True)
 
         try:
             last_usage = literal_eval(open(usage_file).read())
         except (SyntaxError, IOError):
             # we don't know anything if no usage file is writen or is invalid, just reuse last rqmts
-            return initial_rqmt
-
-        rresources = last_usage['requested_resources']
-        if 'mem' in rresources:
-            rresources['mem'] = tools.str_to_GB(rresources['mem'])
-        if 'time' in rresources:
-            rresources['time'] = tools.str_to_hours(rresources['time'])
-        new_rqmt = self._update_rqmt(initial_rqmt=initial_rqmt, last_usage=last_usage)
-        return new_rqmt
+            return last_rqmt
+        return self._update_rqmt(last_rqmt=last_rqmt, last_usage=last_usage)
 
     def get_process_logging_path(self, task_id):
         return self._job._sis_path(gs.PLOGGING_FILE + '.' + self.name(), task_id, abspath=True)

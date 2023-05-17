@@ -2,8 +2,9 @@ import asyncio
 import logging
 import os
 import sys
-import time
 import threading
+import time
+import warnings
 
 from multiprocessing.pool import ThreadPool
 
@@ -63,6 +64,8 @@ def manager(args):
     # try to load fuse filesystem
     filesystem = None
     if args.filesystem:
+        warnings.warn("The filesystem is planned to be removed. Let the authors know if you still need it!",
+                      category=DeprecationWarning)
         import sisyphus.filesystem as filesystem
 
     # Ensure this thread has a event loop
@@ -110,13 +113,6 @@ def manager(args):
         else:
             manager.unpause()
 
-        kernel_connect_file = None
-        if gs.START_KERNEL:
-            kernel_connect_file = init_IPython_kernel(user_ns={'manager': manager,
-                                                               'job_engine': job_engine,
-                                                               'tk': toolkit,
-                                                               'sis_graph': sis_graph})
-
         try:
             if args.filesystem:
                 # Start main loop
@@ -137,11 +133,6 @@ def manager(args):
                 manager.run()
         except KeyboardInterrupt:
             logging.info('Got user interrupt signal stop engine and exit')
-            if kernel_connect_file:
-                try:
-                    os.remove(kernel_connect_file)
-                except (IOError, OSError):
-                    pass
 
             # Print traceback in debug mode
             if logging.root.isEnabledFor(logging.DEBUG):
@@ -422,10 +413,10 @@ class Manager(threading.Thread):
         else:
             self.thread_pool.map(f, self.jobs.get(gs.STATE_RUNNABLE, []))
 
-    def check_output(self, write_output=False, update_all_outputs=False):
+    def check_output(self, write_output=False, update_all_outputs=False, force_update=False):
         targets = self.sis_graph.targets if update_all_outputs else self.sis_graph.active_targets
         for target in targets:
-            target.update_requirements()
+            target.update_requirements(write_output=write_output, force=force_update)
             if target.is_done():
                 target.run_when_done(write_output=write_output)
                 self.sis_graph.remove_from_active_targets(target)
@@ -535,12 +526,12 @@ class Manager(threading.Thread):
             elif answer.lower() == 'y':
                 self.link_outputs = True
                 create_aliases(self.sis_graph.jobs())
-                self.check_output(write_output=self.link_outputs, update_all_outputs=True)
+                self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
                 break
             elif answer.lower() == 'u':
                 self.link_outputs = True
                 create_aliases(self.sis_graph.jobs())
-                self.check_output(write_output=self.link_outputs, update_all_outputs=True)
+                self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
             elif answer.lower() == 'n':
                 self.stop()
                 return False
@@ -611,7 +602,7 @@ class Manager(threading.Thread):
         self.job_engine.stop_engine()
         if self.job_cleaner:
             self.job_cleaner.close()
-        self.check_output(write_output=self.link_outputs, update_all_outputs=True)
+        self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
 
 
 def create_aliases(jobs):
@@ -664,46 +655,3 @@ def start_http_server(sis_graph, sis_engine, port, thread=True):
                              sis_engine=sis_engine,
                              port=port,
                              thread=thread)
-
-
-def init_IPython_kernel(user_ns={}):
-    try:
-        from ipykernel.kernelapp import IPKernelApp
-        import atexit
-        import socket
-
-        ip = socket.gethostbyname(socket.gethostname())
-        connection_file = "%s/ipython-kernel-%s-%s.json" % (os.path.abspath('.'), ip, os.getpid())
-
-        def cleanup_connection_file():
-            try:
-                os.remove(connection_file)
-            except (IOError, OSError):
-                pass
-        atexit.register(cleanup_connection_file)
-    except Exception as e:
-        logging.error("Error while loading IPython kernel, continue without. %s" % e)
-        return
-    try:
-        app = IPKernelApp.instance(user_ns=user_ns)
-
-        # disable signals since they need to run in the main thread
-        app.init_signal = lambda: None
-        app.initialize(['-f', connection_file])
-        app.kernel.pre_handler_hook = lambda: None
-        app.kernel.post_handler_hook = lambda: None
-        from IPython.core.autocall import ZMQExitAutocall
-
-        class KeepAlive(ZMQExitAutocall):
-            def __call__(self):
-                super().__call__(True)
-        app.shell.exiter = KeepAlive()
-
-        # start thread
-        thread = threading.Thread(target=app.start)
-        thread.daemon = True
-        thread.start()
-        return connection_file
-    except Exception as e:
-        logging.error("Error while starting IPython kernel, continue without. %s" % e)
-        return

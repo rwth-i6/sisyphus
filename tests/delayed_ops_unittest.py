@@ -68,6 +68,10 @@ class DelayedOpsTest(unittest.TestCase):
         self.check_only_get_eq(a[:-1], 'fooba')
         self.check_only_get_eq(a[1:-1], 'ooba')
 
+    def test_join(self):
+        delayed_join = DelayedJoin([tk.Path("/random/path"), "/foo/bar"], ";")
+        self.check_only_get_eq(delayed_join, "/random/path;/foo/bar")
+
     def test_assertions(self):
         a = Delayed('foo')
         self.assertRaises(AssertionError, lambda: a.function(lambda a, b: a + b, 'bar'))

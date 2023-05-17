@@ -42,11 +42,11 @@ class UiLoggingHandler(logging.Handler):
             color = color_mapping(levelno)
             self.write_to_file('%s %s %s%s%s\n' % (record.asctime, record.levelname, color, msg, color_end_marker))
 
-        if(levelno >= 40):
+        if levelno >= 40:
             color = 'error'
-        elif(levelno >= 30):
+        elif levelno >= 30:
             color = 'warning'
-        elif(levelno >= 20):
+        elif levelno >= 20:
             color = 'info'
         else:
             color = 'debug'

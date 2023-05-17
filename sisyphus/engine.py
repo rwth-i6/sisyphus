@@ -87,25 +87,19 @@ class EngineBase:
         rqmt = task.rqmt()
 
         # find last requirements
-        default_rqmt = self.add_defaults_to_rqmt(task, rqmt)
-        r = self.get_submit_history(task)[task_id]
-        if r:
-            default_rqmt.update(r[-1])
-        if r and update:
-            # previously submitted, update requirements
-            rqmt = task.update_rqmt(default_rqmt, r, task_id)
-            if 'mem' in rqmt:
-                rqmt['mem'] = tools.str_to_GB(rqmt['mem'])
-            for req in rqmt:
-                if type(rqmt[req]) in {float, int}:  # max also works for strings, but this is not desired
-                    rqmt[req] = max(rqmt[req], default_rqmt[req])
-        else:
-            # never submitted so far, use default values
-            rqmt = default_rqmt
-        rqmt = gs.check_engine_limits(rqmt, task)
+        rqmt = self.add_defaults_to_rqmt(task, rqmt)
+        rqmt_hist = self.get_submit_history(task)[task_id]
+        if rqmt_hist and rqmt_hist[0] == rqmt:
+            # job has been submitted before and the rqmt given by the recipe did not change
+            rqmt.update(rqmt_hist[-1])
+            if update:
+                rqmt = task.update_rqmt(rqmt, task_id)
+
         if 'mem' in rqmt:
             rqmt['mem'] = tools.str_to_GB(rqmt['mem'])
-        return rqmt
+        if 'time' in rqmt:
+            rqmt['time'] = tools.str_to_hours(rqmt['time'])
+        return gs.check_engine_limits(rqmt, task)
 
     def job_state(self, job):
         """ Return current state of job """
@@ -172,8 +166,8 @@ class EngineBase:
             if key not in rqmt_to_ids:
                 rqmt_to_ids[key] = (rqmt, set())
             rqmt_, ids = rqmt_to_ids[key]
-            assert(task_id not in ids)
-            assert(rqmt == rqmt_)
+            assert task_id not in ids
+            assert rqmt == rqmt_
             ids.add(task_id)
 
         # the actuary job submitting part

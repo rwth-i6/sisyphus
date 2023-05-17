@@ -53,7 +53,7 @@ created_jobs = {}
 
 @finished_results_cache.caching(get_key=lambda path: ('job', path))
 def job_finished(path):
-    """ Return true if given job is finished according to files in directory
+    """ Return True if given job is finished according to files in directory
     :param path: path to directory
     :return:
     """
@@ -147,17 +147,20 @@ class JobSingleton(type):
 
 class Job(metaclass=JobSingleton):
     """
-    Object do hold the job descriptions.
+    Object to hold the job descriptions.
+
     You derive your own job classes from this base class.
+
     All the arguments of ``__init__`` will be taken into account for the hash.
     In your derived class, you need to overwrite the ``tasks`` method.
     """
 
     __sis_version__ = None
 
-    # This dict can be used to extent existing jobs with new parameters without changing it's hash.
+    # This dict can be used to extend existing jobs with new parameters without changing the hash.
+    #
     # If the new parameter is called 'foo' and old behavior would be reached by setting it to 'bar'
-    # Hash exclude should be {'foo': 'bar'}
+    # __sis_hash_exclude__ should be {'foo': 'bar'}.
     __sis_hash_exclude__ = {}
     # This list can be used to replace hash values e.g. if it is set to [('key_name', 'foo', 'bar')]
     # the parameter key_name='foo' will be changed to return the same hash as key_name='bar'
@@ -174,7 +177,7 @@ class Job(metaclass=JobSingleton):
         return Job._lock_storage[Job._lock_index]
 
     def __new__(cls, *args, **kwargs):
-        # Make sure unpickled jobs stay singeltons
+        # Make sure unpickled jobs stay singletons
         assert len(args) == 1 and len(kwargs) == 0 and isinstance(args[0], str)
         sis_cache_key = args[0]
         if sis_cache_key in created_jobs:
@@ -194,8 +197,8 @@ class Job(metaclass=JobSingleton):
         for key, arg in parsed_args.items():
             if isinstance(arg, Job):
                 logging.warning(
-                    "A Job instance was used as argument \"%s\" in \"%s\", this might result in undesired behavior" %
-                    (key, self.__class__))
+                    "The Job %s was used as argument \"%s\" in \"%s\", this might result in undesired behavior" %
+                    (str(arg)[3:], key, self.__class__))
 
         self._sis_aliases = None
         self._sis_alias_prefixes = set()
@@ -299,6 +302,12 @@ class Job(metaclass=JobSingleton):
                     f.write('PARAMETER: %s: %s\n' % (key, value))
                 except UnicodeEncodeError as e:
                     f.write('PARAMETER: %s: <UnicodeEncodeError: %s>\n' % (key, e))
+            if self._sis_aliases:
+                for alias in self._sis_aliases:
+                    f.write('ALIAS: %s\n' % alias)
+            for stacktrace in self._sis_stacktrace:
+                f.write('STACKTRACE:\n')
+                f.writelines(traceback.format_list(stacktrace))
         self._sis_setup_since_restart = True
 
     def __getstate__(self):
@@ -327,6 +336,12 @@ class Job(metaclass=JobSingleton):
         self._sis_cleaned_or_not_cleanable = False
         for i in self._sis_inputs:
             i.add_user(self)
+
+        if block.active_blocks:
+            for b in block.active_blocks:
+                b.add_job(self)
+                self._sis_add_block(b)
+
         logging.debug('Set state %s' % state['_sis_id_cache'])
 
     def __getnewargs__(self):
@@ -335,14 +350,14 @@ class Job(metaclass=JobSingleton):
 
     def _sis_update_possible(self):
         """
-        True if it's possible that the job requirements change which is true if the update method is overwritten
+        True if it's possible that the job requirements change which is True if the update method is overwritten
         :return:
         """
         return self.update.__code__ is not Job.update.__code__
 
     def _sis_update_inputs(self):
         """ Checks for new inputs
-        returns true if inputs changed
+        returns True if inputs changed
         """
         with self._sis_job_lock:
             # TODO active blocks is currently not thread save, but it's not critical since it doesn't effect the graph
@@ -396,7 +411,7 @@ class Job(metaclass=JobSingleton):
         :param combine: function to combine all array jobs to one bool, e.g. all/any
         :param int|float minimal_file_age: in seconds
         :rtype: bool
-        :return: logging via file system, true if file exist false if not
+        :return: logging via file system, True if file exist false if not
         """
 
         # Check single instances of job
@@ -449,7 +464,7 @@ class Job(metaclass=JobSingleton):
                     os.umask(umask)
 
     def _sis_finished(self):
-        """ Return true if job or task is finished """
+        """ Return True if job or task is finished """
         if self._sis_is_finished:
             return True
 
@@ -599,6 +614,8 @@ class Job(metaclass=JobSingleton):
                             base_dir = os.path.dirname(local_path)
                             if not os.path.isdir(base_dir):
                                 os.makedirs(base_dir)
+                        # resolve all intermediate links
+                        import_path = os.path.realpath(import_path)
                         # link job directory to local work directory
                         if not os.path.islink(local_path):
                             if mode == 'copy':
@@ -856,7 +873,7 @@ class Job(metaclass=JobSingleton):
         return inputs
 
     def _sis_contains_required_inputs(self, required_inputs, include_job_path=False):
-        """ Returns true if all requiered inputs are used or created by this job
+        """ Returns True if all required inputs are used or created by this job
         :param required_inputs:
         :param include_job_path:
         :return:
@@ -1034,7 +1051,7 @@ class Job(metaclass=JobSingleton):
         return self._sis_tags
 
     def path_available(self, path):
-        """ Returns true if given path is available yet
+        """ Returns True if given path is available yet
 
         :param path: path to check
         :return:
@@ -1064,7 +1081,7 @@ class Job(metaclass=JobSingleton):
 
     def output_path(self, filename, directory=False, cached=False):
         """
-        Adds output path, if directory is true a
+        Adds output path, if directory is True a
         directory will will be created automatically.
 
         :param str filename:
@@ -1083,7 +1100,7 @@ class Job(metaclass=JobSingleton):
 
     def output_var(self, filename, pickle=False, backup=None):
         """ Adds output path which contains a python object,
-        if directory is true a directory will will be created automatically
+        if directory is True a directory will will be created automatically
         """
         path = Variable(filename, self, pickle=pickle, backup=backup)
         assert path.get_path() not in self._sis_outputs
@@ -1199,5 +1216,5 @@ class Job(metaclass=JobSingleton):
         self._sis_hold_job = True
 
     def _sis_is_set_to_hold(self):
-        """ Return true if job is set to hold """
+        """ Return True if job is set to hold """
         return self._sis_hold_job or os.path.exists(self._sis_path(gs.STATE_HOLD))

@@ -52,7 +52,7 @@ def try_to_multiply(y, x, backup_value=None):
 
 class SonOfGridEngine(EngineBase):
 
-    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=None):
+    def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=None, pe_name="mpi"):
         """
 
         :param dict default_rqmt: dictionary with the default rqmts
@@ -61,6 +61,9 @@ class SonOfGridEngine(EngineBase):
         :param list[str] ignore_jobs: list of job ids that will be ignored during status updates.
                                       Useful if a job is stuck inside of SGE and can not be deleted.
                                       Job should be listed as "job_number.task_id" e.g.: ['123.1', '123.2', '125.1']
+        :param str pe_name: used to select parallel environment (PE), when multi_node_slots is set in rqmt,
+                            as `-pe <pe_name> <multi_node_slots>`.
+                            The default "mpi" is somewhat arbitrarily chosen as we have it in our environment.
         """
         self._task_info_cache_last_update = 0
         self.gateway = gateway
@@ -69,6 +72,7 @@ class SonOfGridEngine(EngineBase):
         if ignore_jobs is None:
             ignore_jobs = []
         self.ignore_jobs = ignore_jobs
+        self.pe_name = pe_name
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -98,7 +102,7 @@ class SonOfGridEngine(EngineBase):
             o = o.split(b'\n')
             if o[-1] != b'':
                 print(o[-1])
-                assert(False)
+                assert False
             return o[:-1]
 
         out = fix_output(out)
@@ -171,6 +175,10 @@ class SonOfGridEngine(EngineBase):
 
         out.append('-l')
         out.append('h_rt=%s' % task_time)
+
+        if rqmt.get('multi_node_slots', None):
+            out.extend(['-pe', self.pe_name, str(rqmt['multi_node_slots'])])
+
         qsub_args = rqmt.get('qsub_args', [])
         if isinstance(qsub_args, str):
             qsub_args = qsub_args.split()
@@ -274,8 +282,8 @@ class SonOfGridEngine(EngineBase):
                 self.reset_cache()
             else:
                 sjob_id = sout[2].decode().split('.')
-                assert(len(sjob_id) == 2)
-                assert(sjob_id[1] == '%i-%i:%i' % (start_id, end_id, step_size))
+                assert len(sjob_id) == 2
+                assert sjob_id[1] == '%i-%i:%i' % (start_id, end_id, step_size)
                 job_id = sjob_id[0]
 
                 logging.info("Submitted with job_id: %s %s" % (job_id, name))
@@ -332,7 +340,7 @@ class SonOfGridEngine(EngineBase):
             return self.queue_state()
 
         task_infos = defaultdict(list)
-        for job in etree.getiterator('job_list'):
+        for job in etree.iter('job_list'):
             job_info = {}
             for attr in job:
                 text = attr.text

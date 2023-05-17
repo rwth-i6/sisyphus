@@ -40,12 +40,14 @@ class ConfigManager:
             parameters = []
 
         self.current_config = os.path.abspath(filename)
-
         toolkit.set_root_block(filename)
 
+        # maybe remove import path prefix such as "recipe/"
+        for load_path in gs.IMPORT_PATHS:
+            if load_path.endswith('/') and filename.startswith(load_path):
+                filename = filename[len(load_path):]
+                break
         filename = filename.replace(os.path.sep, '.')  # allows to use tab completion for file selection
-        assert filename.split('.')[0] == "config", "Config files must be located in the config directory " \
-                                                   "or named config.py: " + filename
         assert all(part.isidentifier() for part in filename.split('.')), "Config name is invalid: %s" % filename
         module_name, function_name = filename.rsplit('.', 1)
         try:
@@ -56,9 +58,9 @@ class ConfigManager:
                 sys.excepthook = sys.excepthook_org
             raise
 
-        f = res = None
+        func = None
         try:
-            f = getattr(config, function_name)
+            func = getattr(config, function_name)
         except AttributeError:
             if function_name != 'py':
                 # If filename ends on py and no function is found we assume we should only read the config file
@@ -66,23 +68,30 @@ class ConfigManager:
                 raise
             else:
                 if gs.WARNING_NO_FUNCTION_CALLED:
-                    logging.warning("No function named 'py' found in config file '%s'"
-                                    " (hide warning by setting WARNING_NO_FUNCTION_CALLED=False)" % config_name)
-        if f:
-            res = f(*parameters)
+                    logging.warning("No function named 'py' found in module '%s'"
+                                    " (hide warning by setting WARNING_NO_FUNCTION_CALLED=False)" % module_name)
 
         task = None
-        if inspect.iscoroutine(res):
+        if inspect.iscoroutinefunction(func):
             # Run till the first await command is found
-            logging.info('Loading async config: %s' % config_name)
-            task = self.loop.create_task(res)
-        else:
-            logging.info('Loaded config: %s' % config_name)
+
+            async def set_root_block(root_block, used_config, async_func):
+                toolkit.set_root_block(root_block)
+                self.current_config = used_config
+                await async_func
+                self.current_config = None
+
+            logging.info('Loading async config: %s (loaded module: %s)' % (config_name, module_name))
+            task = self.loop.create_task(set_root_block(filename, self.current_config, func(*parameters)))
+        elif func:
+            func(*parameters)
+            logging.info('Loaded config: %s (loaded module: %s)' % (config_name, module_name))
+        self.continue_readers()
 
         assert self.current_config
         self._config_readers.append((self.current_config, task))
-        self.continue_readers()
         self.current_config = None
+        self.continue_readers()
         return task
 
     def load_configs(self, filenames=None):

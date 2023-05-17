@@ -20,7 +20,7 @@ import shutil
 import sys
 import tempfile
 
-from sisyphus import graph, tools
+from sisyphus import graph
 import sisyphus.global_settings as gs
 
 
@@ -230,17 +230,14 @@ def remove_directories(dirs, message, move_postfix='.cleanup', mode='remove', fo
             for i in tmp:
                 logging.info(i)
     else:
-        # replace with 'with tempfile.namedtemporaryfile() as tmp_file:' when dropping support for older python verion
-        from sisyphus.toolkit import mktemp
-        with mktemp() as tmp_file_name:
-            with open(tmp_file_name, 'w') as tmp_file:
-                for directory in dirs:
-                    tmp_file.write(directory + "\x00")
-                tmp_file.flush()
-                command = 'du -sch --files0-from=%s' % tmp_file_name
-                p = os.popen(command)
-                print(p.read())
-                p.close()
+        with tempfile.NamedTemporaryFile() as tmp_file:
+            for directory in dirs:
+                tmp_file.write(directory + "\x00")
+            tmp_file.flush()
+            command = 'du -sch --files0-from=%s' % tmp_file.name
+            p = os.popen(command)
+            print(p.read())
+            p.close()
 
     input_var = 'UNSET'
     if force:
@@ -292,7 +289,10 @@ def cleanup_keep_value(min_keep_value, load_from: str = '', mode: str = 'remove'
         job_dirs = extract_keep_values_from_graph()
 
     to_remove = find_too_low_keep_value(job_dirs, min_keep_value)
-    remove_directories(to_remove, 'Keep value is too low', move_postfix='.cleanup', mode=mode, force=False)
+    remove_directories(to_remove, 'Remove jobs with lower keep value than min',
+                       move_postfix='.cleanup',
+                       mode=mode,
+                       force=False)
 
 
 def cleanup_unused(load_from: str = '', job_dirs=None):

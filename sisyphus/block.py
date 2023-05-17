@@ -110,9 +110,15 @@ def set_root_block(name):
     :param str name:
     """
     global active_blocks
-    current_block = Block(name)
-    active_blocks = {current_block}
-    all_root_blocks.append(current_block)
+    # Linear search is fairly inefficient, but since there should not be many root blocks it shouldn't be a problem
+    for block in all_root_blocks:
+        if block.name == name:
+            active_blocks = {block}
+            break
+    else:
+        current_block = Block(name)
+        active_blocks = {current_block}
+        all_root_blocks.append(current_block)
 
 
 def sub_block(name):

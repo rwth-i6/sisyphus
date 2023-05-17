@@ -4,11 +4,12 @@ import os
 import logging
 import gzip
 import pickle
+import warnings
 from functools import wraps
 
-import sisyphus.tools as tools
 import sisyphus.global_settings as gs
 from sisyphus.delayed_ops import DelayedBase
+from sisyphus.hash import sis_hash_helper
 from sisyphus.tools import finished_results_cache
 
 
@@ -28,7 +29,12 @@ def check_is_worker(get_func):
 
 
 class VariableNotSet(Exception):
-    """Variable is not set"""
+    """ Variable is not set"""
+    pass
+
+
+class NoBackup:
+    """ Used to mark that a Variable has no backup value set """
     pass
 
 
@@ -57,7 +63,7 @@ class AbstractPath(DelayedBase):
                                         Gets path as input and must be pickleable
         """
 
-        if gs.WARNING_ABSPATH and path.startswith(gs.BASE_DIR):
+        if gs.WARNING_ABSPATH and path.startswith(gs.BASE_DIR) and not hash_overwrite:
             logging.warning('Creating absolute path inside current work directory: %s '
                             '(disable with WARNING_ABSPATH=False)' % path)
         assert isinstance(path, str)
@@ -125,7 +131,7 @@ class AbstractPath(DelayedBase):
             creator, path = self.hash_overwrite
         if hasattr(creator, '_sis_id'):
             creator = f"{creator._sis_id()}/{gs.JOB_OUTPUT}"
-        return b'(Path, ' + tools.sis_hash_helper((creator, path)) + b')'
+        return b'(Path, ' + sis_hash_helper((creator, path)) + b')'
 
     @finished_results_cache.caching(get_key=lambda self, debug_info=None: ('available', self.rel_path()))
     def available(self, debug_info=None):
@@ -191,7 +197,7 @@ class AbstractPath(DelayedBase):
 
     def __lt__(self, other):
         """
-        Define smaller then other by first comparing the creator sis id, next the path
+        Define smaller than other by first comparing the creator sis id, next the path
 
         :param other:
         :return:
@@ -240,7 +246,8 @@ class AbstractPath(DelayedBase):
 
     def __setstate__(self, state):
         assert 'users' not in state
-        self.__dict__.update(state)
+        for k, v in state.items():
+            setattr(self, k, v)
         if not hasattr(self, 'users'):
             self.users = set()
 
@@ -264,12 +271,13 @@ class Path(AbstractPath):
             return '<Path %s>' % self.get_path()
 
     def copy(self):
+        """ Creates a copy of this Path """
         new = Path('')
         new.__setstate__(self.__getstate__())
         return new
 
     def copy_append(self, suffix):
-        """ Returns a copy of this path with the given suffix appended to it """
+        """ Returns a copy of this Path with the given suffix appended to it and updates hash_overwrite"""
         new = self.copy()
         if self.hash_overwrite:
             c, o = self.hash_overwrite
@@ -278,26 +286,33 @@ class Path(AbstractPath):
         return new
 
     def join_right(self, other):
-        """ Joins local path with given string using '/' """
+        """ Returns copy of local Path joined with given string using '/' and updates hash_overwrite"""
         return self.copy_append('/' + other)
 
     def size(self):
-        """ Return file size if file exists, else return None """
+        """ DEPRECATED: Return file size if file exists, else return None """
+        warnings.warn("Path.size() is deprecated, accessing files should be done explicitly",
+                      category=DeprecationWarning)
+
         assert self.available(), "Path not ready: %s" % str(self.get_path())
         return os.path.getsize(self.get_path())
 
     def estimate_text_size(self):
-        """ Returns estimated size of a text file
+        """ DEPRECATED: Returns rough estimated size of a text file
         file is not zipped => return original size
         file is zipped => multiply size by 3.5
         """
+        warnings.warn("Path.estimate_text_size() is deprecated, accessing files should be done explicitly",
+                      category=DeprecationWarning)
         if self.is_zipped():
             return int(self.size() * 3.5)
         else:
             return self.size()
 
     def lines(self):
-        """ Returns the number of lines in file """
+        """ DEPRECATED: Returns the number of lines in file """
+        warnings.warn("Path.lines() is deprecated, accessing files should be done explicitly",
+                      category=DeprecationWarning)
 
         if self.is_zipped():
             f = gzip.open(str(self))
@@ -309,12 +324,14 @@ class Path(AbstractPath):
         return i
 
     def is_zipped(self):
-        """ Returns if file is zipped:
+        """ DEPRECATED: Returns if file is zipped:
 
         Returns:
         None if file doesn't exists
         true if file is zipped
         false otherwise"""
+        warnings.warn("Path.is_zipped() is deprecated, accessing files should be done explicitly",
+                      category=DeprecationWarning)
 
         if not self.available():
             return None
@@ -371,7 +388,7 @@ class Path(AbstractPath):
 class Variable(AbstractPath):
     path_type = 'Variable'
 
-    def __init__(self, path, creator=None, pickle=False, backup=None):
+    def __init__(self, path, creator=None, pickle=False, backup=NoBackup):
         """ Encapsulates pickleable python objects to allow python objects to be used
         as output/input of jobs. Use the set and get method to interact with it.
 
@@ -396,12 +413,14 @@ class Variable(AbstractPath):
                                                           < gs.CACHE_FINISHED_RESULTS_MAX_SIZE))
     def get(self):
         if not self.is_set():
-            if gs.RAISE_VARIABLE_NOT_SET_EXCEPTION:
-                raise VariableNotSet("Variable is not set (%s)" % self.get_path())
-            if self.backup is None:
-                return "<UNFINISHED VARIABLE: %s>" % self.get_path()
-            else:
+            if self.backup != NoBackup:
                 return self.backup
+            elif gs.RAISE_VARIABLE_NOT_SET_EXCEPTION:
+                raise VariableNotSet("Variable is not set (%s) and RAISE_VARIABLE_NOT_SET_EXCEPTION == True"
+                                     % self.get_path())
+            else:
+                return "<UNFINISHED VARIABLE: %s>" % self.get_path()
+
         if self.pickle:
             with gzip.open(self.get_path(), 'rb') as f:
                 v = pickle.load(f)

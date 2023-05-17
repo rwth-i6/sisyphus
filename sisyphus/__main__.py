@@ -116,35 +116,6 @@ def main():
 
     shortcuts.add_subparsers(subparsers)
 
-    # Currently disabled parser, maybe used again in the future
-    #
-    # Disabled, since it's not used for now
-    # parser_unittest = subparsers.add_parser('unittest', help='Run unittest tasks')
-    # parser_unittest.set_defaults(func=unittest)
-    # parser_unittest.add_argument("--do_not_run", dest="run", default=True, action='store_false',
-    #                              help="Do not run the given task")
-    # parser_unittest.add_argument('argv', metavar='ARGV', type=str, nargs='*',
-    #                              help='an additional way do define config files')
-
-    # Disabled since it's currently not working
-    # parser_notebook = subparsers.add_parser('notebook',
-    #                                         usage='sis notebook [-h]\n\n'
-    #                                               'Open notebook session',
-    #                                         help="Start notebook to interactively work on sis graph")
-    # parser_notebook.add_argument("--load", dest="load", default=[], action='append',
-    #                              help="load graph and start console")
-    # parser_notebook.add_argument("--file", "-f", dest="filename", default='default',
-    #                              help="load (and create if needed) this notebook file")
-    # parser_notebook.set_defaults(func=helper.notebook)
-
-    # Disabled since it's currently not working
-    # parser_connect = subparsers.add_parser('connect', usage='sis connect [-h] [connect_file]\n\n'
-    #                                                         'Opens a console connected to given kernel',
-    #                                        help='Opens a console connected with given kernel')
-    # parser_connect.add_argument('argv', metavar='ARGV', type=str, nargs='?',
-    #                             default=[], help='connection_file')
-    # parser_connect.set_defaults(func=helper.connect)
-
     args = parser.parse_args()
 
     if not hasattr(args, 'func'):

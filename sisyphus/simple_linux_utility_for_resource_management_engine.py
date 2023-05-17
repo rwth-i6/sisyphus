@@ -8,12 +8,10 @@ import math
 import os
 import subprocess
 import time
-from xml.dom import minidom
-import xml.etree.cElementTree
 
 import sisyphus.global_settings as gs
 from sisyphus.engine import EngineBase
-from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE, STATE_QUEUE_ERROR
+from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE
 
 ENGINE_NAME = 'slurm'
 TaskInfo = namedtuple('TaskInfo', ["job_id", "task_id", "state"])
@@ -45,7 +43,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         PER_NODE = "per_node"
 
     def __init__(self, default_rqmt, gateway=None, has_memory_resource=True, auto_clean_eqw=True,
-                 ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_CPU):
+                 ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_NODE):
         """
 
         :param dict default_rqmt: dictionary with the default rqmts
@@ -92,7 +90,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             o = o.split(b'\n')
             if o[-1] != b'':
                 print(o[-1])
-                assert(False)
+                assert False
             return o[:-1]
 
         out = fix_output(out)
@@ -147,6 +145,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
 
         out.append('--time=%s' % task_time)
         out.append('--export=all')
+
+        if rqmt.get('multi_node_slots', None):
+            out.append('--ntasks=%s' % rqmt['multi_node_slots'])
 
         sbatch_args = rqmt.get('sbatch_args', [])
         if isinstance(sbatch_args, str):

@@ -19,14 +19,10 @@ import json
 import time
 import logging
 
-import getpass  # used to get username
-import math
 import threading
 from multiprocessing.pool import ThreadPool
 
-from xml.dom import minidom
-import xml.etree.cElementTree
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 
 import sisyphus.global_settings as gs
 from sisyphus.engine import EngineBase
@@ -103,7 +99,7 @@ class AWSBatchEngine(EngineBase):
             o = o.split(b'\n')
             if o[-1] != b'':
                 print(o[-1])
-                assert(False)
+                assert False
             return o[:-1]
 
         out = fix_output(out)
@@ -132,6 +128,10 @@ class AWSBatchEngine(EngineBase):
         mem = int(rqmt.get('mem', 1) * 1024)  # AWS uses MiB
         # TODO time
         # time = rqmt.get('mem', 1)
+
+        if rqmt.get('multi_node_slots', None):
+            raise NotImplementedError('Multi-node slots are not implemented for AWS Batch')
+
         for task_id in task_ids:
             call_with_id = call[:] + [str(task_id)]
 

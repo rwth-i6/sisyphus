@@ -12,15 +12,15 @@ color_end_marker = '\x1b[0m'
 
 
 def color_mapping(levelno):
-    if(levelno >= 50):
+    if levelno >= 50:
         return '\x1b[31m'  # red
-    elif(levelno >= 40):
+    elif levelno >= 40:
         return '\x1b[31m'  # red
-    elif(levelno >= 30):
+    elif levelno >= 30:
         return '\x1b[33m'  # yellow
-    elif(levelno >= 20):
+    elif levelno >= 20:
         return '\x1b[32m'  # green
-    elif(levelno >= 10):
+    elif levelno >= 10:
         return '\x1b[35m'  # pink
     else:
         return '\x1b[0m'  # normal

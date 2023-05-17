@@ -37,7 +37,7 @@ class OutputTarget:
         self.required_full_list = sorted(list(self._required))
         self.name = name
 
-    def update_requirements(self):
+    def update_requirements(self, write_output=True, force=False):
         self._required = {out for out in self._required if not out.available()}
 
     @property
@@ -157,9 +157,9 @@ class OutputReport(OutputTarget):
         self._required = extract_paths(self._report_values)
         self.required_full_list = sorted(list(self._required))
 
-    def update_requirements(self, write_output=True):
+    def update_requirements(self, write_output=True, force=False):
         """ Update current report if enough time as passed since last update """
-        if time.time() - self._last_update < self._update_frequency:
+        if not force and time.time() - self._last_update < self._update_frequency:
             return
         else:
             self._last_update = time.time()

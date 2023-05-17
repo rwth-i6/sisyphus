@@ -5,11 +5,12 @@ These settings can be overwritten via a ``settings.py`` file in the current dire
 
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
-import sys
 import logging
+import sys
+from typing import Dict
+
 import sisyphus.hash
 from sisyphus.global_constants import *
-import os
 
 
 def engine():
@@ -58,46 +59,33 @@ def worker_wrapper(job, task_name, call):
     return call
 
 
-def update_engine_rqmt(initial_rqmt, last_usage):
-    """ Update requirements after a job got interrupted.
+def update_engine_rqmt(last_rqmt: Dict, last_usage: Dict):
+    """ Update requirements after a job got interrupted, double limits if needed
 
-    :param dict[str] initial_rqmt: requirements that are requested first
-    :param dict[str] last_usage: information about the last usage by the task
+    :param dict[str] last_rqmt: requirements that where requested for previous run of this task
+    :param dict[str] last_usage: information about the used resources of previous run (mainly memory and time)
     :return: updated requirements
     :rtype: dict[str]
     """
+    out = last_rqmt.copy()
 
-    # Contains the resources requested for interrupted run
-    requested_resources = last_usage.get('requested_resources', {})
-    requested_time = requested_resources.get('time', initial_rqmt.get('time', 1))
-    requested_memory = requested_resources.get('mem', initial_rqmt.get('mem', 1))
-
-    # How much was actually used
+    # Did we run out of time?
+    requested_time = last_rqmt.get('time')
     used_time = last_usage.get('used_time', 0)
+    if requested_time and requested_time - used_time < 0.1:
+        out['time'] = requested_time * 2
+
+    # Did it (nearly) break the memory limits?
+    requested_memory = last_rqmt.get('mem')
     used_memory = last_usage.get('max', {}).get('rss', 0)
-
-    # Did it (nearly) break the limits?
-    out_of_memory = last_usage.get('out_of_memory') or requested_memory - used_memory < 0.25
-    out_of_time = requested_time - used_time < 0.1
-
-    # Double limits if needed
-    if out_of_time:
-        requested_time = max(initial_rqmt.get('time', 0), requested_time * 2)
-
-    if out_of_memory:
-        requested_memory = max(initial_rqmt.get('mem', 0), requested_memory * 2)
-
-    # create updated rqmt dict
-    out = initial_rqmt.copy()
-    out.update(requested_resources)
-    out['time'] = requested_time
-    out['mem'] = requested_memory
+    if requested_memory and last_usage.get('out_of_memory') or requested_memory - used_memory < 0.25:
+        out['mem'] = requested_memory * 2
 
     return out
 
 
 # noinspection PyUnusedLocal
-def check_engine_limits(current_rqmt, task):
+def check_engine_limits(current_rqmt: Dict, task):
     """ Check if requested requirements break and hardware limits and reduce them.
     By default ignored, a possible check for limits could look like this::
 
@@ -132,8 +120,6 @@ def file_caching(path):
 # Experimental settings
 # Add tags attached to job to work path, currently not active maintained
 JOB_USE_TAGS_IN_PATH = False
-# Start kernel to connect remotely, currently not active maintained
-START_KERNEL = False
 # Link all computed outputs to this directory for easy sharing in a team
 TEAM_SHARE_DIR = None  # If set results will be linked to this directory
 
@@ -311,78 +297,55 @@ DELAYED_CHECK_FOR_WORKER = False
 LEGACY_PATH_CONVERSION = False
 
 #: Changes str and repr conversions of Variable to contain only the variable content if available.
-#: Planed to be set to False by default in the future since it can causes bugs which are hard to find.
+#: Enabling it can cause bugs which are hard to find.
 LEGACY_VARIABLE_CONVERSION = False
 
-#: Raise an exception if a Variable is accessed which is not set yet
-RAISE_VARIABLE_NOT_SET_EXCEPTION = False
+#: Raise an exception if a Variable is accessed which is not set yet and has no backup value
+RAISE_VARIABLE_NOT_SET_EXCEPTION = True
 
+# Parameter used for debugging or profiling
+MEMORY_PROFILE_LOG = None
+
+USE_UI = True
+
+# Set to False to disable Warning of unset engine
+ENGINE_NOT_SETUP_WARNING = True
 
 # Internal functions
-def update_global_settings_from_text(text, filename):
-    """
-    :param str text:
-    :param str filename:
-    :return: nothing
-    """
-    # create basically empty globals
-    globals_ = {
-        '__builtins__': globals()['__builtins__'],
-        '__file__': filename,
-        '__name__': filename,
-        '__package__': None,
-        '__doc__': None,
-    }
-    globals_keys = list(globals_.keys())
-
-    # it might be useful to change the default environment by modifying the existing set/dict
-    # thus we need to add it to the globals, but not to globals_keys
-    globals_['DEFAULT_ENVIRONMENT_KEEP'] = DEFAULT_ENVIRONMENT_KEEP
-    globals_['DEFAULT_ENVIRONMENT_SET'] = DEFAULT_ENVIRONMENT_SET
-
-    # compile is needed for a nice trace back
-    exec(compile(text, filename, "exec"), globals_)
-
-    for k, v in globals_.items():
-        if k not in globals_keys:
-            globals()[k] = v
-
-    if AUTO_SET_JOB_INIT_ATTRIBUTES:
-        import logging
-        logging.warning('AUTO_SET_JOB_INIT_ATTRIBUTES is deprecated, please set the attributes manually '
-                        'you might want to use self.set_attrs(locals())')
-
-
-def update_global_settings_from_file(filename):
-    """
-    :param str filename:
-    :return: nothing
-    """
-    # skip if settings file doesn't exist
-    globals()['GLOBAL_SETTINGS_FILE'] = filename
-
-    content = ''
-    try:
-        with open(filename, encoding='utf-8') as f:
-            content = f.read()
-    except IOError as e:
-        if e.errno != 2:
-            raise e
-
-    globals()['GLOBAL_SETTINGS_FILE_CONTENT'] = content
-    update_global_settings_from_text(content, filename)
-
-
-GLOBAL_SETTINGS_COMMANDLINE = []
 ENVIRONMENT_SETTINGS = {}
 ENVIRONMENT_SETTINGS_PREFIX = 'SIS_'
 
+#: Stores content of all given settings file allowing to log and recreate them if necessary
+GLOBAL_SETTINGS_FILE_CONTENT = ''
+
+
+def update_global_settings_from_file(filename):
+    """ Loads setting file and updates state of global_settings with its content
+
+    :param str filename:
+    :return: nothing
+    """
+    global GLOBAL_SETTINGS_FILE_CONTENT
+
+    try:
+        with open(filename, encoding='utf-8') as f:
+            content = f.read()
+    except FileNotFoundError as e:
+        import logging
+        logging.warning(f"Settings file '{filename}' does not exist, ignoring it ({e}).")
+    else:
+        exec(compile(content, filename, 'exec'), globals())
+        GLOBAL_SETTINGS_FILE_CONTENT += f"##### Settings file: {filename} #####\n{content}\n"
+
 
 def update_global_settings_from_env():
-    """
+    """ Updates global_settings from environment variables
     :return: nothing
     """
     from ast import literal_eval
+    global GLOBAL_SETTINGS_FILE_CONTENT
+
+    content = []
     for k, v in os.environ.items():
         if k.startswith(ENVIRONMENT_SETTINGS_PREFIX):
             ENVIRONMENT_SETTINGS[k] = v
@@ -396,15 +359,19 @@ def update_global_settings_from_env():
             if k == 'IMPORT_PATHS' and isinstance(v, str):
                 v = v.split(':')
             globals()[k] = v
+            content.append(f"{k} = {repr(v)}\n")
+
+    if content:
+        GLOBAL_SETTINGS_FILE_CONTENT += "##### Settings from environment #####\n" + ''.join(content)
 
 
-# Parameter used for debugging or profiling
-MEMORY_PROFILE_LOG = None
-
-USE_UI = True
-
-# Set to False to disable Warning of unset engine
-ENGINE_NOT_SETUP_WARNING = True
-
-update_global_settings_from_file(GLOBAL_SETTINGS_FILE_DEFAULT)
+GLOBAL_SETTINGS_FILE = os.environ.get(ENVIRONMENT_SETTINGS_PREFIX + 'GLOBAL_SETTINGS_FILE',
+                                      GLOBAL_SETTINGS_FILE_DEFAULT)
+for settings_file in GLOBAL_SETTINGS_FILE.split(':'):
+    if settings_file:
+        update_global_settings_from_file(settings_file)
 update_global_settings_from_env()
+
+if AUTO_SET_JOB_INIT_ATTRIBUTES:
+    logging.warning('AUTO_SET_JOB_INIT_ATTRIBUTES is deprecated, please set the attributes manually '
+                    'you might want to use self.set_attrs(locals())')
