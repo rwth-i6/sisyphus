@@ -32,7 +32,8 @@ class Task(object):
         :param typing.Sequence[typing.Union[typing.List[object],object]] args: job arguments
         :param bool mini_task: will be run on engine for short jobs if True
         :param (dict[str],dict[str])->dict[str] update_rqmt: function to update job requirements for interrupted jobs
-        :param int parallel: the max. number of jobs to submit to a queue, defaults to the number of args
+        :param int parallel: if set to > 0, groups jobs for individual arguments together into the number of batches 
+                             specified here. Will then submit at max `parallel` jobs into the engine at a time.
         :param int tries: how often this task is resubmitted after failure
         :param bool continuable: If set to True this task will not set a finished marker, useful for tasks that can be
                                  continued for arbitrarily long, e.g. adding more epochs to neural network training
