@@ -120,8 +120,7 @@ class LocalEngine(threading.Thread, EngineBase):
         # Start new task
         call = task.call[:]
         env = os.environ.copy()
-        if len(selected_gpus) > 0:
-            env["CUDA_VISIBLE_DEVICES"] = selected_gpus
+        env["CUDA_VISIBLE_DEVICES"] = selected_gpus
         sp = subprocess.Popen(call, env=env, start_new_session=True)
         self.running_subprocess.append(sp)
         pid = sp.pid
