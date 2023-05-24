@@ -2,6 +2,7 @@
 
 from collections import defaultdict, namedtuple
 from enum import Enum
+from typing import Callable
 import getpass  # used to get username
 import logging
 import math
@@ -53,9 +54,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :param list[str] ignore_jobs: list of job ids that will be ignored during status updates.
                                       Useful if a job is stuck inside of Slurm and can not be deleted.
                                       Job should be listed as "job_number.task_id" e.g.: ['123.1', '123.2', '125.1']
-        :param job_name_mapping: mapping for job names in sbatch, e.g., path/to/file/JobName.H4sH to JobName.H4sH
-                                 Warning:
-                                 If the mapping is changed, the engine cannot recognize already running jobs anymore.
+        :param Callable job_name_mapping: mapping for job names in sbatch
+                                          Example mapping: 'path/to/file/JobName.H4sH' to 'JobName.H4sH'
+                                          Warning: If the mapping is changed, the engine cannot recognize already
+                                          running jobs anymore.
         """
         self._task_info_cache_last_update = 0
         self.gateway = gateway
@@ -64,7 +66,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self.auto_clean_eqw = auto_clean_eqw
         self.ignore_jobs = ignore_jobs
         self.memory_allocation_type = memory_allocation_type
-        self.job_name_mapping = job_name_mapping or escape_name
+        self.job_name_mapping = job_name_mapping
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -208,7 +210,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :param int end_id:
         :param int step_size:
         """
-        name = self.job_name_mapping(name)
+        if self.job_name_mapping is not None:
+            name = self.job_name_mapping(name)
+        name = escape_name(name)
         sbatch_call = [
             'sbatch',
             '-J',
@@ -309,7 +313,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         """
 
         name = task.task_name()
-        name = self.job_name_mapping(name)
+        if self.job_name_mapping is not None:
+            name = self.job_name_mapping(name)
+        name = escape_name(name)
         task_name = (name, task_id)
         queue_state = self.queue_state()
         qs = queue_state[task_name]
