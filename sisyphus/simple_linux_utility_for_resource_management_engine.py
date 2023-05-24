@@ -17,9 +17,7 @@ ENGINE_NAME = 'slurm'
 TaskInfo = namedtuple('TaskInfo', ["job_id", "task_id", "state"])
 
 
-def escape_name(name, short_job_name=False):
-    if short_job_name:
-        name = name.split("/")[-1]
+def escape_name(name):
     return name.replace('/', '.')
 
 
@@ -45,7 +43,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         PER_NODE = "per_node"
 
     def __init__(self, default_rqmt, gateway=None, has_memory_resource=True, auto_clean_eqw=True,
-                 ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_NODE, short_job_names=False):
+                 ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_NODE, job_name_mapping=None):
         """
 
         :param dict default_rqmt: dictionary with the default rqmts
@@ -55,7 +53,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :param list[str] ignore_jobs: list of job ids that will be ignored during status updates.
                                       Useful if a job is stuck inside of Slurm and can not be deleted.
                                       Job should be listed as "job_number.task_id" e.g.: ['123.1', '123.2', '125.1']
-        :param bool short_job_names: short job names in sbatch, i.e., JobName.H4sH instead of path.to.file.JobName.H4sH
+        :param job_name_mapping: mapping for job names in sbatch, e.g., path/to/file/JobName.H4sH to JobName.H4sH
+                                 Warning:
+                                 If the mapping is changed, the engine cannot recognize already running jobs anymore.
         """
         self._task_info_cache_last_update = 0
         self.gateway = gateway
@@ -64,7 +64,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self.auto_clean_eqw = auto_clean_eqw
         self.ignore_jobs = ignore_jobs
         self.memory_allocation_type = memory_allocation_type
-        self.short_job_names = short_job_names
+        self.job_name_mapping = job_name_mapping or escape_name
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -208,7 +208,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :param int end_id:
         :param int step_size:
         """
-        name = escape_name(name, short_job_name=self.short_job_names)
+        name = self.job_name_mapping(name)
         sbatch_call = [
             'sbatch',
             '-J',
@@ -309,7 +309,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         """
 
         name = task.task_name()
-        name = escape_name(name, short_job_name=self.short_job_names)
+        name = self.job_name_mapping(name)
         task_name = (name, task_id)
         queue_state = self.queue_state()
         qs = queue_state[task_name]
