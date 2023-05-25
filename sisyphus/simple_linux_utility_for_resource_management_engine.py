@@ -18,10 +18,6 @@ ENGINE_NAME = 'slurm'
 TaskInfo = namedtuple('TaskInfo', ["job_id", "task_id", "state"])
 
 
-def escape_name(name):
-    return name.replace('/', '.')
-
-
 def try_to_multiply(y, x, backup_value=None):
     """ Tries to convert y to float multiply it by x and convert it back
     to a rounded string.
@@ -55,7 +51,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                                       Useful if a job is stuck inside of Slurm and can not be deleted.
                                       Job should be listed as "job_number.task_id" e.g.: ['123.1', '123.2', '125.1']
         :param Callable job_name_mapping: mapping for job names in sbatch
-                                          Example mapping: 'path/to/file/JobName.H4sH' to 'JobName.H4sH'
+                                          Example mapping: 'path/to/file/JobName.H4sH.task' to 'JobName.H4sH.task'
                                           Warning: If the mapping is changed, the engine cannot recognize already
                                           running jobs anymore.
         """
@@ -210,9 +206,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :param int end_id:
         :param int step_size:
         """
-        if self.job_name_mapping is not None:
-            name = self.job_name_mapping(name)
-        name = escape_name(name)
+        name = self.process_task_name(name)
         sbatch_call = [
             'sbatch',
             '-J',
@@ -313,9 +307,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         """
 
         name = task.task_name()
-        if self.job_name_mapping is not None:
-            name = self.job_name_mapping(name)
-        name = escape_name(name)
+        name = self.process_task_name(name)
         task_name = (name, task_id)
         queue_state = self.queue_state()
         qs = queue_state[task_name]
@@ -379,3 +371,15 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
     def get_logpath(self, logpath_base, task_name, task_id):
         """ Returns log file for the currently running task """
         return os.path.join(logpath_base, "%s.%s.%i" % (task_name, os.getenv('SLURM_ARRAY_JOB_ID'), task_id))
+
+    def process_task_name(name):
+        """
+        Process the name of the sisyphus task to get the job name for the sbatch call
+
+        :param str name: raw task name, e.g., 'path/to/file/JobName.H4sH.task'
+        :rtype: str
+        """
+        if self.job_name_mapping is not None:
+            name = self.job_name_mapping(name)
+        name = name.replace('/', '.')  # escape name
+        return name
