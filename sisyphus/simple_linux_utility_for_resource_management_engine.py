@@ -372,7 +372,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         """ Returns log file for the currently running task """
         return os.path.join(logpath_base, "%s.%s.%i" % (task_name, os.getenv('SLURM_ARRAY_JOB_ID'), task_id))
 
-    def process_task_name(name):
+    def process_task_name(self, name):
         """
         Process the name of the sisyphus task to get the job name for the sbatch call
 
