@@ -6,6 +6,7 @@ from sisyphus.block import Block
 import sisyphus.tools as tools
 import sisyphus.hash
 
+import atexit
 from inspect import isclass
 import logging
 import collections
@@ -229,6 +230,7 @@ class SISGraph(object):
     def pool(self):
         if self._pool is None:
             self._pool = ThreadPool(gs.GRAPH_WORKER)
+            atexit.register(self._pool.close)
         return self._pool
 
     @property

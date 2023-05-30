@@ -1,4 +1,5 @@
 import asyncio
+import atexit
 import logging
 import os
 import sys
@@ -211,6 +212,7 @@ class Manager(threading.Thread):
 
         # Disable parallel mode for now, seems buggy
         self.thread_pool = ThreadPool(gs.MANAGER_SUBMIT_WORKER)
+        atexit.register(self.thread_pool.close)
         self.job_cleaner = None
 
         # Cached states of jobs
