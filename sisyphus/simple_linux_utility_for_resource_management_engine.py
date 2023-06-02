@@ -2,7 +2,6 @@
 
 from collections import defaultdict, namedtuple
 from enum import Enum
-from typing import Callable
 import getpass  # used to get username
 import logging
 import math
