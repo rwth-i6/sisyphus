@@ -102,7 +102,7 @@ def sis_hash_helper(obj):
         assert obj.__module__ != "__main__", "Hashing of functions defined in __main__ is not supported"
         byte_list.append(sis_hash_helper((obj.__module__, obj.__qualname__)))
     elif isclass(obj):
-        assert obj.__module__ != "__main__", "Hashing of functions defined in __main__ is not supported"
+        assert obj.__module__ != "__main__", "Hashing of classes defined in __main__ is not supported"
         byte_list.append(sis_hash_helper((obj.__module__, obj.__qualname__)))
     elif hasattr(obj, '_sis_hash'):
         # sis job or path object
