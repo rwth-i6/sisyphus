@@ -99,8 +99,10 @@ def sis_hash_helper(obj):
         # Not a nice way to check if the given function is a lambda function, but the best I found
         # assert not isinstance(lambda m: m, LambdaType) is true for all functions
         assert obj.__name__ != '<lambda>', "Hashing of lambda functions is not supported"
+        assert obj.__module__ != "__main__", "Hashing of functions defined in __main__ is not supported"
         byte_list.append(sis_hash_helper((obj.__module__, obj.__qualname__)))
     elif isclass(obj):
+        assert obj.__module__ != "__main__", "Hashing of functions defined in __main__ is not supported"
         byte_list.append(sis_hash_helper((obj.__module__, obj.__qualname__)))
     elif hasattr(obj, '_sis_hash'):
         # sis job or path object
