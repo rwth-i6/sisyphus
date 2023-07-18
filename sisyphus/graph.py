@@ -144,7 +144,7 @@ class OutputCall(OutputTarget):
 
 class OutputReport(OutputTarget):
     def __init__(self, output_path, report_values, report_template=None, required=None, update_frequency=300):
-        super().__init__(output_path, report_values)
+        super().__init__(output_path, required if required is not None else report_values)
         self._report_template = report_template
         self._report_values = report_values
         self._output_path = output_path
