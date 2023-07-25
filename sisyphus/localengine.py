@@ -313,7 +313,6 @@ class LocalEngine(threading.Thread, EngineBase):
 
             if call_with_id[1:] != process.cmdline()[1:]:
                 logging.debug('Job changed, ignore this job: %i %s %s' % (pid, process.cmdline(), task_instance.call))
-                return False
 
             with self.running_tasks as running_tasks:
                 name = (task_instance.name, task_id)
