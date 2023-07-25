@@ -312,7 +312,8 @@ class LocalEngine(threading.Thread, EngineBase):
             task_instance = TaskQueueInstance(call_with_id, logpath, rqmt, name, task_name, task_id)
 
             if call_with_id[1:] != process.cmdline()[1:]:
-                logging.debug('Job changed, ignore this job: %i %s %s' % (pid, process.cmdline(), task_instance.call))
+                logging.warning('Job %s changed, recovering it anyway.' % name)
+                logging.debug('Job changed: %i %s %s' % (pid, process.cmdline(), task_instance.call))
 
             with self.running_tasks as running_tasks:
                 name = (task_instance.name, task_id)
