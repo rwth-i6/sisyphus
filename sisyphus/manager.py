@@ -486,7 +486,7 @@ class Manager(threading.Thread):
             elif answer.lower() in ('u'):
                 self.link_outputs = True
                 create_aliases(self.sis_graph.jobs())
-                self.check_output(write_output=self.link_outputs, update_all_outputs=True)
+                self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
             return False
 
         self.print_state_overview()
