@@ -3,6 +3,7 @@ import multiprocessing
 import threading
 import queue
 import os
+import resource
 import socket
 import subprocess
 import psutil
@@ -116,7 +117,15 @@ class LocalEngine(threading.Thread, EngineBase):
         """
         # Start new task
         call = task.call[:]
-        sp = subprocess.Popen(call, start_new_session=True)
+        def set_resource_limits():
+            time_rqmt = task.rqmt.get("time", 0) * 3600  # convert hours to seconds
+            mem_rqmt = task.rqmt.get("mem")
+            if time_rqmt:
+                resource.setrlimit(resource.RLIMIT_CPU, (time_rqmt, time_rqmt))
+            if mem_rqmt:
+                resource.setrlimit(resource.RLIMIT_RSS, (mem_rqmt, mem_rqmt))
+            
+        sp = subprocess.Popen(call, start_new_session=True, preexec_fn=set_resource_limits)
         self.running_subprocess.append(sp)
         pid = sp.pid
         process = psutil.Process(pid)
