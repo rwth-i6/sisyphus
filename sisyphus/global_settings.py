@@ -204,6 +204,8 @@ PRINT_ERROR = True
 PRINT_ERROR_TASKS = 1
 #: Print that many last lines of error state log file
 PRINT_ERROR_LINES = 40
+#: Print message for held jobs
+PRINT_HOLD = True
 
 #: Which command should be called to start sisyphus, can be used to replace the python binary
 SIS_COMMAND = [sys.executable, sys.argv[0]]
