@@ -285,9 +285,10 @@ class Manager(threading.Thread):
         elif state in [gs.STATE_INTERRUPTED_RESUMABLE, gs.STATE_UNKNOWN]:
             logging.warning(info_string)
         elif state in [gs.STATE_QUEUE,
-                       gs.STATE_HOLD,
                        gs.STATE_RUNNING,
                        gs.STATE_RUNNABLE]:
+            logging.info(info_string)
+        elif state == gs.STATE_HOLD and gs.PRINT_HOLD:
             logging.info(info_string)
         elif verbose:
             logging.info(info_string)
