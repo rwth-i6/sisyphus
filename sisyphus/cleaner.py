@@ -303,7 +303,7 @@ def cleanup_unused(load_from: str = '', job_dirs=None, mode='remove'):
 
     :param load_from: File name to load list with used directories
     :param job_dirs: Already loaded list of used directories
-    :param mode: Cleanup mode (e.g. 'remove' or 'dryrun')
+    :param mode: Cleanup mode ('remove', 'move', or 'dryrun')
     :return:
     """
     if job_dirs:
