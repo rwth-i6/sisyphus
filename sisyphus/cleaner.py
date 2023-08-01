@@ -240,7 +240,9 @@ def remove_directories(dirs, message, move_postfix='.cleanup', mode='remove', fo
             p.close()
 
     input_var = 'UNSET'
-    if force:
+    if mode == 'dryrun':
+        input_var = 'n'
+    elif force:
         input_var = 'y'
 
     while input_var.lower() not in ('n', 'y'):
@@ -295,12 +297,13 @@ def cleanup_keep_value(min_keep_value, load_from: str = '', mode: str = 'remove'
                        force=False)
 
 
-def cleanup_unused(load_from: str = '', job_dirs=None):
+def cleanup_unused(load_from: str = '', job_dirs=None, mode='remove'):
     """ Check work directory and remove all subdirectories which do not belong to the given list of directories.
     If no input is given it removes everything that is not in the current graph
 
     :param load_from: File name to load list with used directories
     :param job_dirs: Already loaded list of used directories
+    :param mode: Cleanup mode (e.g. 'remove' or 'dryrun')
     :return:
     """
     if job_dirs:
@@ -310,4 +313,4 @@ def cleanup_unused(load_from: str = '', job_dirs=None):
     else:
         job_dirs = list_all_graph_directories()
     to_remove = search_for_unused(job_dirs, verbose=True)
-    remove_directories(to_remove, 'Not used in graph', mode='remove', force=False)
+    remove_directories(to_remove, 'Not used in graph', mode=mode, force=False)
