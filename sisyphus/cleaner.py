@@ -230,7 +230,7 @@ def remove_directories(dirs, message, move_postfix='.cleanup', mode='remove', fo
             for i in tmp:
                 logging.info(i)
     else:
-        with tempfile.NamedTemporaryFile() as tmp_file:
+        with tempfile.NamedTemporaryFile(mode="w") as tmp_file:
             for directory in dirs:
                 tmp_file.write(directory + "\x00")
             tmp_file.flush()
