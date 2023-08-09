@@ -23,6 +23,7 @@ except ModuleNotFoundError:
 
 import sisyphus.global_settings as gs
 from sisyphus.block import Block
+from sisyphus.job_path import AbstractPath
 
 
 def get_system_informations(file=sys.stdout):
@@ -86,7 +87,7 @@ def extract_paths(args: Any) -> Set:
         visited_obj_ids[id(obj)] = obj
         if isinstance(obj, Block) or isinstance(obj, enum.Enum):
             continue
-        if hasattr(obj, '_sis_path') and obj._sis_path is True:
+        if hasattr(obj, '_sis_path') and obj._sis_path is True and not (type(obj) is type and issubclass(obj, AbstractPath)):
             out.add(obj)
         elif isinstance(obj, (list, tuple, set)):
             queue.extend(obj)
