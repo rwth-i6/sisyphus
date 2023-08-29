@@ -135,7 +135,11 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             pass  # there is no option in SLURM?
 
         if rqmt.get('gpu', 0) > 0:
-            out.append('--gres=gpu:%s' % rqmt.get('gpu', 0))
+            gres = '--gres=gpu:'
+            if rqmt.get('gpu_name', ''):
+                gres += rqmt.get('gpu_name', '') + ':'
+            gres += str(rqmt.get('gpu', 0))
+            out.append(gres)
 
         out.append('--cpus-per-task=%s' % rqmt.get('cpu', 1))
 
