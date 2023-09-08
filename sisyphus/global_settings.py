@@ -149,6 +149,10 @@ MAX_SUBMIT_RETRIES = 3
 #: Default function to hash jobs and objects
 SIS_HASH = sisyphus.hash.short_hash
 
+#: Use the sis hash to compare Paths and to compute __hash__. The original behavior was not based on sis_hash
+#: which might lead to Paths with the same sis_hash to not be considered equal.
+USE_SIS_HASH_FOR_PATH_COMPARISON = False
+
 #: List of paths searched for loading config and recipe files. The module name should be part of the path e.g.:
 #: adding 'config' will cause Sisyphus to the current directory for a folder named config to load modules starting
 #: with config, other python files in the current directory will be ignored.

@@ -205,6 +205,9 @@ class AbstractPath(DelayedBase):
         if not isinstance(other, AbstractPath):
             assert False, "Cannot compare path to none path"
 
+        if gs.USE_SIS_HASH_FOR_PATH_COMPARISON:
+            return self._sis_hash() < other._sis_hash()
+
         def creator_to_str(c):
             if isinstance(c, str):
                 return c
@@ -227,14 +230,22 @@ class AbstractPath(DelayedBase):
         if len(self.__dict__) == len(other.__dict__) == 0:
             return True
 
+        if gs.USE_SIS_HASH_FOR_PATH_COMPARISON:
+            return self._sis_hash() == other._sis_hash()
+
         creator_equal = self.creator == other.creator
         path_equal = self.path == other.path
         return creator_equal and path_equal
 
     def __hash__(self):
-        # TODO Check how uninitialized object should behave here
-        return hash((self.__dict__.get('creator'),
-                     self.__dict__.get('path')))
+        if gs.USE_SIS_HASH_FOR_PATH_COMPARISON:
+            if hasattr(self, 'creator'):  # uninitialized object have no creator and calling sis_hash would fail
+                # Add prefix to avoid collision with sis_hash string
+                return hash(b'HASH # ' + self._sis_hash())
+            else:
+                return super().__hash__()
+        else:
+            return hash((self.__dict__.get('creator'), self.__dict__.get('path')))
 
     def __getstate__(self):
         """  Skips exporting users
