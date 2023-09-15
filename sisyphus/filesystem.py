@@ -10,7 +10,7 @@ from fuse import FUSE, Operations
 from sisyphus import toolkit
 from sisyphus.block import all_root_blocks
 
-Symlink = collections.namedtuple('Symlink', ["target"])
+Symlink = collections.namedtuple("Symlink", ["target"])
 
 
 class FilesystemObject(object):
@@ -18,39 +18,39 @@ class FilesystemObject(object):
 
 
 class Symlink(FilesystemObject):
-
     def __init__(self, target):
         self.target = target
 
     def getattr(self):
-        return {'st_size': 0,
-                'st_mode': 41471,  # int('120777', 8)
-                }
+        return {
+            "st_size": 0,
+            "st_mode": 41471,  # int('120777', 8)
+        }
 
 
 class File(FilesystemObject):
-
     def __init__(self, obj):
         self.obj = obj
 
     def getattr(self):
-        return {'st_size': len(repr(self.obj)) + 1,
-                'st_mode': 33060,  # int('0100444', 8)
-                }
+        return {
+            "st_size": len(repr(self.obj)) + 1,
+            "st_mode": 33060,  # int('0100444', 8)
+        }
 
     def __str__(self):
-        return repr(self.obj) + '\n'
+        return repr(self.obj) + "\n"
 
 
 class Directory(FilesystemObject):
-
     def __init__(self, obj):
         self.obj = obj
 
     def getattr(self):
-        return {'st_size': 0,
-                'st_mode': 16749,  # int('40555' , 8)
-                }
+        return {
+            "st_size": 0,
+            "st_mode": 16749,  # int('40555' , 8)
+        }
 
     def __iter__(self):
         """
@@ -59,29 +59,29 @@ class Directory(FilesystemObject):
         :return:
         """
         obj = self.obj
-        if hasattr(obj, '__fs_like__'):
+        if hasattr(obj, "__fs_like__"):
             obj = obj.__fs_like__()
 
-        if hasattr(obj, '__fs_directory__'):
+        if hasattr(obj, "__fs_directory__"):
             yield from obj.__fs_directory__()
         elif isinstance(obj, dict):
-            yield '_file'
+            yield "_file"
             for r in obj:
-                yield r.replace('/', '_')
+                yield r.replace("/", "_")
         elif isinstance(obj, (tuple, list, set, frozenset)):
-            yield '_file'
+            yield "_file"
             for r in range(len(obj)):
                 yield str(r)
         else:
-            yield '_file'
+            yield "_file"
             for r in dir(obj):
-                if r.startswith('_') or isinstance(r, (types.FunctionType, types.MethodType)):
+                if r.startswith("_") or isinstance(r, (types.FunctionType, types.MethodType)):
                     pass
                 else:
                     yield r
 
     def get(self, key, history, full_path, mountpoint):
-        """ Get entry of directory by name
+        """Get entry of directory by name
 
         :param key:
         :return:
@@ -90,21 +90,21 @@ class Directory(FilesystemObject):
 
         # Select next object
         obj = self.obj
-        if hasattr(obj, '__fs_like__'):
+        if hasattr(obj, "__fs_like__"):
             obj = obj.__fs_like__()
 
-        if hasattr(obj, '__fs_get__'):
+        if hasattr(obj, "__fs_get__"):
             obj_type, obj = obj.__fs_get__(step)
-            if obj_type == 'symlink':
+            if obj_type == "symlink":
                 obj = Symlink(obj)
         else:
-            if step == '_file':
+            if step == "_file":
                 return File(obj)
             elif isinstance(obj, dict):
                 obj = obj.get(step, None)
-                if obj is None and '_' in step:
+                if obj is None and "_" in step:
                     for k, v in self.obj.items():
-                        if k.replace('/', '_') == step:
+                        if k.replace("/", "_") == step:
                             obj = v
                             break
             elif isinstance(obj, (tuple, list, set, frozenset)):
@@ -124,20 +124,18 @@ class Directory(FilesystemObject):
             return File(obj)
         elif isinstance(obj, Symlink):
             return obj
-        elif hasattr(obj, '__fs_symlink__') and \
-                obj.__fs_symlink__(mountpoint, full_path, history):
+        elif hasattr(obj, "__fs_symlink__") and obj.__fs_symlink__(mountpoint, full_path, history):
             return Symlink(obj.__fs_symlink__(mountpoint, full_path, history))
         # replace obj already in path with link to avoid loops
         elif obj in history:
             index = history.index(obj)
-            return Symlink(os.path.sep.join(['..'] * (len(history) - index - 1)))
+            return Symlink(os.path.sep.join([".."] * (len(history) - index - 1)))
         else:
             history.append(obj)
             return Directory(obj)
 
 
 class SISFilesystem(Operations):
-
     def __init__(self, work_dir, sis_graph, mountpoint):
         self.work_dir = work_dir
         self.sis_graph = sis_graph
@@ -156,7 +154,7 @@ class SISFilesystem(Operations):
         return path
 
     def _verbose__call__(self, op, path, *args):
-        """ rename to __call__ to get a very verbose filesystem call
+        """rename to __call__ to get a very verbose filesystem call
         used for debugging
 
         :param op:
@@ -164,26 +162,26 @@ class SISFilesystem(Operations):
         :param args:
         :return:
         """
-        print('->', op, path, args[0] if args else '')
-        ret = '[Unhandled Exception]'
+        print("->", op, path, args[0] if args else "")
+        ret = "[Unhandled Exception]"
         try:
             ret = getattr(self, op)(path, *args)
             print(ret)
             return ret
         except OSError as e:
             ret = str(e)
-            print('OSError', ret, e, type(e))
+            print("OSError", ret, e, type(e))
             raise
         except IOError as e:
             ret = str(e)
-            print('IOError', ret, e, type(e))
+            print("IOError", ret, e, type(e))
             raise OSError(*e.args)
         except Exception as e:
             ret = str(e)
-            print('Exception', ret, e, type(e))
+            print("Exception", ret, e, type(e))
             raise e
         finally:
-            print('<-', op)
+            print("<-", op)
             pass
 
     @cache_result()
@@ -196,16 +194,18 @@ class SISFilesystem(Operations):
             history = self.cache[2][:]
             steps = [os.path.basename(path)]
         else:
-            root = {'output': self.sis_graph.targets_dict,
-                    'jobs': self.sis_graph.job_directory_structure(),
-                    'blocks': {block.name: block for block in all_root_blocks}}
+            root = {
+                "output": self.sis_graph.targets_dict,
+                "jobs": self.sis_graph.job_directory_structure(),
+                "blocks": {block.name: block for block in all_root_blocks},
+            }
             history = [root]
             obj = Directory(root)
             steps = path.split(os.path.sep)
 
         try:
             for step in steps:
-                if step == '':
+                if step == "":
                     continue
                 elif isinstance(obj, Directory):
                     obj = obj.get(step, history, path, self.mountpoint)
@@ -223,12 +223,14 @@ class SISFilesystem(Operations):
 
     def getattr(self, path, fh=None):
         obj = self.get_obj(path)
-        base = {'st_ctime': time.time(),
-                'st_atime': time.time(),
-                'st_uid': self.uid,
-                'st_nlink': 1,
-                'st_mtime': time.time(),
-                'st_gid': self.gid}
+        base = {
+            "st_ctime": time.time(),
+            "st_atime": time.time(),
+            "st_uid": self.uid,
+            "st_nlink": 1,
+            "st_mtime": time.time(),
+            "st_gid": self.gid,
+        }
         base.update(obj.getattr())
         return base
 
@@ -249,12 +251,10 @@ class SISFilesystem(Operations):
     def read(self, path, length, offset, fh):
         obj = self.get_obj(path)
         if isinstance(obj, File):
-            return str(obj)[offset:offset + length].encode('utf8')
+            return str(obj)[offset : offset + length].encode("utf8")
         else:
             raise OSError("OSError: [Errno 22] Invalid argument: '%s'" % path)
 
 
 def start(work_dir, sis_graph, mountpoint):
-    FUSE(SISFilesystem(work_dir, sis_graph, mountpoint),
-         mountpoint,
-         foreground=True)
+    FUSE(SISFilesystem(work_dir, sis_graph, mountpoint), mountpoint, foreground=True)

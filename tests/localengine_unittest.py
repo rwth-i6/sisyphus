@@ -4,7 +4,6 @@ from sisyphus import localengine
 
 
 class LETest(unittest.TestCase):
-
     def test_f(self):
         le = localengine.LocalEngine()
         le.start_engine()
@@ -12,5 +11,5 @@ class LETest(unittest.TestCase):
         le.stop_engine()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

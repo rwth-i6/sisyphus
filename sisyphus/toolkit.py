@@ -71,16 +71,16 @@ class BlockedWorkflow(Exception):
 
 # Functions mainly useful in Job definitions
 def zipped(filename: Union[Path, str]) -> bool:
-    """ Check if given file is zipped
+    """Check if given file is zipped
 
     :param filename (Path/str): File to be checked
     :return (bool): True if input file is zipped"""
-    with open(str(filename), 'rb') as f:
-        return f.read(2) == b'\x1f\x8b'
+    with open(str(filename), "rb") as f:
+        return f.read(2) == b"\x1f\x8b"
 
 
 class mktemp:
-    """ Object to be used by the with statement.
+    """Object to be used by the with statement.
     creates temporary file that will be delete at exit. Can be used like this::
 
         with mktemp() as temp:
@@ -134,11 +134,11 @@ def uncached_path(path):
 
 # TODO remove?
 def bundle_to_str(bundle):
-    """ Convert bundle of objects into a space separated list """
+    """Convert bundle of objects into a space separated list"""
     if isinstance(bundle, set):
         bundle = sorted(bundle)
 
-    return ' '.join(str(i) for i in bundle)
+    return " ".join(str(i) for i in bundle)
 
 
 sis_graph = graph.graph
@@ -167,12 +167,16 @@ def register_output(name, value, export_graph=False):
     :param Path value:
     :param bool export_graph:
     """
-    assert isinstance(value, AbstractPath), (
-        "Can only register Path or Variable objects as output, "
-        "but %s is of type %s.\n%s" % (name, type(value), str(value)))
+    assert isinstance(
+        value, AbstractPath
+    ), "Can only register Path or Variable objects as output, " "but %s is of type %s.\n%s" % (
+        name,
+        type(value),
+        str(value),
+    )
     sis_graph.add_target(graph.OutputPath(name, value))
     if export_graph:
-        dump(value, os.path.join(gs.OUTPUT_DIR, gs.ALIAS_AND_OUTPUT_SUBDIR, '.%s.sis' % name))
+        dump(value, os.path.join(gs.OUTPUT_DIR, gs.ALIAS_AND_OUTPUT_SUBDIR, ".%s.sis" % name))
 
 
 def register_callback(f, *args, **kwargs):
@@ -181,17 +185,20 @@ def register_callback(f, *args, **kwargs):
 
 
 def register_report(name, values, template=None, required=None, update_frequency=300):
-    report = graph.OutputReport(output_path=name,
-                                report_values=values,
-                                report_template=template,
-                                required=required,
-                                update_frequency=update_frequency)
+    report = graph.OutputReport(
+        output_path=name,
+        report_values=values,
+        report_template=template,
+        required=required,
+        update_frequency=update_frequency,
+    )
     sis_graph.add_target(report)
     return report
 
 
 class Object:
-    """ Simple helper class to create Objects without adding code """
+    """Simple helper class to create Objects without adding code"""
+
     pass
 
 
@@ -199,13 +206,14 @@ class RelPath:
     """
     Creates an object that will create a Path object relative to the current module if called
     """
+
     def __init__(self, origin, hash_overwrite=None):
         self.origin = origin
         self.hash_overwrite = hash_overwrite
 
     def __call__(self, path: str, *args, **kwargs) -> Path:
-        if self.hash_overwrite and 'hash_overwrite' not in kwargs and len(args) < 3:
-            kwargs['hash_overwrite'] = os.path.join(self.hash_overwrite, path)
+        if self.hash_overwrite and "hash_overwrite" not in kwargs and len(args) < 3:
+            kwargs["hash_overwrite"] = os.path.join(self.hash_overwrite, path)
         if not os.path.isabs(path):
             path = os.path.join(self.origin, path)
             path = os.path.relpath(path)
@@ -220,13 +228,17 @@ def setup_path(package: str) -> RelPath:
     :param str package:
     :rtype: RelPath
     """
-    assert package, ("setup_path is used to make all path relative to the current package directory, "
-                     "it only works inside of directories and not if the config file is passed directly")
+    assert package, (
+        "setup_path is used to make all path relative to the current package directory, "
+        "it only works inside of directories and not if the config file is passed directly"
+    )
 
-    hash_overwrite = package.replace('.', '/')
+    hash_overwrite = package.replace(".", "/")
     module = importlib.import_module(package)
-    assert (getattr(module, '__file__', None)
-            ), "setup_path failed for %s. Does %s/__init__.py exist?" % (package, hash_overwrite)
+    assert getattr(module, "__file__", None), "setup_path failed for %s. Does %s/__init__.py exist?" % (
+        package,
+        hash_overwrite,
+    )
     path = os.path.dirname(module.__file__)
     path = os.path.relpath(path)
 
@@ -234,7 +246,7 @@ def setup_path(package: str) -> RelPath:
 
 
 def dump(obj: Any, filename: str):
-    """ Dumps object using pickle in zipped file, creates directory if needed
+    """Dumps object using pickle in zipped file, creates directory if needed
 
     :param obj: object to pickle
     :param str filename: path to pickled file
@@ -242,17 +254,17 @@ def dump(obj: Any, filename: str):
     outfile_dir = os.path.dirname(filename)
     if not os.path.isdir(outfile_dir):
         os.makedirs(outfile_dir)
-    with gzip.open(filename, 'wb') as f:
+    with gzip.open(filename, "wb") as f:
         pickle.dump(obj, f)
 
 
 def load_file(path: str) -> Any:
-    """ Load object from pickled file, works with zipped and unzipped files
+    """Load object from pickled file, works with zipped and unzipped files
 
     :param str path: path to pickled file
     :return: unpickled object
     """
-    fopen = gzip.open(path, 'rb') if zipped(path) else open(path, 'rb')
+    fopen = gzip.open(path, "rb") if zipped(path) else open(path, "rb")
     with fopen as f:
         return pickle.load(f)
 
@@ -267,11 +279,12 @@ def running_in_worker():
 
 # Helper functions mainly used in the console
 def load_job(path: str) -> Job:
-    """ Load job from job directory even if it is already cleaned up
+    """Load job from job directory even if it is already cleaned up
 
     :param path(str): path to job directory
     :return (Job):
     """
+
     def load_tar(filename):
         with tarfile.open(filename) as tar:
             with tar.extractfile(gs.JOB_SAVE) as f:
@@ -294,7 +307,7 @@ def load_job(path: str) -> Job:
 
 
 def setup_job_directory(job: Job):
-    """ Setup the work directory of the given job.
+    """Setup the work directory of the given job.
 
     :param Job|Path job: Job which needs work directory
     """
@@ -303,15 +316,16 @@ def setup_job_directory(job: Job):
     if is_path(job):
         job = job.creator
     from sisyphus.job import Job
+
     if isinstance(job, Job):
         if job._sis_runnable():
             job._sis_setup_directory()
-            logging.info('Done setting up: %s' % job)
+            logging.info("Done setting up: %s" % job)
         else:
-            missing_inputs = '\n'.join(str(i) for i in job._sis_inputs if not i.available())
-            logging.error('Job has still missing inputs: %s' % missing_inputs)
+            missing_inputs = "\n".join(str(i) for i in job._sis_inputs if not i.available())
+            logging.error("Job has still missing inputs: %s" % missing_inputs)
     else:
-        logging.error('Not a job: %s' % original_input)
+        logging.error("Not a job: %s" % original_input)
         print(type(job))
 
 
@@ -327,7 +341,7 @@ def run_job(job: Job, task_name: str = None, task_id: int = 1, force_resume: boo
     assert isinstance(job, Job), "%s is not a Job" % job
 
     if not job._sis_setup():
-        logging.info('Job directory missing, set it up: %s' % job)
+        logging.info("Job directory missing, set it up: %s" % job)
         setup_job_directory(job)
 
     task = None
@@ -338,14 +352,17 @@ def run_job(job: Job, task_name: str = None, task_id: int = 1, force_resume: boo
             if t._start == task_name:
                 task = t
                 break
-        assert task is not None, \
-            "'%s' is not a valid task name (Valid names: %s)" % (task_name, [t._start for t in job._sis_tasks()])
+        assert task is not None, "'%s' is not a valid task name (Valid names: %s)" % (
+            task_name,
+            [t._start for t in job._sis_tasks()],
+        )
 
     try:
         call = task.get_worker_call(task_id)
         if force_resume:
-            call.append('--force_resume')
+            call.append("--force_resume")
         import subprocess
+
         process = subprocess.Popen(call)
         try:
             process.wait()
@@ -355,19 +372,21 @@ def run_job(job: Job, task_name: str = None, task_id: int = 1, force_resume: boo
             raise e
     except Exception as e:
         import traceback
+
         logging.error("Job failed %s" % e)
         traceback.print_exc()
 
 
-def remove_job_and_descendants(jobs: Union[str, AbstractPath, Job, List[Union[str, AbstractPath, Job]]],
-                               mode: str = 'remove') -> bool:
+def remove_job_and_descendants(
+    jobs: Union[str, AbstractPath, Job, List[Union[str, AbstractPath, Job]]], mode: str = "remove"
+) -> bool:
     """
     Remove all jobs that depend on the given jobs/paths.
 
     :param List[Job|Path] jobs: They and all jobs depended on them should be removed
     :param string mode: run mode (remove, move, dryrun)
     """
-    assert mode in ['remove', 'move', 'dryrun']
+    assert mode in ["remove", "move", "dryrun"]
     sis_graph.update_nodes()
 
     delete_list = []
@@ -397,6 +416,7 @@ def remove_job_and_descendants(jobs: Union[str, AbstractPath, Job, List[Union[st
                 return True
             else:
                 return False
+
         sis_graph.for_all_nodes(add_if_dependened, bottom_up=False)
 
     if not delete_list:
@@ -415,11 +435,11 @@ def remove_job_and_descendants(jobs: Union[str, AbstractPath, Job, List[Union[st
         path = job._sis_path()
         if os.path.isdir(path):
             print(path)
-    if mode != 'dryrun':
+    if mode != "dryrun":
         input_var = input("Start deleting? (y/N): ")
-        if input_var == 'y':
+        if input_var == "y":
             for job in delete_list:
-                if mode == 'move':
+                if mode == "move":
                     job._sis_move()
                 else:
                     job._sis_delete()
@@ -428,7 +448,7 @@ def remove_job_and_descendants(jobs: Union[str, AbstractPath, Job, List[Union[st
             print("Abort")
 
 
-def import_work_directory(directories: Union[str, List[str]], mode='dryrun', use_alias=False):
+def import_work_directory(directories: Union[str, List[str]], mode="dryrun", use_alias=False):
     """
     Link or copy finished jobs from other work directories.
 
@@ -457,7 +477,7 @@ def import_work_directory(directories: Union[str, List[str]], mode='dryrun', use
 
 
 def cached_engine(cache=[]):
-    """ Returns a cached version, for internal usage """
+    """Returns a cached version, for internal usage"""
     if not cache:
         # used persistent default argument as cache
         e = gs.engine()
@@ -476,20 +496,24 @@ def start_manager(job_engine=None, start_computations=False):
     if job_engine is None:
         job_engine = cached_engine()
     import sisyphus.manager
-    return sisyphus.manager.Manager(sis_graph=sis_graph,
-                                    job_engine=job_engine,
-                                    link_outputs=False,
-                                    clear_errors_once=False,
-                                    start_computations=start_computations,
-                                    auto_print_stat_overview=False)
+
+    return sisyphus.manager.Manager(
+        sis_graph=sis_graph,
+        job_engine=job_engine,
+        link_outputs=False,
+        clear_errors_once=False,
+        start_computations=start_computations,
+        auto_print_stat_overview=False,
+    )
 
 
 def job_info(job: Job):
-    """ Prints information about given job to stdout
+    """Prints information about given job to stdout
 
     :param job(Job):
     """
     from sisyphus import tools
+
     print("Job id: %s" % job._sis_id())
     print("Arguments:")
     for k, v in job._sis_kwargs.items():
@@ -497,7 +521,7 @@ def job_info(job: Job):
 
     print("Inputs:")
     for name, value in job.__dict__.items():
-        if not name.startswith('_sis_'):
+        if not name.startswith("_sis_"):
             paths = tools.extract_paths(value)
             for path in paths:
                 if path.creator is not job:
@@ -508,7 +532,7 @@ def job_info(job: Job):
 
     print("Outputs:")
     for name, value in job.__dict__.items():
-        if not name.startswith('_sis_'):
+        if not name.startswith("_sis_"):
             paths = tools.extract_paths(value)
             for path in paths:
                 if path.creator is job:
@@ -519,7 +543,7 @@ def job_info(job: Job):
 
 
 def show_jobs_in_webserver(port: int, jobs: List[Job]):
-    """ Start web server on given port which displays given loaded jobs """
+    """Start web server on given port which displays given loaded jobs"""
     from sisyphus import http_server
 
     web_graph = graph.SISGraph()
@@ -576,8 +600,7 @@ def print_graph(targets=None, required_inputs=None):
                 print("%s:" % path)
             else:
                 print("%s" % creator._sis_path())
-            path.creator._sis_print_tree(visited,
-                                         required_inputs=required_inputs_str)
+            path.creator._sis_print_tree(visited, required_inputs=required_inputs_str)
             print()
         else:
             print("%s: path" % (path))
@@ -592,15 +615,16 @@ def export_graph(output_file: Optional[str] = None):
     :return:
     """
     import sys
+
     sis_graph.update_nodes()
 
-    out = open(output_file, 'w') if output_file else sys.stdout
+    out = open(output_file, "w") if output_file else sys.stdout
 
     for path, job in sis_graph.path_to_all_nodes():
         out.write("%s %s\n" % (job._sis_id(), repr(path)))
 
 
-def migrate_graph(input_file=None, work_source=None, mode='dryrun'):
+def migrate_graph(input_file=None, work_source=None, mode="dryrun"):
     """
     migrate the graph from the provided graph file to the current graph
 
@@ -616,20 +640,21 @@ def migrate_graph(input_file=None, work_source=None, mode='dryrun'):
 
     import sys
     from ast import literal_eval
+
     in_stream = open(input_file) if input_file else sys.stdin
     for line in in_stream:
-        job_id, path = line.split(' ', 1)
+        job_id, path = line.split(" ", 1)
         path = literal_eval(path)
         job = sis_graph.get_job_from_path(path)
         if job:
             job._sis_migrate_directory(os.path.join(work_source, job_id), mode=mode)
         else:
-            logging.warning('Could not find: %s' % path)
+            logging.warning("Could not find: %s" % path)
 
 
 #  ### Graph modify and compare functions
 def compare_graph(obj1, obj2, traceback=None, visited=None):
-    """ Compares two objects and shows traceback to first found difference
+    """Compares two objects and shows traceback to first found difference
 
     :param obj1 (Job/Path): Object1 to compare
     :param obj2 (Job/Path): Object2 which is compared to Object1
@@ -681,9 +706,9 @@ def compare_graph(obj1, obj2, traceback=None, visited=None):
         for k, v2 in obj2.items():
             if k not in obj1:
                 yield traceback + [(None, k)]
-    elif hasattr(obj1, '__dict__'):
+    elif hasattr(obj1, "__dict__"):
         yield from compare_graph(obj1.__dict__, obj2.__dict__, traceback[:], visited)
-    elif hasattr(obj1, '__slots__'):
+    elif hasattr(obj1, "__slots__"):
         for k in obj1.__slots__:
             if hasattr(obj1, k):
                 if hasattr(obj2, k):
@@ -701,7 +726,7 @@ def compare_graph(obj1, obj2, traceback=None, visited=None):
 
 
 def replace_graph_objects(current, mapping=None, replace_function=None):
-    """ This function takes a given graph and creates a new graph where every object listed in mapping is replaced.
+    """This function takes a given graph and creates a new graph where every object listed in mapping is replaced.
 
     current: current graph
     mapping: [(old_object, new_object), ....]
@@ -746,9 +771,10 @@ def _replace_graph_objects_helper(current, replace_function=None, visited=None):
     elif isinstance(current, (list, tuple, set)):
         next = type(current)(_replace_graph_objects_helper(i, replace_function, visited) for i in current)
     elif isinstance(current, dict):
-        next = type(current)((k, _replace_graph_objects_helper(v, replace_function, visited))
-                             for k, v in current.items())
-    elif hasattr(current, '__dict__'):
+        next = type(current)(
+            (k, _replace_graph_objects_helper(v, replace_function, visited)) for k, v in current.items()
+        )
+    elif hasattr(current, "__dict__"):
         # TODO may add usage of get an set state
         dict_ = _replace_graph_objects_helper(current.__dict__, replace_function, visited)
         if dict_ == current.__dict__:
@@ -756,7 +782,7 @@ def _replace_graph_objects_helper(current, replace_function=None, visited=None):
         else:
             next = type(current).__new__(type(current))
             next.__dict__ = dict_
-    elif hasattr(current, '__slots__'):
+    elif hasattr(current, "__slots__"):
         diff = False
         dict_ = {}
         for k in current.__slots__:
@@ -780,13 +806,14 @@ def _replace_graph_objects_helper(current, replace_function=None, visited=None):
 def _reload_prefix(prefix):
     import sys
     import importlib
+
     for name, module in sys.modules.items():
         if name.startswith(prefix):
             importlib.reload(module)
 
 
 def reload_recipes():
-    """ Reload all recipes """
+    """Reload all recipes"""
     _reload_prefix(gs.RECIPE_PREFIX)
 
 
@@ -811,7 +838,7 @@ def reload_recipes():
 
 
 def reload_module(module):
-    """ Shortcut to reload module, keep sis_graph if toolkit is reloaded
+    """Shortcut to reload module, keep sis_graph if toolkit is reloaded
 
     :param module: Module to reload
     :return:
@@ -828,59 +855,61 @@ def reload_module(module):
 
 
 def setup_script_mode():
-    """ Use this function if you start sisyphus from an recipe file, it will:
+    """Use this function if you start sisyphus from an recipe file, it will:
 
-#. setup logging level and prompt
+    #. setup logging level and prompt
 
-#. disable the wait periods
+    #. disable the wait periods
 
-#. disable unwanted warning
+    #. disable unwanted warning
 
-You can run recipes directly by running something similar to this::
+    You can run recipes directly by running something similar to this::
 
-    export SIS_RECIPE_PATH=/PATH/TO/RECIPE/DIR
-    # If sisyphus is not installed in your python path
-    export PYTHONPATH=/PATH/TO/SISYPHUS:$PYTHONPATH
-    # If you want to change the work directory:
-    export SIS_WORK_DIR=/PATH/TO/WORK/DIR
-    python3 $SIS_RECIPE_PATH/recipe/path_to_file script parameters
+        export SIS_RECIPE_PATH=/PATH/TO/RECIPE/DIR
+        # If sisyphus is not installed in your python path
+        export PYTHONPATH=/PATH/TO/SISYPHUS:$PYTHONPATH
+        # If you want to change the work directory:
+        export SIS_WORK_DIR=/PATH/TO/WORK/DIR
+        python3 $SIS_RECIPE_PATH/recipe/path_to_file script parameters
 
-An example for the recipe::
+    An example for the recipe::
 
-    import os
-    import argparse
-    from sisyphus import *
-    from recipe.eval import bleu
+        import os
+        import argparse
+        from sisyphus import *
+        from recipe.eval import bleu
 
-    if __name__ == '__main__':
-        tk.setup_script_mode()
+        if __name__ == '__main__':
+            tk.setup_script_mode()
 
-        parser = argparse.ArgumentParser(description='Evaluate hypothesis')
-        parser.add_argument('--hyp', help='hypothesis', required=True)
-        parser.add_argument('--ref', help='reference', required=True)
+            parser = argparse.ArgumentParser(description='Evaluate hypothesis')
+            parser.add_argument('--hyp', help='hypothesis', required=True)
+            parser.add_argument('--ref', help='reference', required=True)
 
-        args = parser.parse_args()
-        hyp = os.path.realpath(args.hyp)
-        ref = os.path.realpath(args.ref)
+            args = parser.parse_args()
+            hyp = os.path.realpath(args.hyp)
+            ref = os.path.realpath(args.ref)
 
-        score = bleu(hyp, ref)
+            score = bleu(hyp, ref)
 
-        tk.run(score, quiet=True)
-        print(score.out)
+            tk.run(score, quiet=True)
+            print(score.out)
     """
     # Setup logging
     import logging
     from sisyphus.logging_format import add_coloring_to_logging
-    logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s', level=20)
+
+    logging.basicConfig(format="[%(asctime)s] %(levelname)s: %(message)s", level=20)
     add_coloring_to_logging()
 
-    for param in ['WAIT_PERIOD_JOB_FS_SYNC',  # Work around to avoid running into time out...
-                  'WAIT_PERIOD_JOB_CLEANUP',  # same here
-                  'WAIT_PERIOD_MTIME_OF_INPUTS',  # Speed up by not waiting for slow filesystem
-                  'ENGINE_NOT_SETUP_WARNING',  # Disable unwanted warning
-                  ]:
+    for param in [
+        "WAIT_PERIOD_JOB_FS_SYNC",  # Work around to avoid running into time out...
+        "WAIT_PERIOD_JOB_CLEANUP",  # same here
+        "WAIT_PERIOD_MTIME_OF_INPUTS",  # Speed up by not waiting for slow filesystem
+        "ENGINE_NOT_SETUP_WARNING",  # Disable unwanted warning
+    ]:
         setattr(gs, param, 0)
-        gs.ENVIRONMENT_SETTINGS['SIS_%s' % param] = '0'
+        gs.ENVIRONMENT_SETTINGS["SIS_%s" % param] = "0"
 
 
 def run(obj: Any, quiet: bool = False):
@@ -914,29 +943,35 @@ def run(obj: Any, quiet: bool = False):
 
                         call = " ".join(task.get_worker_call(task_id))
                         if quiet:
-                            call += ' --redirect_output'
+                            call += " --redirect_output"
                         else:
-                            call += ' 2>&1 > %s' % log_file
+                            call += " 2>&1 > %s" % log_file
                         subprocess.check_call(call, shell=True, env=env)
                         assert task.finished(task_id), "Failed to run task %s %s %s" % (job, task.name(), task_id)
 
     # Create fresh graph and add object as report since a report can handle all kinds of objects.
     temp_graph = graph.SISGraph()
-    temp_graph.add_target(graph.OutputReport(output_path='tmp',
-                                             report_values=obj,
-                                             report_template=None,
-                                             required=None,
-                                             update_frequency=0))
+    temp_graph.add_target(
+        graph.OutputReport(
+            output_path="tmp", report_values=obj, report_template=None, required=None, update_frequency=0
+        )
+    )
 
     # Update SIS_COMMAND
     import sys
-    gs.SIS_COMMAND = [sys.executable, '-m', 'sisyphus']
+
+    gs.SIS_COMMAND = [sys.executable, "-m", "sisyphus"]
     gs.SKIP_IS_FINISHED_TIMEOUT = True
 
     def get_jobs():
-        """ Helper function to get all relevant jobs"""
-        filter_list = (gs.STATE_WAITING, gs.STATE_RUNNABLE, gs.STATE_INTERRUPTED_RESUMABLE,
-                       gs.STATE_INTERRUPTED_NOT_RESUMABLE, gs.STATE_ERROR)
+        """Helper function to get all relevant jobs"""
+        filter_list = (
+            gs.STATE_WAITING,
+            gs.STATE_RUNNABLE,
+            gs.STATE_INTERRUPTED_RESUMABLE,
+            gs.STATE_INTERRUPTED_NOT_RESUMABLE,
+            gs.STATE_ERROR,
+        )
         return {k: v for k, v in temp_graph.get_jobs_by_status(skip_finished=True).items() if k in filter_list}
 
     jobs = get_jobs()
@@ -964,13 +999,13 @@ def run(obj: Any, quiet: bool = False):
 
 def submit_next_task(job: Job, setup_directory=True):
     if not job._sis_runnable():
-        logging.warning('Job is not runnable')
+        logging.warning("Job is not runnable")
         return
     if setup_directory:
         job._sis_setup_directory()
     cached_engine().start_engine()
     task = job._sis_next_task()
     if task is None:
-        logging.warning('No task to run')
+        logging.warning("No task to run")
     else:
         cached_engine().submit(task)

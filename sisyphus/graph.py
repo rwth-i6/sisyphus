@@ -19,7 +19,7 @@ from multiprocessing.pool import ThreadPool
 
 
 class Node(object):
-    __slots__ = ['job', 'sis_id', 'inputs', 'outputs']
+    __slots__ = ["job", "sis_id", "inputs", "outputs"]
 
     def __init__(self, sis_id):
         self.job = None
@@ -75,12 +75,12 @@ class OutputPath(OutputTarget):
         super().__init__(output_path, sis_path)
 
     def run_when_done(self, write_output=None):
-        """ Checks if output is computed, if yes create output link """
+        """Checks if output is computed, if yes create output link"""
         assert self._sis_path.available()
         if write_output:
             creator = self._sis_path.creator
             if creator is None or len(creator._sis_alias_prefixes) == 0:
-                prefixes = ['']
+                prefixes = [""]
             else:
                 prefixes = list(creator._sis_alias_prefixes)
             # Link output file
@@ -91,7 +91,7 @@ class OutputPath(OutputTarget):
                 # Remove file if it exists, if not or if it is an directory an OSError is raised
                 try:
                     os.unlink(outfile_dir)
-                    logging.warning('Removed file from output directory: %s' % outfile_dir)
+                    logging.warning("Removed file from output directory: %s" % outfile_dir)
                 except OSError:
                     pass
 
@@ -113,7 +113,7 @@ class OutputPath(OutputTarget):
                     os.symlink(os.path.realpath(self._sis_path.get_path()), outfile_name)
                     logging.info("Finished output: %s" % outfile_name)
                 except OSError as e:
-                    logging.warning('Failed to updated output %s. Exception: %s' % (outfile_name, e))
+                    logging.warning("Failed to updated output %s. Exception: %s" % (outfile_name, e))
 
 
 class OutputCall(OutputTarget):
@@ -129,12 +129,12 @@ class OutputCall(OutputTarget):
             # Use given requirements
             required = required
 
-        name = 'callback_%s_%i_%s_%s' % (f.__name__, id(f), gs.SIS_HASH(argv), gs.SIS_HASH(kwargs))
+        name = "callback_%s_%i_%s_%s" % (f.__name__, id(f), gs.SIS_HASH(argv), gs.SIS_HASH(kwargs))
         self._already_called = False
         super().__init__(name, required)
 
     def run_when_done(self, write_output=None):
-        """ Runs given function if output is available """
+        """Runs given function if output is available"""
         assert all(out.available() for out in self._required)
         if not self._already_called:
             f, args, kwargs = self._function_call
@@ -159,7 +159,7 @@ class OutputReport(OutputTarget):
         self.required_full_list = sorted(list(self._required))
 
     def update_requirements(self, write_output=True, force=False):
-        """ Update current report if enough time as passed since last update """
+        """Update current report if enough time as passed since last update"""
         if not force and time.time() - self._last_update < self._update_frequency:
             return
         else:
@@ -183,15 +183,15 @@ class OutputReport(OutputTarget):
                 os.unlink(outfile_name)
 
             # Actually write report
-            with open(outfile_name, 'w') as f:
+            with open(outfile_name, "w") as f:
                 if self._report_template:
                     f.write(self._report_template.format(**self._report_values))
                 elif callable(self._report_values):
                     f.write(str(self._report_values()))
                 else:
-                    f.write(pprint.pformat(self._report_values, width=140) + '\n')
+                    f.write(pprint.pformat(self._report_values, width=140) + "\n")
         except IOError as e:
-            logging.warning('Error while updating %s:  %s' % (outfile_name, str(e)))
+            logging.warning("Error while updating %s:  %s" % (outfile_name, str(e)))
 
     def run_when_done(self, write_output=None):
         if write_output:
@@ -201,13 +201,15 @@ class OutputReport(OutputTarget):
         if callable(self._report_values):
             return super().__fs_like__()
         else:
-            return {'template': self._report_template,
-                    'values': self._report_values,
-                    'frequency': self._update_frequency}
+            return {
+                "template": self._report_template,
+                "values": self._report_values,
+                "frequency": self._update_frequency,
+            }
 
 
 class SISGraph(object):
-    """ This graph contains all targets that needs to be calculated and through there dependencies all required jobs.
+    """This graph contains all targets that needs to be calculated and through there dependencies all required jobs.
     These jobs can be searched and modified using the provided functions. Most interesting functions are::
 
         # Lists all jobs
@@ -254,7 +256,7 @@ class SISGraph(object):
 
     @property
     def output(self):
-        """ Deprecated: used for backwards comparability, only supports path outputs """
+        """Deprecated: used for backwards comparability, only supports path outputs"""
         out = {}
 
         for t in self._targets:
@@ -281,13 +283,13 @@ class SISGraph(object):
             path = target._output_path
             creator = self._sis_path.creator
             if creator is None or len(creator._sis_alias_prefixes) == 0:
-                prefixes = ['']
+                prefixes = [""]
             else:
                 prefixes = list(creator._sis_alias_prefixes)
             for prefix in prefixes:
                 prefixed_path = prefix + path
                 if prefixed_path in self.used_output_path:
-                    logging.warning('Output path is used more than once: %s' % path)
+                    logging.warning("Output path is used more than once: %s" % path)
                 self.used_output_path.add(prefixed_path)
         except AttributeError:
             pass
@@ -296,15 +298,15 @@ class SISGraph(object):
             self._active_targets.append(target)
 
     def update_nodes(self):
-        """ Update all nodes to get the most current dependency graph """
+        """Update all nodes to get the most current dependency graph"""
         start = time.time()
 
         def update_nodes(job):
             job._sis_runnable()
             return True
+
         self.for_all_nodes(update_nodes)
-        logging.debug("All graph nodes updated (time needed: %.2f)"
-                      % (time.time() - start))
+        logging.debug("All graph nodes updated (time needed: %.2f)" % (time.time() - start))
 
     @cache_result(gs.FILESYSTEM_CACHE_TIME)
     def id_to_job_dict(self):
@@ -319,7 +321,7 @@ class SISGraph(object):
         d = {}
         for job in self.jobs():
             current = d
-            path = job._sis_id().split('/')
+            path = job._sis_id().split("/")
             for step in path[:-1]:
                 if step not in current:
                     current[step] = {}
@@ -339,11 +341,12 @@ class SISGraph(object):
         def f(job):
             job_list.append(job)
             return True
+
         self.for_all_nodes(f)
         return job_list
 
-    def find(self, pattern, mode='all'):
-        """ Returns a list with all jobs and paths that partly match the pattern
+    def find(self, pattern, mode="all"):
+        """Returns a list with all jobs and paths that partly match the pattern
 
         :param pattern(str): Pattern to match
         :param mode(str): Select if jobs, paths or both should be returned. Possible values: all, path, job
@@ -351,20 +354,23 @@ class SISGraph(object):
         """
         out = set()
         for j in self.jobs():
-            if mode in ('all', 'job'):
+            if mode in ("all", "job"):
                 vis_name = j.get_vis_name()
                 aliases = j._sis_aliases if j._sis_aliases is not None else set()
-                if pattern in j._sis_path() or (vis_name is not None and pattern in vis_name) or \
-                   any(pattern in a for a in aliases):
+                if (
+                    pattern in j._sis_path()
+                    or (vis_name is not None and pattern in vis_name)
+                    or any(pattern in a for a in aliases)
+                ):
                     out.add(j)
-            if mode in ('all', 'path'):
+            if mode in ("all", "path"):
                 for p in j._sis_inputs:
                     if pattern in str(p):
                         out.add(p)
         return list(out)
 
     def jobs_sorted(self):
-        """ Yields jobs in a order so that for each jop all jobs
+        """Yields jobs in a order so that for each jop all jobs
         it depends on are already finished
 
         :return (generator Node): jobs sorted by dependency
@@ -402,10 +408,10 @@ class SISGraph(object):
             for i in recursive_depth(node):
                 yield i
 
-    def get_jobs_by_status(self, nodes: Optional[List] = None,
-                           engine: Optional = None,
-                           skip_finished: bool = False) -> DefaultDict[str, List[Job]]:
-        """ Return all jobs needed to finish output in dictionary with current status as key
+    def get_jobs_by_status(
+        self, nodes: Optional[List] = None, engine: Optional = None, skip_finished: bool = False
+    ) -> DefaultDict[str, List[Job]]:
+        """Return all jobs needed to finish output in dictionary with current status as key
 
         :param nodes: all nodes that will be checked, defaults to all output nodes in graph
         :param sisyphus.engine.EngineBase engine: Use status job status of engine, ignore engine status if set to None
@@ -468,6 +474,7 @@ class SISGraph(object):
             with lock:
                 states[new_state].add(job)
             return True
+
         self.for_all_nodes(get_unfinished_jobs, nodes=nodes)
         return states
 
@@ -538,7 +545,8 @@ class SISGraph(object):
             with pool_lock:
                 if sis_id not in visited:
                     visited[sis_id] = pool.apply_async(
-                        tools.default_handle_exception_interrupt_main_thread(runner_helper), (job,))
+                        tools.default_handle_exception_interrupt_main_thread(runner_helper), (job,)
+                    )
 
         def runner_helper(job):
             """
@@ -596,8 +604,9 @@ class SISGraph(object):
                     else:
                         visited[sis_id] = obj
                         if only_check:
-                            logging.warning("Could not export %s since it's only reachable "
-                                            "via sets. %s" % (obj, only_check))
+                            logging.warning(
+                                "Could not export %s since it's only reachable " "via sets. %s" % (obj, only_check)
+                            )
                         else:
                             yield path, obj
                 except AttributeError:
@@ -627,11 +636,11 @@ class SISGraph(object):
                     assert is_literal(name), "Can not export %s (type: %s) as directory key" % (name, type(name))
                     yield from runner(value, path + [name], only_check=only_check)
             elif isinstance(obj, AbstractPath):
-                yield from runner(obj.creator, path + ['creator'], only_check=only_check)
+                yield from runner(obj.creator, path + ["creator"], only_check=only_check)
             else:
                 try:
                     for name, value in obj.__dict__.items():
-                        if not name.startswith('_sis') and not isinstance(obj, Block):
+                        if not name.startswith("_sis") and not isinstance(obj, Block):
                             yield from runner(value, path + [name], only_check=only_check)
                 except AttributeError:
                     pass
@@ -642,7 +651,7 @@ class SISGraph(object):
                 path = target._output_path
                 obj = target._sis_path
                 if obj.creator:
-                    yield from runner(obj.creator, [path, 'creator'], only_check=False)
+                    yield from runner(obj.creator, [path, "creator"], only_check=False)
 
         # check if there are any jobs that could not be reached due to sets
         for _, (obj, possible_paths) in check_later.items():
@@ -651,7 +660,7 @@ class SISGraph(object):
                 pass
 
     def get_job_from_path(self, path):
-        """ The reverse function for get_path_to_all_nodes """
+        """The reverse function for get_path_to_all_nodes"""
 
         # extract dict from targets
         current = {}
@@ -670,14 +679,14 @@ class SISGraph(object):
                     current = current[step]
                 else:
                     return None
-            elif hasattr(current, '__dict__'):
+            elif hasattr(current, "__dict__"):
                 current = current.__dict__.get(step)
             else:
                 return None
         return current
 
     def set_job_targets(self, engine=None):
-        """ Add a target to all jobs (if possible) to have a more informative output """
+        """Add a target to all jobs (if possible) to have a more informative output"""
 
         # Reset all caches
         def f(job):
@@ -685,6 +694,7 @@ class SISGraph(object):
                 job._sis_needed_for_which_targets = set()
             except AttributeError:
                 pass
+
         self.for_all_nodes(f)
 
         for target in self.targets:
@@ -693,14 +703,17 @@ class SISGraph(object):
                 out = target._sis_path
 
                 if out.creator is not None:
-                    logging.info('Add target %s to jobs (used for more informativ output, '
-                                 'disable with SHOW_JOB_TARGETS=False)' % name)
+                    logging.info(
+                        "Add target %s to jobs (used for more informativ output, "
+                        "disable with SHOW_JOB_TARGETS=False)" % name
+                    )
 
                     def f(job):
                         if gs.SHOW_JOB_TARGETS is True or len(job._sis_needed_for_which_targets) < gs.SHOW_JOB_TARGETS:
                             job._sis_needed_for_which_targets.add(name)
                             return True
                         return False
+
                     self.for_all_nodes(f=f, nodes=[out.creator])
 
 

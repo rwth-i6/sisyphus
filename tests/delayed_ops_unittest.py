@@ -6,9 +6,8 @@ import sisyphus.toolkit as tk
 
 
 class DelayedOpsTest(unittest.TestCase):
-
     def check_only_get_eq(self, a, b):
-        """ Check that a and b are normally not equal, but are equal after calling get """
+        """Check that a and b are normally not equal, but are equal after calling get"""
         self.assertNotEqual(a, b)
         self.assertEqual(a.get(), b)
 
@@ -30,51 +29,51 @@ class DelayedOpsTest(unittest.TestCase):
         self.check_only_get_eq(a - 4, -1)
         self.check_only_get_eq(4 - a, 1)
 
-        self.check_only_get_eq(a ** 2, 9)
-        self.check_only_get_eq(2 ** a, 8)
-        self.check_only_get_eq(a ** 2 % 2, 1)
-        self.check_only_get_eq(2 ** a % 2, 0)
+        self.check_only_get_eq(a**2, 9)
+        self.check_only_get_eq(2**a, 8)
+        self.check_only_get_eq(a**2 % 2, 1)
+        self.check_only_get_eq(2**a % 2, 0)
 
-        self.check_only_get_eq(a.rformat('foo{:04d} foo'), 'foo0003 foo')
+        self.check_only_get_eq(a.rformat("foo{:04d} foo"), "foo0003 foo")
 
     def test_string(self):
-        a = Delayed('foo')
+        a = Delayed("foo")
 
-        self.check_only_get_eq(a + 'bar', 'foobar')
-        self.check_only_get_eq('bar' + a, 'barfoo')
+        self.check_only_get_eq(a + "bar", "foobar")
+        self.check_only_get_eq("bar" + a, "barfoo")
 
-        self.check_only_get_eq(a * 3, 'foofoofoo')
+        self.check_only_get_eq(a * 3, "foofoofoo")
 
-        a = Delayed('foo%s foo')
-        self.check_only_get_eq(a % 'bar', 'foobar foo')
+        a = Delayed("foo%s foo")
+        self.check_only_get_eq(a % "bar", "foobar foo")
 
-        a = Delayed('foo{b} foo')
-        self.check_only_get_eq(a.format(b='bar'), 'foobar foo')
+        a = Delayed("foo{b} foo")
+        self.check_only_get_eq(a.format(b="bar"), "foobar foo")
 
-        a = Delayed('bar')
-        self.check_only_get_eq(a.rformat('foo{} foo'), 'foobar foo')
+        a = Delayed("bar")
+        self.check_only_get_eq(a.rformat("foo{} foo"), "foobar foo")
 
-        a = Delayed('foobbb foo')
-        b = a.replace('bbb', 'bar')
-        self.check_only_get_eq(b, 'foobar foo')
-        self.assertEqual(str(b), 'foobar foo')
-        self.assertEqual(repr(b), 'foobar foo')
+        a = Delayed("foobbb foo")
+        b = a.replace("bbb", "bar")
+        self.check_only_get_eq(b, "foobar foo")
+        self.assertEqual(str(b), "foobar foo")
+        self.assertEqual(repr(b), "foobar foo")
 
-        a = Delayed('foo')
-        self.check_only_get_eq(a.function(add, 'bar'), 'foobar')
+        a = Delayed("foo")
+        self.check_only_get_eq(a.function(add, "bar"), "foobar")
 
-        a = Delayed('foobar')
-        self.check_only_get_eq(a[1], 'o')
-        self.check_only_get_eq(a[:-1], 'fooba')
-        self.check_only_get_eq(a[1:-1], 'ooba')
+        a = Delayed("foobar")
+        self.check_only_get_eq(a[1], "o")
+        self.check_only_get_eq(a[:-1], "fooba")
+        self.check_only_get_eq(a[1:-1], "ooba")
 
     def test_join(self):
         delayed_join = DelayedJoin([tk.Path("/random/path"), "/foo/bar"], ";")
         self.check_only_get_eq(delayed_join, "/random/path;/foo/bar")
 
     def test_assertions(self):
-        a = Delayed('foo')
-        self.assertRaises(AssertionError, lambda: a.function(lambda a, b: a + b, 'bar'))
+        a = Delayed("foo")
+        self.assertRaises(AssertionError, lambda: a.function(lambda a, b: a + b, "bar"))
 
         a = DelayedBase(1, 2)
         self.assertRaises(AssertionError, lambda: a.get())
@@ -86,7 +85,7 @@ class DelayedOpsTest(unittest.TestCase):
             c1 = var1 + 5
             c2 = c1 * 8
             c3 = c2 - (var2 % 5)
-            c4 = c3.rformat('Hello {}')
+            c4 = c3.rformat("Hello {}")
             for i in [var1, var2, c1, c2, c3, c4]:
                 self.assertEqual(i.is_set(), False)
             var1.set(3)
@@ -103,7 +102,7 @@ class DelayedOpsTest(unittest.TestCase):
             self.check_only_get_eq(c1, 8)
             self.check_only_get_eq(c2, 64)
             self.check_only_get_eq(c3, 60)
-            self.check_only_get_eq(c4, 'Hello 60')
+            self.check_only_get_eq(c4, "Hello 60")
 
     def test_fallback(self):
         with tk.mktemp() as t:
@@ -119,17 +118,17 @@ class DelayedOpsTest(unittest.TestCase):
         with tk.mktemp() as t:
             var = Variable(t)
             var_chain = ((var + 4) % 2) * 42
-            fallback = var_chain.rformat('{:05.1f}').fallback(0)
+            fallback = var_chain.rformat("{:05.1f}").fallback(0)
             self.assertEqual(var.is_set(), False)
             self.check_only_get_eq(fallback, 0)
             var.set(3)
             self.assertEqual(var.is_set(), True)
-            self.check_only_get_eq(fallback, '042.0')
+            self.check_only_get_eq(fallback, "042.0")
 
 
 def add(a, b):
     return a + b
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -8,7 +8,7 @@ from sisyphus.loader import RecipeFinder
 gs = tk.gs
 setup_path = tk.setup_path
 Path = tk.Path
-__all__ = ['Job', 'Task', 'Path', 'gs', 'tk', 'setup_path']
+__all__ = ["Job", "Task", "Path", "gs", "tk", "setup_path"]
 
 
 # Setup recipe importer

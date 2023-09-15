@@ -17,7 +17,8 @@ import sisyphus.global_settings as gs
 
 
 class JobCleaner(threading.Thread):
-    """ Thread to scan all jobs and clean if needed """
+    """Thread to scan all jobs and clean if needed"""
+
     def __init__(self, sis_graph, worker=gs.JOB_CLEANER_WORKER):
         """
         :param sisyphus.graph.SISGraph sis_graph:
@@ -31,7 +32,6 @@ class JobCleaner(threading.Thread):
         self.stopped = False
 
     def run(self):
-
         def f(job):
             if job._sis_cleanable():
                 self.thread_pool.apply_async(tools.default_handle_exception_interrupt_main_thread(job._sis_cleanup))
@@ -47,26 +47,30 @@ class JobCleaner(threading.Thread):
 
 
 def manager(args):
-    """ Manage which job should run next """
+    """Manage which job should run next"""
 
     if args.run:
         if not os.path.isdir(gs.WORK_DIR):
-            prompt = '%s does not exist, should I continue? ' \
-                     'The directory will be created if needed inplace (y/N)' % gs.WORK_DIR
+            prompt = (
+                "%s does not exist, should I continue? "
+                "The directory will be created if needed inplace (y/N)" % gs.WORK_DIR
+            )
             if args.ui:
                 ret = args.ui.ask_user(prompt)
-                logging.info('%s %s' % (prompt, ret))
+                logging.info("%s %s" % (prompt, ret))
             else:
                 ret = input(prompt)
-            if ret.lower() != 'y':
-                logging.warning('Abort, create directory or link it to the wished work destination')
+            if ret.lower() != "y":
+                logging.warning("Abort, create directory or link it to the wished work destination")
                 return
 
     # try to load fuse filesystem
     filesystem = None
     if args.filesystem:
-        warnings.warn("The filesystem is planned to be removed. Let the authors know if you still need it!",
-                      category=DeprecationWarning)
+        warnings.warn(
+            "The filesystem is planned to be removed. Let the authors know if you still need it!",
+            category=DeprecationWarning,
+        )
         import sisyphus.filesystem as filesystem
 
     # Ensure this thread has a event loop
@@ -94,20 +98,19 @@ def manager(args):
         # The actual work loop
         if args.http_port is not None:
             logging.debug("Start http server")
-            start_http_server(sis_graph=sis_graph,
-                              sis_engine=job_engine,
-                              port=args.http_port,
-                              thread=True)
+            start_http_server(sis_graph=sis_graph, sis_engine=job_engine, port=args.http_port, thread=True)
 
-        manager = Manager(sis_graph=sis_graph,
-                          job_engine=job_engine,
-                          link_outputs=args.run,
-                          clear_errors_once=args.clear_errors_once,
-                          clear_interrupts_once=args.clear_interrupts_once,
-                          ignore_once=args.ignore_once,
-                          start_computations=args.run,
-                          interative=args.interactive,
-                          ui=args.ui)
+        manager = Manager(
+            sis_graph=sis_graph,
+            job_engine=job_engine,
+            link_outputs=args.run,
+            clear_errors_once=args.clear_errors_once,
+            clear_interrupts_once=args.clear_interrupts_once,
+            ignore_once=args.ignore_once,
+            start_computations=args.run,
+            interative=args.interactive,
+            ui=args.ui,
+        )
         if args.ui:
             args.ui.manager = manager
             args.ui.update_menu()
@@ -122,7 +125,8 @@ def manager(args):
 
                 # graph updates
                 graph_update_thread = threading.Thread(
-                    target=tools.default_handle_exception_interrupt_main_thread(sis_graph.update_nodes))
+                    target=tools.default_handle_exception_interrupt_main_thread(sis_graph.update_nodes)
+                )
                 graph_update_thread.start()
 
                 # Start filesystem
@@ -133,7 +137,7 @@ def manager(args):
             else:
                 manager.run()
         except KeyboardInterrupt:
-            logging.info('Got user interrupt signal stop engine and exit')
+            logging.info("Got user interrupt signal stop engine and exit")
 
             # Print traceback in debug mode
             if logging.root.isEnabledFor(logging.DEBUG):
@@ -150,34 +154,42 @@ def manager(args):
 # Error should be at the bottom since this is the last thing show on screen
 state_overview_order = {}
 
-for pos, state in enumerate([gs.STATE_INPUT_PATH,
-                             gs.STATE_FINISHED,
-                             gs.STATE_WAITING,
-                             gs.STATE_QUEUE,
-                             gs.STATE_RUNNING,
-                             gs.STATE_RUNNABLE,
-                             gs.STATE_INTERRUPTED_RESUMABLE,
-                             gs.STATE_INTERRUPTED_NOT_RESUMABLE,
-                             gs.STATE_UNKNOWN,
-                             gs.STATE_QUEUE_ERROR,
-                             gs.STATE_RETRY_ERROR,
-                             gs.STATE_ERROR,
-                             gs.STATE_INPUT_MISSING]):
+for pos, state in enumerate(
+    [
+        gs.STATE_INPUT_PATH,
+        gs.STATE_FINISHED,
+        gs.STATE_WAITING,
+        gs.STATE_QUEUE,
+        gs.STATE_RUNNING,
+        gs.STATE_RUNNABLE,
+        gs.STATE_INTERRUPTED_RESUMABLE,
+        gs.STATE_INTERRUPTED_NOT_RESUMABLE,
+        gs.STATE_UNKNOWN,
+        gs.STATE_QUEUE_ERROR,
+        gs.STATE_RETRY_ERROR,
+        gs.STATE_ERROR,
+        gs.STATE_INPUT_MISSING,
+    ]
+):
     # The . is used to ensure unknown states are at the bottom
     # (as long as they start with a normal letter or number)
-    state_overview_order[state] = '.%i.%s' % (pos, state)
+    state_overview_order[state] = ".%i.%s" % (pos, state)
 
 
 class Manager(threading.Thread):
-    def __init__(self, sis_graph, job_engine,
-                 link_outputs=True,
-                 clear_errors_once=False,
-                 clear_interrupts_once=False,
-                 ignore_once=False,
-                 start_computations=False,
-                 auto_print_stat_overview=True,
-                 interative=False,
-                 ui=None):
+    def __init__(
+        self,
+        sis_graph,
+        job_engine,
+        link_outputs=True,
+        clear_errors_once=False,
+        clear_interrupts_once=False,
+        ignore_once=False,
+        start_computations=False,
+        auto_print_stat_overview=True,
+        interative=False,
+        ui=None,
+    ):
         """
         :param sisyphus.graph.SISGraph sis_graph:
         :param sisyphus.engine.EngineBase job_engine:
@@ -203,8 +215,9 @@ class Manager(threading.Thread):
         self.stop_if_done = True
         self._stop_loop = False
 
-        assert not (self.clear_errors_once and self.ignore_once), \
-            "Jobs in error state cannot be both ignored and cleared"
+        assert not (
+            self.clear_errors_once and self.ignore_once
+        ), "Jobs in error state cannot be both ignored and cleared"
 
         if gs.SHOW_JOB_TARGETS:
             self.sis_graph.set_job_targets(job_engine)
@@ -224,7 +237,7 @@ class Manager(threading.Thread):
         self._stop_loop = True
 
     def update_jobs(self, skip_finished=True):
-        """ Return all jobs needed to finish output """
+        """Return all jobs needed to finish output"""
         self.jobs = jobs = self.sis_graph.get_jobs_by_status(engine=self.job_engine, skip_finished=skip_finished)
         return jobs
 
@@ -232,7 +245,7 @@ class Manager(threading.Thread):
         # List errors/ interrupts
         job_cleared = False
         for job in self.jobs[state]:
-            logging.warning('Clearing: %s' % job)
+            logging.warning("Clearing: %s" % job)
             job._sis_move()
             job_cleared = True
         self.update_jobs()
@@ -251,17 +264,13 @@ class Manager(threading.Thread):
 
     @staticmethod
     def get_job_info_string(state, job, verbose=False):
-        if hasattr(job, '_sis_needed_for_which_targets') and job._sis_needed_for_which_targets:
+        if hasattr(job, "_sis_needed_for_which_targets") and job._sis_needed_for_which_targets:
             if verbose:
-                info_string = '%s: %s <target: %s>' % (state,
-                                                       job,
-                                                       sorted(list(job._sis_needed_for_which_targets)))
+                info_string = "%s: %s <target: %s>" % (state, job, sorted(list(job._sis_needed_for_which_targets)))
             else:
-                info_string = '%s: %s <target: %s>' % (state,
-                                                       job,
-                                                       sorted(list(job._sis_needed_for_which_targets))[0])
+                info_string = "%s: %s <target: %s>" % (state, job, sorted(list(job._sis_needed_for_which_targets))[0])
         else:
-            info_string = '%s: %s' % (state, job)
+            info_string = "%s: %s" % (state, job)
 
         if gs.SHOW_VIS_NAME_IN_MANAGER and hasattr(job, "get_vis_name") and job.get_vis_name() is not None:
             info_string += " [%s]" % job.get_vis_name()
@@ -274,19 +283,13 @@ class Manager(threading.Thread):
             if job_manager_info_string is not None:
                 info_string += " {%s} " % job_manager_info_string
 
-        if state in [gs.STATE_INPUT_MISSING,
-                     gs.STATE_RETRY_ERROR,
-                     gs.STATE_INTERRUPTED_NOT_RESUMABLE,
-                     gs.STATE_ERROR]:
+        if state in [gs.STATE_INPUT_MISSING, gs.STATE_RETRY_ERROR, gs.STATE_INTERRUPTED_NOT_RESUMABLE, gs.STATE_ERROR]:
             logging.error(info_string)
             if state == gs.STATE_ERROR and gs.PRINT_ERROR:
-                job._sis_print_error(gs.PRINT_ERROR_TASKS,
-                                     gs.PRINT_ERROR_LINES)
+                job._sis_print_error(gs.PRINT_ERROR_TASKS, gs.PRINT_ERROR_LINES)
         elif state in [gs.STATE_INTERRUPTED_RESUMABLE, gs.STATE_UNKNOWN]:
             logging.warning(info_string)
-        elif state in [gs.STATE_QUEUE,
-                       gs.STATE_RUNNING,
-                       gs.STATE_RUNNABLE]:
+        elif state in [gs.STATE_QUEUE, gs.STATE_RUNNING, gs.STATE_RUNNABLE]:
             logging.info(info_string)
         elif state == gs.STATE_HOLD and gs.PRINT_HOLD:
             logging.info(info_string)
@@ -311,28 +314,41 @@ class Manager(threading.Thread):
 
     def print_state_overview(self, verbose=False):
         states = self.get_job_states(all_jobs=verbose, verbose=verbose)
-        logging.info('Experiment directory: %s      Call: %s' % (os.path.abspath(os.path.curdir), ' '.join(sys.argv)))
+        logging.info("Experiment directory: %s      Call: %s" % (os.path.abspath(os.path.curdir), " ".join(sys.argv)))
         for state, job, info_string in states:
             self.print_job_state(state, job, info_string, verbose=verbose)
         if self.state_overview:
-            logging.info(' '.join(self.state_overview))
+            logging.info(" ".join(self.state_overview))
 
     def work_left(self):
         # Check if there is anything that can be done by manager
-        if self.stop_if_done and not any([state in self.jobs for state in [gs.STATE_RUNNABLE,
-                                                                           gs.STATE_RUNNING,
-                                                                           gs.STATE_QUEUE,
-                                                                           gs.STATE_UNKNOWN,
-                                                                           gs.STATE_INTERRUPTED_RESUMABLE]]):
+        if self.stop_if_done and not any(
+            [
+                state in self.jobs
+                for state in [
+                    gs.STATE_RUNNABLE,
+                    gs.STATE_RUNNING,
+                    gs.STATE_QUEUE,
+                    gs.STATE_UNKNOWN,
+                    gs.STATE_INTERRUPTED_RESUMABLE,
+                ]
+            ]
+        ):
             # check again to avoid caching effects
             time.sleep(gs.WAIT_PERIOD_CACHE)
             self.update_jobs()
-            if not any([state in self.jobs for state in [gs.STATE_RUNNABLE,
-                                                         gs.STATE_RUNNING,
-                                                         gs.STATE_QUEUE,
-                                                         gs.STATE_UNKNOWN,
-                                                         gs.STATE_INTERRUPTED_RESUMABLE]
-                        ]):
+            if not any(
+                [
+                    state in self.jobs
+                    for state in [
+                        gs.STATE_RUNNABLE,
+                        gs.STATE_RUNNING,
+                        gs.STATE_QUEUE,
+                        gs.STATE_UNKNOWN,
+                        gs.STATE_INTERRUPTED_RESUMABLE,
+                    ]
+                ]
+            ):
                 logging.info("There is nothing I can do, good bye!")
                 return False
         return True
@@ -341,12 +357,12 @@ class Manager(threading.Thread):
         if self.interactive:
             if uid in self.interactive_always_skip:
                 return False
-            answer = self.input('%s (Yes/skip/never)' % message).lower()
-            if answer in ('', 'y', 'yes'):
+            answer = self.input("%s (Yes/skip/never)" % message).lower()
+            if answer in ("", "y", "yes"):
                 return True
-            elif answer in ('s', 'skip'):
+            elif answer in ("s", "skip"):
                 return False
-            elif answer in ('n', 'never'):
+            elif answer in ("n", "never"):
                 self.interactive_always_skip.add(uid)
                 return False
             else:
@@ -358,7 +374,7 @@ class Manager(threading.Thread):
     def input(self, prompt):
         if self.ui:
             ret = self.ui.ask_user(prompt)
-            logging.info('%s %s' % (prompt, ret))
+            logging.info("%s %s" % (prompt, ret))
         else:
             ret = input(prompt)
         return ret
@@ -379,12 +395,12 @@ class Manager(threading.Thread):
             # clean up
             if task.resumeable():
                 if job._sis_setup() or not job._sis_setup_since_restart:
-                    if self.ask_user("Resetup job directory (%s)?" % job, ('resetup', job)):
+                    if self.ask_user("Resetup job directory (%s)?" % job, ("resetup", job)):
                         job._sis_setup_directory(force=True)
-                if self.ask_user("Resubmit job (%s)?" % job, ('resubmit', job)):
+                if self.ask_user("Resubmit job (%s)?" % job, ("resubmit", job)):
                     self.job_engine.submit(task)
             else:
-                logging.debug('Skip unresumable task')
+                logging.debug("Skip unresumable task")
 
         self.thread_pool.map(f, self.jobs.get(gs.STATE_INTERRUPTED_RESUMABLE, []))
 
@@ -399,7 +415,7 @@ class Manager(threading.Thread):
             try:
                 job._sis_setup_directory()
             except RuntimeError as e:
-                logging.error('Failed to setup %s: %s' % (str(job), str(e)))
+                logging.error("Failed to setup %s: %s" % (str(job), str(e)))
                 return
 
             # run first runnable task
@@ -411,7 +427,7 @@ class Manager(threading.Thread):
 
         if self.interactive:
             for job in self.jobs.get(gs.STATE_RUNNABLE, []):
-                if self.ask_user('Submit job (%s)?' % job, ('submit', job)):
+                if self.ask_user("Submit job (%s)?" % job, ("submit", job)):
                     f(job)
         else:
             self.thread_pool.map(f, self.jobs.get(gs.STATE_RUNNABLE, []))
@@ -454,9 +470,9 @@ class Manager(threading.Thread):
     def startup(self):
         if gs.MEMORY_PROFILE_LOG:
             if tools.tracemalloc:
-                self.mem_profile = tools.MemoryProfiler(open(gs.MEMORY_PROFILE_LOG, 'w'))
+                self.mem_profile = tools.MemoryProfiler(open(gs.MEMORY_PROFILE_LOG, "w"))
             else:
-                logging.warning('Could not load tracemalloc, continue without memory profiling')
+                logging.warning("Could not load tracemalloc, continue without memory profiling")
         else:
             self.mem_profile = None
 
@@ -480,11 +496,12 @@ class Manager(threading.Thread):
 
         # Skip first part if there is nothing todo
         if not (config_manager.reader_running() or self.jobs or self.ui):
-            answer = self.input('All calculations are done, print verbose overview (v), update outputs and alias (u), '
-                                'cancel (c)? ')
-            if answer.lower() in ('y', 'v'):
+            answer = self.input(
+                "All calculations are done, print verbose overview (v), update outputs and alias (u), " "cancel (c)? "
+            )
+            if answer.lower() in ("y", "v"):
                 self.print_state_overview(verbose=True)
-            elif answer.lower() in ('u'):
+            elif answer.lower() in ("u"):
                 self.link_outputs = True
                 create_aliases(self.sis_graph.jobs())
                 self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
@@ -509,9 +526,9 @@ class Manager(threading.Thread):
                     action()
                 elif not self.ignore_once:
 
-                    answer = self.input(f'Clear jobs in {state} state? [y/N] ')
+                    answer = self.input(f"Clear jobs in {state} state? [y/N] ")
 
-                    if answer.lower() == 'y':
+                    if answer.lower() == "y":
                         action()
                         self.print_state_overview(verbose=False)
 
@@ -519,29 +536,30 @@ class Manager(threading.Thread):
         maybe_clear_state(gs.STATE_INTERRUPTED_NOT_RESUMABLE, self.clear_interrupts_once, clear_interrupted)
 
         if self.start_computations:
-            answer = 'y'
+            answer = "y"
 
         while True and not self.ui:
             if answer is None:
                 pass
-            elif answer.lower() == 'v':
+            elif answer.lower() == "v":
                 self.print_state_overview(verbose=True)
-            elif answer.lower() == 'y':
+            elif answer.lower() == "y":
                 self.link_outputs = True
                 create_aliases(self.sis_graph.jobs())
                 self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
                 break
-            elif answer.lower() == 'u':
+            elif answer.lower() == "u":
                 self.link_outputs = True
                 create_aliases(self.sis_graph.jobs())
                 self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
-            elif answer.lower() == 'n':
+            elif answer.lower() == "n":
                 self.stop()
                 return False
             else:
-                logging.warning('Unknown command: %s' % answer)
-            answer = self.input('Print verbose overview (v), update aliases and outputs (u), '
-                                'start manager (y), or exit (n)? ')
+                logging.warning("Unknown command: %s" % answer)
+            answer = self.input(
+                "Print verbose overview (v), update aliases and outputs (u), " "start manager (y), or exit (n)? "
+            )
 
         if (not self._stop_loop) and (gs.CLEAR_ERROR or self.clear_errors_once):
             self.clear_states(state=gs.STATE_ERROR)
@@ -564,7 +582,7 @@ class Manager(threading.Thread):
                 time.sleep(1)
                 continue
             # check if finished
-            logging.debug('Begin of manager loop')
+            logging.debug("Begin of manager loop")
 
             if self.mem_profile:
                 self.mem_profile.snapshot()
@@ -574,7 +592,7 @@ class Manager(threading.Thread):
             config_manager.continue_readers()
             self.update_jobs()
 
-            if (gs.CLEAR_ERROR or self.clear_errors_once):
+            if gs.CLEAR_ERROR or self.clear_errors_once:
                 self.clear_errors_once = False
                 if self.clear_states(state=gs.STATE_ERROR):
                     continue
@@ -584,7 +602,7 @@ class Manager(threading.Thread):
                 if last_state_overview != self.state_overview:
                     if self.ui:
                         self.ui.update_job_view(self.get_job_states())
-                        self.ui.update_state_overview(' '.join(sorted(self.state_overview)))
+                        self.ui.update_state_overview(" ".join(sorted(self.state_overview)))
                     else:
                         self.print_state_overview()
                     last_state_overview = self.state_overview
@@ -622,9 +640,9 @@ def create_aliases(jobs):
             for alias in orig_aliases:
                 alias = os.path.join(prefix, alias)
                 if alias in aliases:
-                    logging.warning('Alias %s is used multiple times:' % alias)
-                    logging.warning('First use: %s' % aliases[alias])
-                    logging.warning('Additional use: %s' % job.job_id())
+                    logging.warning("Alias %s is used multiple times:" % alias)
+                    logging.warning("First use: %s" % aliases[alias])
+                    logging.warning("Additional use: %s" % job.job_id())
                 else:
                     aliases[alias] = job.job_id()
 
@@ -654,7 +672,5 @@ def create_aliases(jobs):
 
 def start_http_server(sis_graph, sis_engine, port, thread=True):
     from sisyphus import http_server
-    return http_server.start(sis_graph=sis_graph,
-                             sis_engine=sis_engine,
-                             port=port,
-                             thread=thread)
+
+    return http_server.start(sis_graph=sis_graph, sis_engine=sis_engine, port=port, thread=thread)

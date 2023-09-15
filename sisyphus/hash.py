@@ -16,12 +16,10 @@ def int_hash(obj):
     :rtype: int
     """
     h = hashlib.sha256(sis_hash_helper(obj)).digest()
-    return int.from_bytes(h, byteorder='big', signed=False)
+    return int.from_bytes(h, byteorder="big", signed=False)
 
 
-def short_hash(obj,
-               length=12,
-               chars='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'):
+def short_hash(obj, length=12, chars="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"):
     """
     :param object obj:
     :param int length:
@@ -29,12 +27,12 @@ def short_hash(obj,
     :rtype: str|T
     """
     h = hashlib.sha256(sis_hash_helper(obj)).digest()
-    h = int.from_bytes(h, byteorder='big', signed=False)
+    h = int.from_bytes(h, byteorder="big", signed=False)
     ls = []
     for i in range(length):
         ls.append(chars[int(h % len(chars))])
         h = h // len(chars)
-    return ''.join(ls)
+    return "".join(ls)
 
 
 def get_object_state(obj):
@@ -44,20 +42,20 @@ def get_object_state(obj):
     Comment: Maybe obj.__reduce__() is a better idea? is it stable for hashing?
     """
 
-    if hasattr(obj, '__getnewargs_ex__'):
+    if hasattr(obj, "__getnewargs_ex__"):
         args = obj.__getnewargs_ex__()
-    elif hasattr(obj, '__getnewargs__'):
+    elif hasattr(obj, "__getnewargs__"):
         args = obj.__getnewargs__()
     else:
         args = None
 
-    if hasattr(obj, '__sis_state__'):
+    if hasattr(obj, "__sis_state__"):
         state = obj.__sis_state__()
-    elif hasattr(obj, '__getstate__'):
+    elif hasattr(obj, "__getstate__"):
         state = obj.__getstate__()
-    elif hasattr(obj, '__dict__'):
+    elif hasattr(obj, "__dict__"):
         state = obj.__dict__
-    elif hasattr(obj, '__slots__'):
+    elif hasattr(obj, "__slots__"):
         state = {k: getattr(obj, k) for k in obj.__slots__ if hasattr(obj, k)}
     else:
         assert args is not None, "Failed to get object state of: %s" % repr(obj)
@@ -98,19 +96,19 @@ def sis_hash_helper(obj):
         # Handle functions
         # Not a nice way to check if the given function is a lambda function, but the best I found
         # assert not isinstance(lambda m: m, LambdaType) is true for all functions
-        assert obj.__name__ != '<lambda>', "Hashing of lambda functions is not supported"
+        assert obj.__name__ != "<lambda>", "Hashing of lambda functions is not supported"
         assert obj.__module__ != "__main__", "Hashing of functions defined in __main__ is not supported"
         byte_list.append(sis_hash_helper((obj.__module__, obj.__qualname__)))
     elif isclass(obj):
         assert obj.__module__ != "__main__", "Hashing of classes defined in __main__ is not supported"
         byte_list.append(sis_hash_helper((obj.__module__, obj.__qualname__)))
-    elif hasattr(obj, '_sis_hash'):
+    elif hasattr(obj, "_sis_hash"):
         # sis job or path object
         return obj._sis_hash()
     else:
         byte_list.append(sis_hash_helper(get_object_state(obj)))
 
-    byte_str = b'(' + b', '.join(byte_list) + b')'
+    byte_str = b"(" + b", ".join(byte_list) + b")"
     if len(byte_str) > 4096:
         # hash long outputs to avoid arbitrary long return values. 4096 is just
         # picked because it looked good and not optimized,

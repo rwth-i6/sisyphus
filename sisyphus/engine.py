@@ -17,7 +17,7 @@ class EngineBase:
 
     @staticmethod
     def get_task_id(task_id):
-        """ Gets task id either from args or the environment"""
+        """Gets task id either from args or the environment"""
         raise NotImplementedError
 
     def task_state(self, task, task_id):
@@ -56,7 +56,7 @@ class EngineBase:
         submit_log = os.path.relpath(task.path(gs.ENGINE_SUBMIT))
         id_to_rqmt = collections.defaultdict(list)
         if os.path.isfile(submit_log):
-            if hasattr(task, 'submit_history_cache'):
+            if hasattr(task, "submit_history_cache"):
                 last_update, id_to_rqmt = task.submit_history_cache
             else:
                 last_update = None
@@ -95,14 +95,14 @@ class EngineBase:
             if update:
                 rqmt = task.update_rqmt(rqmt, task_id)
 
-        if 'mem' in rqmt:
-            rqmt['mem'] = tools.str_to_GB(rqmt['mem'])
-        if 'time' in rqmt:
-            rqmt['time'] = tools.str_to_hours(rqmt['time'])
+        if "mem" in rqmt:
+            rqmt["mem"] = tools.str_to_GB(rqmt["mem"])
+        if "time" in rqmt:
+            rqmt["time"] = tools.str_to_hours(rqmt["time"])
         return gs.check_engine_limits(rqmt, task)
 
     def job_state(self, job):
-        """ Return current state of job """
+        """Return current state of job"""
 
         if not job._sis_setup():
             if job._sis_runnable():
@@ -129,23 +129,23 @@ class EngineBase:
 
         # get memory usage and convert it to GB
         mem_info = current_process.memory_info()
-        d['rss'] = mem_info.rss / 1024**3
-        d['vms'] = mem_info.vms / 1024**3
+        d["rss"] = mem_info.rss / 1024**3
+        d["vms"] = mem_info.vms / 1024**3
 
-        d['cpu'] = current_process.cpu_percent()
+        d["cpu"] = current_process.cpu_percent()
         for child in current_process.children(recursive=True):
             try:
                 mem_info = child.memory_info()
-                d['rss'] += mem_info.rss / 1024**3
-                d['vms'] += mem_info.vms / 1024**3
-                d['cpu'] += child.cpu_percent()
+                d["rss"] += mem_info.rss / 1024**3
+                d["vms"] += mem_info.vms / 1024**3
+                d["cpu"] += child.cpu_percent()
             except psutil.NoSuchProcess:
                 # Quietly continue if job disappeared
                 continue
         return d
 
     def submit(self, task):
-        """ Prepares all relevant commands and calls submit_call of subclass to actual
+        """Prepares all relevant commands and calls submit_call of subclass to actual
         pass job to relevant engine
 
         :param sisyphus.task.Task task: Task to submit
@@ -154,8 +154,11 @@ class EngineBase:
 
         call = task.get_worker_call()
         logpath = os.path.relpath(task.path(gs.JOB_LOG_ENGINE))
-        task_ids = [task_id for task_id in task.task_ids()
-                    if task.state(self, task_id, True) in [gs.STATE_RUNNABLE, gs.STATE_INTERRUPTED_RESUMABLE]]
+        task_ids = [
+            task_id
+            for task_id in task.task_ids()
+            if task.state(self, task_id, True) in [gs.STATE_RUNNABLE, gs.STATE_INTERRUPTED_RESUMABLE]
+        ]
 
         # update rqmts and collect them
         rqmt_to_ids = {}
@@ -174,17 +177,16 @@ class EngineBase:
         submit_log = os.path.relpath(task.path(gs.ENGINE_SUBMIT))
         for rqmt_key, (rqmt, task_ids) in rqmt_to_ids.items():
             task_ids = sorted(task_ids)
-            logging.info('Submit to queue: %s %s %s' % (str(task.path()), task.name(), str(task_ids)))
-            engine_name, engine_info = self.submit_call(call, logpath, rqmt,
-                                                        task.task_name(), task.name(), task_ids)
-            logging.debug('Command: (%s) Tasks ids: (%s)' % (' '.join(call), ' '.join([str(i) for i in task_ids])))
-            logging.debug('Requirements: %s' % (str(rqmt)))
+            logging.info("Submit to queue: %s %s %s" % (str(task.path()), task.name(), str(task_ids)))
+            engine_name, engine_info = self.submit_call(call, logpath, rqmt, task.task_name(), task.name(), task_ids)
+            logging.debug("Command: (%s) Tasks ids: (%s)" % (" ".join(call), " ".join([str(i) for i in task_ids])))
+            logging.debug("Requirements: %s" % (str(rqmt)))
 
             submit_info = rqmt.copy()
-            submit_info['engine_info'] = engine_info
-            submit_info['engine_name'] = engine_name
-            with open(submit_log, 'a') as submit_file:
-                submit_file.write('%s\n' % str((task_ids, submit_info)))
+            submit_info["engine_info"] = engine_info
+            submit_info["engine_name"] = engine_name
+            with open(submit_log, "a") as submit_file:
+                submit_file.write("%s\n" % str((task_ids, submit_info)))
 
         task.reset_cache()
 
@@ -215,8 +217,9 @@ class EngineSelector(EngineBase):
         """
         assert isinstance(default_engine, str), "default_engine must be a string: %r" % (default_engine,)
         for k, v in engines.items():
-            assert isinstance(k, str) and isinstance(v, EngineBase), ("engines must only contain strings as keys "
-                                                                      "and Engines as value: (%r, %r)" % (k, v))
+            assert isinstance(k, str) and isinstance(
+                v, EngineBase
+            ), "engines must only contain strings as keys " "and Engines as value: (%r, %r)" % (k, v)
         self.engines = engines
         self.default_engine = default_engine
 
@@ -233,18 +236,18 @@ class EngineSelector(EngineBase):
         :param dict[str] rqmt:
         :rtype: EngineBase
         """
-        engine_selector = rqmt.get('engine', self.default_engine)
+        engine_selector = rqmt.get("engine", self.default_engine)
         return self.get_used_engine(engine_selector)
 
     def get_job_used_resources(self, current_process):
         assert NotImplementedError, "Used active engine first via get_used_engine first"
 
     def task_state(self, task, task_id):
-        """ Return state of task """
+        """Return state of task"""
         return self.get_used_engine_by_rqmt(task.rqmt()).task_state(task, task_id)
 
     def for_all_engines(self, f):
-        """ Tell all engines to stop """
+        """Tell all engines to stop"""
         visited = set()
         for engine in self.engines.values():
             eid = id(engine)
@@ -256,7 +259,7 @@ class EngineSelector(EngineBase):
         self.for_all_engines(lambda e: e.start_engine())
 
     def stop_engine(self):
-        """ Tell all engines to stop """
+        """Tell all engines to stop"""
         self.for_all_engines(lambda e: e.stop_engine())
 
     def reset_cache(self):
@@ -277,14 +280,14 @@ class EngineSelector(EngineBase):
     #     return self.get_used_engine(engine_selector).get_logpath(logpath, task_name, task_id, engine_selector)
 
     def submit_call(self, call, logpath, rqmt, name, task_name, task_ids):
-        engine_selector = rqmt.get('engine', self.default_engine)
+        engine_selector = rqmt.get("engine", self.default_engine)
         # update call to contain selected engine
         new_call = []
         added = False
         for i in call:
             new_call.append(i)
             if not added and i == gs.CMD_WORKER:
-                new_call.append('--engine')
+                new_call.append("--engine")
                 new_call.append(engine_selector)
                 added = True
         return self.get_used_engine(engine_selector).submit_call(new_call, logpath, rqmt, name, task_name, task_ids)

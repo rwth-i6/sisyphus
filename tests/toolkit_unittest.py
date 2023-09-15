@@ -5,12 +5,11 @@ from sisyphus.toolkit import mktemp
 
 
 class MkTemp(unittest.TestCase):
-
     def test_file(self):
         # create and automatically delete temp file
         with mktemp() as temp:
             assert len(glob.glob(temp)) == 0
-            with open(temp, 'w'):
+            with open(temp, "w"):
                 pass
             assert len(glob.glob(temp)) == 1
         assert len(glob.glob(temp)) == 0
@@ -24,5 +23,5 @@ class MkTemp(unittest.TestCase):
         assert len(glob.glob(temp)) == 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

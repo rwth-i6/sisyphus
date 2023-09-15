@@ -21,34 +21,38 @@ app = Flask(__name__)
 g_sis_graph = None
 g_sis_engine = None
 
-TaskItem = collections.namedtuple('TaskItem', ['name', 'state', 'state_bg_color', 'instances'])
-JobItem = collections.namedtuple('JobItem', ['number',
-                                             'sis_id',
-                                             'name',
-                                             'dependencies',
-                                             'state',
-                                             'state_bg_color',
-                                             'tasks',
-                                             'tasks_count',
-                                             ])
-OutputItem = collections.namedtuple('OutputItem', ['name', 'state', 'state_bg_color', 'sis_id'])
+TaskItem = collections.namedtuple("TaskItem", ["name", "state", "state_bg_color", "instances"])
+JobItem = collections.namedtuple(
+    "JobItem",
+    [
+        "number",
+        "sis_id",
+        "name",
+        "dependencies",
+        "state",
+        "state_bg_color",
+        "tasks",
+        "tasks_count",
+    ],
+)
+OutputItem = collections.namedtuple("OutputItem", ["name", "state", "state_bg_color", "sis_id"])
 
 
 def state_to_color(state):
     if state == gs.STATE_FINISHED:
-        return 'Green'
-    elif state == 'cleaned':
-        return 'Green'
+        return "Green"
+    elif state == "cleaned":
+        return "Green"
     elif state == gs.STATE_RUNNING:
-        return 'GreenYellow'
+        return "GreenYellow"
     elif state in [gs.STATE_ERROR, gs.STATE_UNKNOWN, gs.STATE_INTERRUPTED_NOT_RESUMABLE]:
-        return 'Red'
+        return "Red"
     elif state in [gs.STATE_QUEUE, gs.STATE_RUNNABLE, gs.STATE_INTERRUPTED_RESUMABLE]:
-        return 'SteelBlue'
+        return "SteelBlue"
     elif state == gs.STATE_WAITING:
-        return 'Yellow'
+        return "Yellow"
     else:
-        return 'White'
+        return "White"
 
 
 @cache_result(15)
@@ -59,19 +63,15 @@ def get_tasks_from_job(job):
         for task in job._sis_tasks():
             task_state = task.state(g_sis_engine)
             if finished and task_state != gs.STATE_FINISHED:
-                task_state = 'cleaned'
+                task_state = "cleaned"
             task_state_bg_color = state_to_color(task_state)
-            tasks.append(TaskItem(
-                task.name(),
-                task_state,
-                task_state_bg_color,
-                len(task.task_ids()))
-            )
+            tasks.append(TaskItem(task.name(), task_state, task_state_bg_color, len(task.task_ids())))
     return tasks
 
 
 def add_response_headers(headers={}):
     """This decorator adds the headers passed in to the response"""
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -80,15 +80,17 @@ def add_response_headers(headers={}):
             for header, value in headers.items():
                 h[header] = value
             return resp
+
         return decorated_function
+
     return decorator
 
 
 def keepalive(sec):
-    return add_response_headers({'Keep-Alive': 'timeout=%d' % sec})
+    return add_response_headers({"Keep-Alive": "timeout=%d" % sec})
 
 
-@app.route('/')
+@app.route("/")
 @keepalive(2)
 def output_view():
     outputs = []
@@ -108,7 +110,7 @@ def output_view():
     return render_template("outputs.html", outputs=outputs)
 
 
-@app.route('/all')
+@app.route("/all")
 @keepalive(2)
 def overview():
     job_list = []
@@ -118,9 +120,7 @@ def overview():
         dependencies = set()
         for i in job._sis_inputs:
             if i.creator:
-                dependencies.add(
-                    job_dict[i.creator._sis_id()]
-                )
+                dependencies.add(job_dict[i.creator._sis_id()])
         state = job._sis_state(g_sis_engine)
         bg_color = state_to_color(state)
 
@@ -132,15 +132,7 @@ def overview():
         job_name = job.get_one_alias()
         if not job_name:
             job_name = job._sis_id()
-        job_item = JobItem(len(job_list),
-                           job._sis_id(),
-                           job_name,
-                           dependencies,
-                           state,
-                           bg_color,
-                           tasks,
-                           len(tasks)
-                           )
+        job_item = JobItem(len(job_list), job._sis_id(), job_name, dependencies, state, bg_color, tasks, len(tasks))
         job_list.append(job_item)
         job_dict[job_item.sis_id] = job_item.number
 
@@ -148,17 +140,17 @@ def overview():
 
 
 def get_parameters():
-    query_string = request.query_string.decode('utf8')
-    queries = query_string.split('&')
+    query_string = request.query_string.decode("utf8")
+    queries = query_string.split("&")
     parameters = {}
     for query in queries:
-        temp = query.split('=', 1)
+        temp = query.split("=", 1)
         if len(temp) == 2:
             if temp[0] in parameters:
-                logging.warning('Got argument multiple times: %s' % temp[0])
+                logging.warning("Got argument multiple times: %s" % temp[0])
             parameters[temp[0]] = temp[1]
         else:
-            logging.warning('Could not parse argument: %s' % temp[0])
+            logging.warning("Could not parse argument: %s" % temp[0])
     return parameters
 
 
@@ -175,27 +167,25 @@ def object_to_html(obj):
         return render_template("table.html", table=table)
     elif isinstance(obj, AbstractPath):
         if obj.creator:
-            return '%s : <a href="/info/%s">%s</a>' % (obj.path,
-                                                       obj.creator._sis_id(),
-                                                       obj.creator._sis_id())
+            return '%s : <a href="/info/%s">%s</a>' % (obj.path, obj.creator._sis_id(), obj.creator._sis_id())
         else:
             return obj.path
     elif isinstance(obj, Job):
         return '<a href="/info/%s">%s</a>' % (obj._sis_id(), obj._sis_id())
-    elif hasattr(obj, 'html') and callable(obj.html):
+    elif hasattr(obj, "html") and callable(obj.html):
         return obj.html()
     else:
-        return html.escape(str(obj)).replace('\n', '<br/>')
+        return html.escape(str(obj)).replace("\n", "<br/>")
 
 
 # TODO remove this?
-@app.route('/output')
+@app.route("/output")
 @keepalive(2)
 def list_outputs():
     pass
 
 
-@app.route('/info/<path:sis_id>')
+@app.route("/info/<path:sis_id>")
 @keepalive(2)
 def show_job_informations(sis_id):
     if not sis_id:
@@ -220,9 +210,14 @@ def show_job_informations(sis_id):
                     continue
                 for tid in t.task_ids():
                     s = t.state(g_sis_engine, tid)
-                    if s in [gs.STATE_INTERRUPTED_NOT_RESUMABLE, gs.STATE_INTERRUPTED_RESUMABLE,
-                             gs.STATE_ERROR, gs.STATE_FINISHED,
-                             gs.STATE_RUNNING, gs.STATE_RETRY_ERROR]:
+                    if s in [
+                        gs.STATE_INTERRUPTED_NOT_RESUMABLE,
+                        gs.STATE_INTERRUPTED_RESUMABLE,
+                        gs.STATE_ERROR,
+                        gs.STATE_FINISHED,
+                        gs.STATE_RUNNING,
+                        gs.STATE_RETRY_ERROR,
+                    ]:
                         ll = []
                         try:
                             with open(t.path(gs.JOB_LOG, tid)) as log_file:
@@ -231,38 +226,43 @@ def show_job_informations(sis_id):
                             if e.errno != 2:
                                 raise e
                         lines = ll[:10]
-                        if s in [gs.STATE_INTERRUPTED_NOT_RESUMABLE, gs.STATE_INTERRUPTED_RESUMABLE,
-                                 gs.STATE_ERROR, gs.STATE_FINISHED]:
-                            lines.extend(ll[max(len(ll) - 10, 10):])
-                        task_logs['%s.%d' % (t.name(), tid)] = ''.join(lines)
+                        if s in [
+                            gs.STATE_INTERRUPTED_NOT_RESUMABLE,
+                            gs.STATE_INTERRUPTED_RESUMABLE,
+                            gs.STATE_ERROR,
+                            gs.STATE_FINISHED,
+                        ]:
+                            lines.extend(ll[max(len(ll) - 10, 10) :])
+                        task_logs["%s.%d" % (t.name(), tid)] = "".join(lines)
 
-        return render_template("details.html",
-                               job=job,
-                               os=os,
-                               tasks=tasks,
-                               kwargs=object_to_html(job._sis_kwargs),
-                               inputs=object_to_html(job._sis_inputs),
-                               outputs=object_to_html(job._sis_outputs),
-                               info=info,
-                               rqmt=rqmt,
-                               task_logs=task_logs
-                               )
+        return render_template(
+            "details.html",
+            job=job,
+            os=os,
+            tasks=tasks,
+            kwargs=object_to_html(job._sis_kwargs),
+            inputs=object_to_html(job._sis_inputs),
+            outputs=object_to_html(job._sis_outputs),
+            info=info,
+            rqmt=rqmt,
+            task_logs=task_logs,
+        )
 
 
-@app.route('/vis/')
+@app.route("/vis/")
 @keepalive(2)
 def visualize_root():
-    return visualize('')
+    return visualize("")
 
 
-@app.route('/vis/<block_id>')
+@app.route("/vis/<block_id>")
 @keepalive(2)
 def visualize(block_id):
-    block_ids = block_id.split('.')
+    block_ids = block_id.split(".")
     try:
         block_ids = list(map(int, filter(lambda s: len(s) > 0, block_ids)))
     except ValueError:
-        return 'Invalid block id (should be list of comma separated ints): %s' % block_id
+        return "Invalid block id (should be list of comma separated ints): %s" % block_id
 
     parent = None
     items = all_root_blocks
@@ -271,8 +271,8 @@ def visualize(block_id):
             parent = items[idx]
             items = parent.filtered_children()
         except (IndexError, AttributeError):
-            return 'Block does not exist'
-    url_prefix = '/vis/' + block_id
+            return "Block does not exist"
+    url_prefix = "/vis/" + block_id
 
     if parent is None:
         for root_block in all_root_blocks:
@@ -283,14 +283,15 @@ def visualize(block_id):
         if not suc:
             return dot_file
         try:
-            return sp.check_output(['dot', '-Tsvg'], input=dot_file, universal_newlines=True, timeout=gs.VIS_TIMEOUT)
+            return sp.check_output(["dot", "-Tsvg"], input=dot_file, universal_newlines=True, timeout=gs.VIS_TIMEOUT)
         except sp.TimeoutExpired as timeout:
-            return 'Failed to create visual representation in %i seconds. The model is probably to complex. ' \
-                   'You can increase the timeout by setting VIS_TIMEOUT to a higher value.' % timeout.timeout
+            return (
+                "Failed to create visual representation in %i seconds. The model is probably to complex. "
+                "You can increase the timeout by setting VIS_TIMEOUT to a higher value." % timeout.timeout
+            )
 
 
 class HttpThread(threading.Thread):
-
     def __init__(self, port=0, debug=False):
         self.port = port
         self.debug = debug
@@ -300,17 +301,15 @@ class HttpThread(threading.Thread):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         while True:
             try:
-                sock.bind(('localhost', self.port))
+                sock.bind(("localhost", self.port))
                 break
             except OSError as e:
-                logging.warning('Could not bind to %d: %s' % (self.port, e))
+                logging.warning("Could not bind to %d: %s" % (self.port, e))
                 time.sleep(gs.WAIT_PERIOD_HTTP_RETRY_BIND)
 
         port = sock.getsockname()[1]
         sock.close()
-        app.run(host='0.0.0.0',
-                port=port,
-                debug=self.debug)
+        app.run(host="0.0.0.0", port=port, debug=self.debug)
 
 
 def start(sis_graph=None, sis_engine=None, port=0, debug=False, thread=True):

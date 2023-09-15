@@ -13,15 +13,15 @@ import sisyphus.global_settings as gs
 from sisyphus.engine import EngineBase
 from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE
 
-ENGINE_NAME = 'slurm'
-TaskInfo = namedtuple('TaskInfo', ["job_id", "task_id", "state"])
+ENGINE_NAME = "slurm"
+TaskInfo = namedtuple("TaskInfo", ["job_id", "task_id", "state"])
 
 
 def try_to_multiply(y, x, backup_value=None):
-    """ Tries to convert y to float multiply it by x and convert it back
+    """Tries to convert y to float multiply it by x and convert it back
     to a rounded string.
     return backup_value if it fails
-    return y if backup_value == None """
+    return y if backup_value == None"""
 
     try:
         return str(int(float(y) * x))
@@ -33,13 +33,20 @@ def try_to_multiply(y, x, backup_value=None):
 
 
 class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
-
     class MemoryAllocationType(Enum):
         PER_CPU = "per_cpu"
         PER_NODE = "per_node"
 
-    def __init__(self, default_rqmt, gateway=None, has_memory_resource=True, auto_clean_eqw=True,
-                 ignore_jobs=[], memory_allocation_type=MemoryAllocationType.PER_NODE, job_name_mapping=None):
+    def __init__(
+        self,
+        default_rqmt,
+        gateway=None,
+        has_memory_resource=True,
+        auto_clean_eqw=True,
+        ignore_jobs=[],
+        memory_allocation_type=MemoryAllocationType.PER_NODE,
+        job_name_mapping=None,
+    ):
         """
 
         :param dict default_rqmt: dictionary with the default rqmts
@@ -71,12 +78,12 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :rtype: list[bytes], list[bytes], int
         """
         if self.gateway:
-            system_command = ['ssh', '-x', self.gateway] + [' '.join(['cd', os.getcwd(), '&&'] + command)]
+            system_command = ["ssh", "-x", self.gateway] + [" ".join(["cd", os.getcwd(), "&&"] + command)]
         else:
             # no gateway given, skip ssh local
             system_command = command
 
-        logging.debug('shell_cmd: %s' % ' '.join(system_command))
+        logging.debug("shell_cmd: %s" % " ".join(system_command))
         p = subprocess.Popen(system_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
@@ -88,8 +95,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             :param bytes o:
             :rtype: list[bytes]
             """
-            o = o.split(b'\n')
-            if o[-1] != b'':
+            o = o.split(b"\n")
+            if o[-1] != b"":
                 print(o[-1])
                 assert False
             return o[:-1]
@@ -101,18 +108,18 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         # Check for ssh error
         err_ = []
         for raw_line in err:
-            lstart = 'ControlSocket'
-            lend = 'already exists, disabling multiplexing'
-            line = raw_line.decode('utf8').strip()
+            lstart = "ControlSocket"
+            lend = "already exists, disabling multiplexing"
+            line = raw_line.decode("utf8").strip()
             if line.startswith(lstart) and line.endswith(lend):
                 # found ssh connection problem
-                ssh_file = line[len(lstart):len(lend)].strip()
-                logging.warning('SSH Error %s' % line.strip())
+                ssh_file = line[len(lstart) : len(lend)].strip()
+                logging.warning("SSH Error %s" % line.strip())
                 try:
                     os.unlink(ssh_file)
-                    logging.info('Delete file %s' % ssh_file)
+                    logging.info("Delete file %s" % ssh_file)
                 except OSError:
-                    logging.warning('Could not delete %s' % ssh_file)
+                    logging.warning("Could not delete %s" % ssh_file)
             else:
                 err_.append(raw_line)
 
@@ -122,39 +129,39 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         out = []
         if self.has_memory_resource:
             try:
-                mem = "%iG" % math.ceil(float(rqmt['mem']))
+                mem = "%iG" % math.ceil(float(rqmt["mem"]))
             except ValueError:
-                mem = rqmt['mem']
+                mem = rqmt["mem"]
 
         if self.memory_allocation_type == self.MemoryAllocationType.PER_CPU:
-            out.append('--mem-per-cpu=%s' % mem)
+            out.append("--mem-per-cpu=%s" % mem)
         elif self.memory_allocation_type == self.MemoryAllocationType.PER_NODE:
-            out.append('--mem=%s' % mem)
+            out.append("--mem=%s" % mem)
 
-        if 'rss' in rqmt:
+        if "rss" in rqmt:
             pass  # there is no option in SLURM?
 
-        if rqmt.get('gpu', 0) > 0:
-            gres = '--gres=gpu:'
-            if rqmt.get('gpu_name', ''):
-                gres += rqmt['gpu_name'] + ':'
-            gres += str(rqmt['gpu'])
+        if rqmt.get("gpu", 0) > 0:
+            gres = "--gres=gpu:"
+            if rqmt.get("gpu_name", ""):
+                gres += rqmt["gpu_name"] + ":"
+            gres += str(rqmt["gpu"])
             out.append(gres)
 
-        out.append('--cpus-per-task=%s' % rqmt.get('cpu', 1))
+        out.append("--cpus-per-task=%s" % rqmt.get("cpu", 1))
 
         # Try to convert time to float, calculate minutes from it
         # and convert it back to an rounded string
         # If it fails use string directly
-        task_time = try_to_multiply(rqmt['time'], 60)  # convert to minutes if possible
+        task_time = try_to_multiply(rqmt["time"], 60)  # convert to minutes if possible
 
-        out.append('--time=%s' % task_time)
-        out.append('--export=all')
+        out.append("--time=%s" % task_time)
+        out.append("--export=all")
 
-        if rqmt.get('multi_node_slots', None):
-            out.append('--ntasks=%s' % rqmt['multi_node_slots'])
+        if rqmt.get("multi_node_slots", None):
+            out.append("--ntasks=%s" % rqmt["multi_node_slots"])
 
-        sbatch_args = rqmt.get('sbatch_args', [])
+        sbatch_args = rqmt.get("sbatch_args", [])
         if isinstance(sbatch_args, str):
             sbatch_args = sbatch_args.split()
         out += sbatch_args
@@ -210,26 +217,20 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :param int step_size:
         """
         name = self.process_task_name(name)
-        sbatch_call = [
-            'sbatch',
-            '-J',
-            name,
-            '-o',
-            logpath + '/%x.%A.%a',
-            '--mail-type=None']
+        sbatch_call = ["sbatch", "-J", name, "-o", logpath + "/%x.%A.%a", "--mail-type=None"]
         sbatch_call += self.options(rqmt)
 
-        sbatch_call += ['-a', '%i-%i:%i' % (start_id, end_id, step_size)]
-        command = '"' + ' '.join(call) + '"'
-        sbatch_call += ['--wrap=%s' % ' '.join(call)]
+        sbatch_call += ["-a", "%i-%i:%i" % (start_id, end_id, step_size)]
+        command = '"' + " ".join(call) + '"'
+        sbatch_call += ["--wrap=%s" % " ".join(call)]
         try:
             out, err, retval = self.system_call(sbatch_call)
         except subprocess.TimeoutExpired:
-            logging.warning('SSH command timeout %s' % str(command))
+            logging.warning("SSH command timeout %s" % str(command))
             time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
             return self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
 
-        ref_output = ['Submitted', 'batch', 'job']
+        ref_output = ["Submitted", "batch", "job"]
         ref_output = [i.encode() for i in ref_output]
 
         job_id = None
@@ -238,7 +239,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             if retval != 0 or len(err) > 0 or len(sout) != 4 or sout[0:3] != ref_output:
                 print(retval, len(err), len(sout), sout[0:3], ref_output)
                 logging.error("Error to submit job")
-                logging.error("SBATCH command: %s" % ' '.join(sbatch_call))
+                logging.error("SBATCH command: %s" % " ".join(sbatch_call))
                 for line in out:
                     logging.error("Output: %s" % line.decode())
                 for line in err:
@@ -246,15 +247,15 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 # reset cache, after error
                 self.reset_cache()
             else:
-                job_id = sout[3].decode().split('.')
+                job_id = sout[3].decode().split(".")
 
                 logging.info("Submitted with job_id: %s %s" % (job_id, name))
                 for task_id in range(start_id, end_id, step_size):
-                    self._task_info_cache[(name, task_id)].append((job_id, 'PD'))
+                    self._task_info_cache[(name, task_id)].append((job_id, "PD"))
 
         else:
             logging.error("Error to submit job, return value: %i" % retval)
-            logging.error("SBATCH command: %s" % ' '.join(sbatch_call))
+            logging.error("SBATCH command: %s" % " ".join(sbatch_call))
             for line in out:
                 logging.error("Output: %s" % line.decode())
             for line in err:
@@ -268,19 +269,26 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self._task_info_cache_last_update = -10
 
     def queue_state(self):
-        """ Returns list with all currently running tasks in this queue """
+        """Returns list with all currently running tasks in this queue"""
 
         if time.time() - self._task_info_cache_last_update < 30:
             # use cached value
             return self._task_info_cache
 
         # get bjobs output
-        system_command = ['squeue', '-h', '--array', '-u', getpass.getuser(),
-                          '-O', 'arrayjobid,arraytaskid,state,name:1000']
+        system_command = [
+            "squeue",
+            "-h",
+            "--array",
+            "-u",
+            getpass.getuser(),
+            "-O",
+            "arrayjobid,arraytaskid,state,name:1000",
+        ]
         try:
             out, err, retval = self.system_call(system_command)
         except subprocess.TimeoutExpired:
-            logging.warning('SSH command timeout %s' % str(system_command))
+            logging.warning("SSH command timeout %s" % str(system_command))
             time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
             return self.queue_state()
 
@@ -302,7 +310,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         return task_infos
 
     def task_state(self, task, task_id):
-        """ Return task state:
+        """Return task state:
         'RUNNING' == STATE_RUNNING
         'PENDING' == STATE_QUEUE
         not found == STATE_UNKNOWN
@@ -318,32 +326,32 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         # task name should be uniq
         if len(qs) > 1:
             logging.warning(
-                'More then one matching SLURM task, use first match < %s > matches: %s' %
-                (str(task_name), str(qs)))
+                "More then one matching SLURM task, use first match < %s > matches: %s" % (str(task_name), str(qs))
+            )
 
         if qs == []:
             return STATE_UNKNOWN
         state = qs[0][1]
-        if state in ['RUNNING', 'COMPLETING']:
+        if state in ["RUNNING", "COMPLETING"]:
             return STATE_RUNNING
-        elif state in ['PENDING', 'CONFIGURING']:
+        elif state in ["PENDING", "CONFIGURING"]:
             return STATE_QUEUE
         else:
             return STATE_UNKNOWN
 
     def start_engine(self):
-        """ No starting action required with the current implementation """
+        """No starting action required with the current implementation"""
         pass
 
     def stop_engine(self):
-        """ No stopping action required with the current implementation """
+        """No stopping action required with the current implementation"""
         pass
 
     @staticmethod
     def get_task_id(task_id):
         assert task_id is None, "SLURM task should not be started with task id, it's given via $SLURM_ARRAY_TASK_ID"
-        task_id = os.getenv('SLURM_ARRAY_TASK_ID')
-        if task_id in ['N/A', None]:
+        task_id = os.getenv("SLURM_ARRAY_TASK_ID")
+        if task_id in ["N/A", None]:
             # SLURM without an array job
             logging.critical("Job started without task_id, this should not happen! Continue with task_id=1")
             return 1
@@ -360,8 +368,15 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         if os.path.isfile(logpath):
             os.unlink(logpath)
 
-        engine_logpath = os.path.dirname(logpath) + '/engine/' + os.getenv('SLURM_JOB_NAME') + \
-            '.' + os.getenv('SLURM_ARRAY_JOB_ID') + '.' + os.getenv('SLURM_ARRAY_TASK_ID')
+        engine_logpath = (
+            os.path.dirname(logpath)
+            + "/engine/"
+            + os.getenv("SLURM_JOB_NAME")
+            + "."
+            + os.getenv("SLURM_ARRAY_JOB_ID")
+            + "."
+            + os.getenv("SLURM_ARRAY_TASK_ID")
+        )
         try:
             if os.path.isfile(engine_logpath):
                 os.link(engine_logpath, logpath)
@@ -372,8 +387,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             pass
 
     def get_logpath(self, logpath_base, task_name, task_id):
-        """ Returns log file for the currently running task """
-        return os.path.join(logpath_base, "%s.%s.%i" % (task_name, os.getenv('SLURM_ARRAY_JOB_ID'), task_id))
+        """Returns log file for the currently running task"""
+        return os.path.join(logpath_base, "%s.%s.%i" % (task_name, os.getenv("SLURM_ARRAY_JOB_ID"), task_id))
 
     def process_task_name(self, name):
         """
@@ -384,5 +399,5 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         """
         if self.job_name_mapping is not None:
             name = self.job_name_mapping(name)
-        name = name.replace('/', '.')  # escape name
+        name = name.replace("/", ".")  # escape name
         return name

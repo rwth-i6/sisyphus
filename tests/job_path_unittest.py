@@ -8,12 +8,11 @@ from sisyphus.tools import finished_results_cache
 
 
 class MockJob(object):
-
     def __init__(self, path):
         self.path = path
 
     def _sis_path(self, postfix):
-        return os.path.join('work', self.path, postfix)
+        return os.path.join("work", self.path, postfix)
 
     def __eq__(self, other):
         return self.path == other.path
@@ -34,83 +33,75 @@ def path_available_true(path):
 
 
 class PathTest(unittest.TestCase):
-
     def test_f(self):
-        path = Path('out')
-        self.assertEqual(str(path), os.path.abspath('out'))
+        path = Path("out")
+        self.assertEqual(str(path), os.path.abspath("out"))
 
-        mjob = MockJob('test/me.1234')
-        path = Path('lm.gz', mjob)
-        self.assertEqual(str(path), os.path.abspath('work/test/me.1234/output/lm.gz'))
+        mjob = MockJob("test/me.1234")
+        path = Path("lm.gz", mjob)
+        self.assertEqual(str(path), os.path.abspath("work/test/me.1234/output/lm.gz"))
 
     def test_hash(self):
-        path = Path('out')
-        self.assertEqual(path._sis_hash(),
-                         b"(Path, (tuple, (NoneType), (str, 'out')))")
+        path = Path("out")
+        self.assertEqual(path._sis_hash(), b"(Path, (tuple, (NoneType), (str, 'out')))")
 
-        mjob = MockJob('test/me.1234')
-        path = Path('lm.gz', mjob)
-        self.assertEqual(path._sis_hash(),
-                         b"(Path, (tuple, (MockJob, (dict, (tuple, "
-                         b"(str, 'path'), (str, 'test/me.1234')))), "
-                         b"(str, 'lm.gz')))")
+        mjob = MockJob("test/me.1234")
+        path = Path("lm.gz", mjob)
+        self.assertEqual(
+            path._sis_hash(),
+            b"(Path, (tuple, (MockJob, (dict, (tuple, "
+            b"(str, 'path'), (str, 'test/me.1234')))), "
+            b"(str, 'lm.gz')))",
+        )
 
     def test_overwrite_hash(self):
-        path = Path('out', hash_overwrite='foo')
-        self.assertEqual(path._sis_hash(),
-                         b"(Path, (tuple, (NoneType), (str, 'foo')))")
+        path = Path("out", hash_overwrite="foo")
+        self.assertEqual(path._sis_hash(), b"(Path, (tuple, (NoneType), (str, 'foo')))")
 
-        mjob = MockJob('test/me.1234')
-        path = Path('lm.gz', mjob, hash_overwrite=('foo', 'bar'))
-        self.assertEqual(path._sis_hash(),
-                         b"(Path, (tuple, (str, 'foo'), (str, 'bar')))")
+        mjob = MockJob("test/me.1234")
+        path = Path("lm.gz", mjob, hash_overwrite=("foo", "bar"))
+        self.assertEqual(path._sis_hash(), b"(Path, (tuple, (str, 'foo'), (str, 'bar')))")
 
     def test_hash_overwrite_modify(self):
-        path = Path('out', hash_overwrite='foo')
-        path_join = path.join_right('bar')
-        path_append = path.copy_append('bar')
-        self.assertEqual(path._sis_hash(),
-                         b"(Path, (tuple, (NoneType), (str, 'foo')))")
-        self.assertEqual(path_join._sis_hash(),
-                         b"(Path, (tuple, (NoneType), (str, 'foo/bar')))")
-        self.assertEqual(path_append._sis_hash(),
-                         b"(Path, (tuple, (NoneType), (str, 'foobar')))")
+        path = Path("out", hash_overwrite="foo")
+        path_join = path.join_right("bar")
+        path_append = path.copy_append("bar")
+        self.assertEqual(path._sis_hash(), b"(Path, (tuple, (NoneType), (str, 'foo')))")
+        self.assertEqual(path_join._sis_hash(), b"(Path, (tuple, (NoneType), (str, 'foo/bar')))")
+        self.assertEqual(path_append._sis_hash(), b"(Path, (tuple, (NoneType), (str, 'foobar')))")
 
-        mjob = MockJob('test/me.1234')
-        path = Path('lm.gz', mjob, hash_overwrite=('foo', 'bar'))
-        path_join = path.join_right('baz')
-        path_append = path.copy_append('baz')
+        mjob = MockJob("test/me.1234")
+        path = Path("lm.gz", mjob, hash_overwrite=("foo", "bar"))
+        path_join = path.join_right("baz")
+        path_append = path.copy_append("baz")
 
-        self.assertEqual(path._sis_hash(),
-                         b"(Path, (tuple, (str, 'foo'), (str, 'bar')))")
-        self.assertEqual(path_join._sis_hash(),
-                         b"(Path, (tuple, (str, 'foo'), (str, 'bar/baz')))")
-        self.assertEqual(path_append._sis_hash(),
-                         b"(Path, (tuple, (str, 'foo'), (str, 'barbaz')))")
+        self.assertEqual(path._sis_hash(), b"(Path, (tuple, (str, 'foo'), (str, 'bar')))")
+        self.assertEqual(path_join._sis_hash(), b"(Path, (tuple, (str, 'foo'), (str, 'bar/baz')))")
+        self.assertEqual(path_append._sis_hash(), b"(Path, (tuple, (str, 'foo'), (str, 'barbaz')))")
 
     def test_pickle(self):
         def pickle_and_check(path):
             with tk.mktemp() as pickle_path:
-                with open(pickle_path, 'wb') as f:
+                with open(pickle_path, "wb") as f:
                     pickle.dump(path, f)
-                with open(pickle_path, 'rb') as f:
+                with open(pickle_path, "rb") as f:
                     path_unpickled = pickle.load(f)
             self.assertEqual(path.__dict__, path_unpickled.__dict__)
 
-        pickle_and_check(Path('out'))
+        pickle_and_check(Path("out"))
 
-        path = Path('lm.gz', MockJob('test/me.1234'))
+        path = Path("lm.gz", MockJob("test/me.1234"))
         pickle_and_check(path)
 
-        path = Path('lm.gz', MockJob('test/me.1234'), available=path_available_false)
+        path = Path("lm.gz", MockJob("test/me.1234"), available=path_available_false)
         pickle_and_check(path)
 
-        path = Variable('lm.gz', MockJob('test/me.1234'))
+        path = Variable("lm.gz", MockJob("test/me.1234"))
         pickle_and_check(path)
 
     def test_path_available(self):
-        mjob = MockJob('test/me.1234')
-        path = Path('lm.gz', mjob)
+        mjob = MockJob("test/me.1234")
+        path = Path("lm.gz", mjob)
         self.assertEqual(path.available(), False)
 
         mjob._sis_finished = lambda: True
@@ -120,30 +111,30 @@ class PathTest(unittest.TestCase):
         with tk.mktemp() as test_path:
             path = Path(test_path)
             self.assertEqual(path.available(), False)
-            with open(test_path, 'wb') as _:
+            with open(test_path, "wb") as _:
                 pass
             self.assertEqual(path.available(), True)
 
         finished_results_cache.reset()
-        path = Path('lm.gz', mjob, available=path_available_false)
+        path = Path("lm.gz", mjob, available=path_available_false)
         self.assertEqual(path.available(), False)
-        path = Path('lm.gz', mjob, available=path_available_true)
+        path = Path("lm.gz", mjob, available=path_available_true)
         self.assertEqual(path.available(), True)
 
     def check_only_get_eq(self, a, b):
-        """ Check that a and b are normally not equal, but are equal after calling get """
+        """Check that a and b are normally not equal, but are equal after calling get"""
         self.assertNotEqual(a, b)
         self.assertEqual(a.get(), b)
 
     def test_path_delay(self):
-        mjob = MockJob('test/me.1234')
-        path = Path('lm.gz', mjob)
+        mjob = MockJob("test/me.1234")
+        path = Path("lm.gz", mjob)
 
         self.check_only_get_eq(path, str(path))
-        self.check_only_get_eq(path + '.foo', str(path) + '.foo')
+        self.check_only_get_eq(path + ".foo", str(path) + ".foo")
         self.check_only_get_eq(path[:-3], str(path)[:-3])
         self.check_only_get_eq(path[-2], str(path)[-2])
-        self.check_only_get_eq(path[:-3] + '.foo', str(path)[:-3] + '.foo')
+        self.check_only_get_eq(path[:-3] + ".foo", str(path)[:-3] + ".foo")
 
         with tk.mktemp() as t:
             var = Variable(t)
@@ -154,5 +145,5 @@ class PathTest(unittest.TestCase):
             self.check_only_get_eq(4 * var, 12)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

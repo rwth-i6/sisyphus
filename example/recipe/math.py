@@ -2,12 +2,12 @@ from sisyphus import *
 
 
 class Add(Job):
-    """ Simple example with an input and an output file """
+    """Simple example with an input and an output file"""
 
     def __init__(self, a, b):
         self.a = a
         self.b = b
-        self.out = self.output_var('result', backup='?')
+        self.out = self.output_var("result", backup="?")
 
     def run(self):
         a = self.a
@@ -19,16 +19,16 @@ class Add(Job):
         self.out.set(a + b)
 
     def tasks(self):
-        yield Task('run', mini_task=True)
+        yield Task("run", mini_task=True)
 
 
 class Multiply(Job):
-    """ Simple example with an input and an output file """
+    """Simple example with an input and an output file"""
 
     def __init__(self, a, b):
         self.a = a
         self.b = b
-        self.out = self.output_var('result', backup='?')
+        self.out = self.output_var("result", backup="?")
 
     def run(self):
         a = self.a
@@ -40,16 +40,16 @@ class Multiply(Job):
         self.out.set(a * b)
 
     def tasks(self):
-        yield Task('run', mini_task=True)
+        yield Task("run", mini_task=True)
 
 
 class Power(Job):
-    """ Simple example with an input and an output file """
+    """Simple example with an input and an output file"""
 
     def __init__(self, a, b):
         self.a = a
         self.b = b
-        self.out = self.output_var('result', backup='?')
+        self.out = self.output_var("result", backup="?")
 
     def run(self):
         a = self.a
@@ -61,4 +61,4 @@ class Power(Job):
         self.out.set(a**b)
 
     def tasks(self):
-        yield Task('run', mini_task=True)
+        yield Task("run", mini_task=True)
