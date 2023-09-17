@@ -18,10 +18,12 @@ def check_is_worker(get_func):
     Prohibits calling a get function while being in the "graph" thread, thus
     causing bugs/inconsistent behavior in Sisyphus.
     """
+
     @wraps(get_func)
     def check(*args, **kwargs):
         if gs.DELAYED_CHECK_FOR_WORKER:
             from sisyphus.toolkit import running_in_worker
+
             assert running_in_worker()
         return get_func(*args, **kwargs)
 
@@ -29,12 +31,14 @@ def check_is_worker(get_func):
 
 
 class VariableNotSet(Exception):
-    """ Variable is not set"""
+    """Variable is not set"""
+
     pass
 
 
 class NoBackup:
-    """ Used to mark that a Variable has no backup value set """
+    """Used to mark that a Variable has no backup value set"""
+
     pass
 
 
@@ -51,8 +55,7 @@ class AbstractPath(DelayedBase):
     cacheing_enabled = False
 
     # Update RelPath in toolkit if position of hash_overwrite is changed
-    def __init__(self, path, creator=None, cached=False, hash_overwrite=None, tags=None,
-                 available=None):
+    def __init__(self, path, creator=None, cached=False, hash_overwrite=None, tags=None, available=None):
         """
         :param str path: Path to file, if creator is given relative to it's output directory
         :param Job|None creator: Job that creates output file
@@ -64,8 +67,10 @@ class AbstractPath(DelayedBase):
         """
 
         if gs.WARNING_ABSPATH and path.startswith(gs.BASE_DIR) and not hash_overwrite:
-            logging.warning('Creating absolute path inside current work directory: %s '
-                            '(disable with WARNING_ABSPATH=False)' % path)
+            logging.warning(
+                "Creating absolute path inside current work directory: %s "
+                "(disable with WARNING_ABSPATH=False)" % path
+            )
         assert isinstance(path, str)
         self.creator = creator
         self.users = set()
@@ -96,9 +101,7 @@ class AbstractPath(DelayedBase):
         if self.creator:
             self.creator.keep_value(value)
         else:
-            logging.warning(
-                'Try to set keep value for input path: %s' %
-                str(self))
+            logging.warning("Try to set keep value for input path: %s" % str(self))
 
     @property
     def tags(self):
@@ -120,7 +123,7 @@ class AbstractPath(DelayedBase):
 
         :param sisyphus.job.Job user:
         """
-        assert hasattr(self, 'users'), "May happens during unpickling, change to add user if needed"
+        assert hasattr(self, "users"), "May happens during unpickling, change to add user if needed"
         self.users.add(user)
 
     def _sis_hash(self):
@@ -129,18 +132,18 @@ class AbstractPath(DelayedBase):
             path = self.path
         else:
             creator, path = self.hash_overwrite
-        if hasattr(creator, '_sis_id'):
+        if hasattr(creator, "_sis_id"):
             creator = f"{creator._sis_id()}/{gs.JOB_OUTPUT}"
-        return b'(Path, ' + sis_hash_helper((creator, path)) + b')'
+        return b"(Path, " + sis_hash_helper((creator, path)) + b")"
 
-    @finished_results_cache.caching(get_key=lambda self, debug_info=None: ('available', self.rel_path()))
+    @finished_results_cache.caching(get_key=lambda self, debug_info=None: ("available", self.rel_path()))
     def available(self, debug_info=None):
-        """  Returns True if the computations creating the path are completed
+        """Returns True if the computations creating the path are completed
         :return:
         """
 
         # Use custom set function, check hasattr for backwards compatibility
-        if hasattr(self, '_available') and self._available:
+        if hasattr(self, "_available") and self._available:
             return self._available(self)
 
         path = self.get_path()
@@ -150,15 +153,16 @@ class AbstractPath(DelayedBase):
             job_path_available = self.creator.path_available(self)
             if self.creator._sis_finished() and not job_path_available:
                 if debug_info:
-                    logging.warning('Job marked as finished but requested output is not available: %s %s'
-                                    % (self, debug_info))
+                    logging.warning(
+                        "Job marked as finished but requested output is not available: %s %s" % (self, debug_info)
+                    )
                 else:
-                    logging.warning('Job marked as finished but requested output is not available: %s' % self)
+                    logging.warning("Job marked as finished but requested output is not available: %s" % self)
             return job_path_available
 
     # TODO Move this to toolkit cleanup together with job method
     def get_needed_jobs(self, visited):
-        """ Return all jobs leading to this path """
+        """Return all jobs leading to this path"""
         if self.creator is None:
             return set()
         else:
@@ -208,7 +212,7 @@ class AbstractPath(DelayedBase):
         def creator_to_str(c):
             if isinstance(c, str):
                 return c
-            elif hasattr(c, '_sis_id'):
+            elif hasattr(c, "_sis_id"):
                 return c._sis_id()
             elif c is None:
                 return str(c)
@@ -233,22 +237,21 @@ class AbstractPath(DelayedBase):
 
     def __hash__(self):
         # TODO Check how uninitialized object should behave here
-        return hash((self.__dict__.get('creator'),
-                     self.__dict__.get('path')))
+        return hash((self.__dict__.get("creator"), self.__dict__.get("path")))
 
     def __getstate__(self):
-        """  Skips exporting users
+        """Skips exporting users
         :return:
         """
         d = self.__dict__.copy()
-        del d['users']
+        del d["users"]
         return d
 
     def __setstate__(self, state):
-        assert 'users' not in state
+        assert "users" not in state
         for k, v in state.items():
             setattr(self, k, v)
-        if not hasattr(self, 'users'):
+        if not hasattr(self, "users"):
             self.users = set()
 
 
@@ -259,7 +262,8 @@ class Path(AbstractPath):
     that are exchanged between jobs
     each path can have a creator or a direct pass to the target and many users.
     """
-    path_type = 'Path'
+
+    path_type = "Path"
 
     def __str__(self):
         return self.get_cached_path()
@@ -268,16 +272,16 @@ class Path(AbstractPath):
         if gs.LEGACY_PATH_CONVERSION:
             return repr(str(self))
         else:
-            return '<Path %s>' % self.get_path()
+            return "<Path %s>" % self.get_path()
 
     def copy(self):
-        """ Creates a copy of this Path """
-        new = Path('')
+        """Creates a copy of this Path"""
+        new = Path("")
         new.__setstate__(self.__getstate__())
         return new
 
     def copy_append(self, suffix):
-        """ Returns a copy of this Path with the given suffix appended to it and updates hash_overwrite"""
+        """Returns a copy of this Path with the given suffix appended to it and updates hash_overwrite"""
         new = self.copy()
         if self.hash_overwrite:
             c, o = self.hash_overwrite
@@ -286,33 +290,37 @@ class Path(AbstractPath):
         return new
 
     def join_right(self, other):
-        """ Returns copy of local Path joined with given string using '/' and updates hash_overwrite"""
-        return self.copy_append('/' + other)
+        """Returns copy of local Path joined with given string using '/' and updates hash_overwrite"""
+        return self.copy_append("/" + other)
 
     def size(self):
-        """ DEPRECATED: Return file size if file exists, else return None """
-        warnings.warn("Path.size() is deprecated, accessing files should be done explicitly",
-                      category=DeprecationWarning)
+        """DEPRECATED: Return file size if file exists, else return None"""
+        warnings.warn(
+            "Path.size() is deprecated, accessing files should be done explicitly", category=DeprecationWarning
+        )
 
         assert self.available(), "Path not ready: %s" % str(self.get_path())
         return os.path.getsize(self.get_path())
 
     def estimate_text_size(self):
-        """ DEPRECATED: Returns rough estimated size of a text file
+        """DEPRECATED: Returns rough estimated size of a text file
         file is not zipped => return original size
         file is zipped => multiply size by 3.5
         """
-        warnings.warn("Path.estimate_text_size() is deprecated, accessing files should be done explicitly",
-                      category=DeprecationWarning)
+        warnings.warn(
+            "Path.estimate_text_size() is deprecated, accessing files should be done explicitly",
+            category=DeprecationWarning,
+        )
         if self.is_zipped():
             return int(self.size() * 3.5)
         else:
             return self.size()
 
     def lines(self):
-        """ DEPRECATED: Returns the number of lines in file """
-        warnings.warn("Path.lines() is deprecated, accessing files should be done explicitly",
-                      category=DeprecationWarning)
+        """DEPRECATED: Returns the number of lines in file"""
+        warnings.warn(
+            "Path.lines() is deprecated, accessing files should be done explicitly", category=DeprecationWarning
+        )
 
         if self.is_zipped():
             f = gzip.open(str(self))
@@ -324,59 +332,56 @@ class Path(AbstractPath):
         return i
 
     def is_zipped(self):
-        """ DEPRECATED: Returns if file is zipped:
+        """DEPRECATED: Returns if file is zipped:
 
         Returns:
         None if file doesn't exists
         true if file is zipped
         false otherwise"""
-        warnings.warn("Path.is_zipped() is deprecated, accessing files should be done explicitly",
-                      category=DeprecationWarning)
+        warnings.warn(
+            "Path.is_zipped() is deprecated, accessing files should be done explicitly", category=DeprecationWarning
+        )
 
         if not self.available():
             return None
 
         filename = self.get_path()
         # test file header, this value will be returned
-        with open(filename, 'br') as test_file:
-            file_zipped = (test_file.read(2) == b'\x1f\x8b')
+        with open(filename, "br") as test_file:
+            file_zipped = test_file.read(2) == b"\x1f\x8b"
         # check name, just as sanity check
-        name_zipped = filename.endswith('.gz')
+        name_zipped = filename.endswith(".gz")
 
         if file_zipped and not name_zipped:
-            logging.warning(
-                'File is zippped, but does not end with gz: %s',
-                filename)
+            logging.warning("File is zippped, but does not end with gz: %s", filename)
         if not file_zipped and name_zipped:
-            logging.warning(
-                'File is not zippped, but ends with gz: %s',
-                filename)
+            logging.warning("File is not zippped, but ends with gz: %s", filename)
 
         return file_zipped
 
     # Filesystem functions
     def __fs_directory__(self):
-        """ Returns all items that should be listed by virtual filesystem
+        """Returns all items that should be listed by virtual filesystem
         :param job:
         :return:
         """
-        yield 'file'
-        yield 'f'
+        yield "file"
+        yield "f"
         if self.creator is not None:
-            yield 'creator'
-            yield 'c'
-            yield '_' + self.creator._sis_id().replace(os.path.sep, '_')
-        yield 'users'
-        yield 'u'
+            yield "creator"
+            yield "c"
+            yield "_" + self.creator._sis_id().replace(os.path.sep, "_")
+        yield "users"
+        yield "u"
 
     def __fs_get__(self, step):
-        if 'file'.startswith(step):
-            return 'symlink', self.get_path()
-        elif self.creator and \
-                ('creator'.startswith(step) or (
-                    '_' + self.creator._sis_id().replace(os.path.sep, '_')).startswith(step)):
+        if "file".startswith(step):
+            return "symlink", self.get_path()
+        elif self.creator and (
+            "creator".startswith(step) or ("_" + self.creator._sis_id().replace(os.path.sep, "_")).startswith(step)
+        ):
             return None, self.creator
-        elif 'users'.startswith(step):
+        elif "users".startswith(step):
             return None, self.users
         else:
             raise KeyError(step)
@@ -386,10 +391,10 @@ class Path(AbstractPath):
 
 
 class Variable(AbstractPath):
-    path_type = 'Variable'
+    path_type = "Variable"
 
     def __init__(self, path, creator=None, pickle=False, backup=NoBackup):
-        """ Encapsulates pickleable python objects to allow python objects to be used
+        """Encapsulates pickleable python objects to allow python objects to be used
         as output/input of jobs. Use the set and get method to interact with it.
 
 
@@ -407,51 +412,55 @@ class Variable(AbstractPath):
         return os.path.isfile(self.get_path())
 
     @check_is_worker
-    @finished_results_cache.caching(get_key=lambda self: ('value', self.rel_path()),
-                                    cache_if=lambda res, self:
-                                    self.available() and (os.path.getsize(self.get_path())
-                                                          < gs.CACHE_FINISHED_RESULTS_MAX_SIZE))
+    @finished_results_cache.caching(
+        get_key=lambda self: ("value", self.rel_path()),
+        cache_if=lambda res, self: self.available()
+        and (os.path.getsize(self.get_path()) < gs.CACHE_FINISHED_RESULTS_MAX_SIZE),
+    )
     def get(self):
         if not self.is_set():
             if self.backup != NoBackup:
                 return self.backup
             elif gs.RAISE_VARIABLE_NOT_SET_EXCEPTION:
-                raise VariableNotSet("Variable is not set (%s) and RAISE_VARIABLE_NOT_SET_EXCEPTION == True"
-                                     % self.get_path())
+                raise VariableNotSet(
+                    "Variable is not set (%s) and RAISE_VARIABLE_NOT_SET_EXCEPTION == True" % self.get_path()
+                )
             else:
                 return "<UNFINISHED VARIABLE: %s>" % self.get_path()
 
         if self.pickle:
-            with gzip.open(self.get_path(), 'rb') as f:
+            with gzip.open(self.get_path(), "rb") as f:
                 v = pickle.load(f)
         else:
-            with open(self.get_path(), 'rt', encoding='utf-8') as f:
+            with open(self.get_path(), "rt", encoding="utf-8") as f:
                 # using eval since literal_eval can not parse 'nan' or 'inf'
-                v = eval(f.read(), {'nan': float('nan'), 'inf': float('inf')})
+                v = eval(f.read(), {"nan": float("nan"), "inf": float("inf")})
         return v
 
     def set(self, value):
         if self.pickle:
-            with gzip.open(self.get_path(), 'wb') as f:
+            with gzip.open(self.get_path(), "wb") as f:
                 pickle.dump(value, f)
         else:
-            with open(self.get_path(), 'wt', encoding='utf-8') as f:
-                f.write('%s\n' % repr(value))
+            with open(self.get_path(), "wt", encoding="utf-8") as f:
+                f.write("%s\n" % repr(value))
 
     # Filesystem functions
     def __fs_directory__(self):
-        """ Returns all items that should be listed by virtual filesystem
-        """
-        yield 'value'
+        """Returns all items that should be listed by virtual filesystem"""
+        yield "value"
         if self.creator is not None:
-            yield 'creator'
-            yield '_' + self.creator._sis_id().replace(os.path.sep, '_')
+            yield "creator"
+            yield "_" + self.creator._sis_id().replace(os.path.sep, "_")
 
     def __fs_get__(self, step):
-        if 'value'.startswith(step):
+        if "value".startswith(step):
             return None, self.get()
-        elif self.creator and 'creator'.startswith(step) or\
-                ('_' + self.creator._sis_id().replace(os.path.sep, '_')).startswith(step):
+        elif (
+            self.creator
+            and "creator".startswith(step)
+            or ("_" + self.creator._sis_id().replace(os.path.sep, "_")).startswith(step)
+        ):
             return None, self.creator
         else:
             raise KeyError(step)
@@ -463,7 +472,7 @@ class Variable(AbstractPath):
         if gs.LEGACY_VARIABLE_CONVERSION:
             return repr(self.get())
         else:
-            value = ''
+            value = ""
             if self.is_set():
-                value = ' %s' % self.get()
+                value = " %s" % self.get()
             return "<Variable %s%s>" % (self.rel_path(), value)

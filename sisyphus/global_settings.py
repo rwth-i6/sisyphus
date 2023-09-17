@@ -1,4 +1,3 @@
-
 """
 These settings can be overwritten via a ``settings.py`` file in the current directory, when ``sis`` is run.
 """
@@ -39,12 +38,14 @@ def engine():
     :return: engine (EngineBase)
     """
     import psutil
+
     cpu_count = psutil.cpu_count()
 
     if ENGINE_NOT_SETUP_WARNING:
-        logging.info('No custom engine setup, using default engine: LocalEngine(cpu=%i, gpu=0)' % cpu_count)
+        logging.info("No custom engine setup, using default engine: LocalEngine(cpu=%i, gpu=0)" % cpu_count)
 
     from sisyphus.localengine import LocalEngine
+
     return LocalEngine(cpu=cpu_count, gpu=0)
 
 
@@ -60,7 +61,7 @@ def worker_wrapper(job, task_name, call):
 
 
 def update_engine_rqmt(last_rqmt: Dict, last_usage: Dict):
-    """ Update requirements after a job got interrupted, double limits if needed
+    """Update requirements after a job got interrupted, double limits if needed
 
     :param dict[str] last_rqmt: requirements that where requested for previous run of this task
     :param dict[str] last_usage: information about the used resources of previous run (mainly memory and time)
@@ -70,23 +71,23 @@ def update_engine_rqmt(last_rqmt: Dict, last_usage: Dict):
     out = last_rqmt.copy()
 
     # Did we run out of time?
-    requested_time = last_rqmt.get('time')
-    used_time = last_usage.get('used_time', 0)
+    requested_time = last_rqmt.get("time")
+    used_time = last_usage.get("used_time", 0)
     if requested_time and requested_time - used_time < 0.1:
-        out['time'] = requested_time * 2
+        out["time"] = requested_time * 2
 
     # Did it (nearly) break the memory limits?
-    requested_memory = last_rqmt.get('mem')
-    used_memory = last_usage.get('max', {}).get('rss', 0)
-    if requested_memory and last_usage.get('out_of_memory') or requested_memory - used_memory < 0.25:
-        out['mem'] = requested_memory * 2
+    requested_memory = last_rqmt.get("mem")
+    used_memory = last_usage.get("max", {}).get("rss", 0)
+    if requested_memory and last_usage.get("out_of_memory") or requested_memory - used_memory < 0.25:
+        out["mem"] = requested_memory * 2
 
     return out
 
 
 # noinspection PyUnusedLocal
 def check_engine_limits(current_rqmt: Dict, task):
-    """ Check if requested requirements break and hardware limits and reduce them.
+    """Check if requested requirements break and hardware limits and reduce them.
     By default ignored, a possible check for limits could look like this::
 
         current_rqmt['time'] = min(168, current_rqmt.get('time', 2))
@@ -105,7 +106,7 @@ def check_engine_limits(current_rqmt: Dict, task):
 
 
 def file_caching(path):
-    """ This function should be replaced to enable file caching.
+    """This function should be replaced to enable file caching.
     e.g. copy given file to /var/tmp and return new path.
     The default behaviour is to just pass on the given path
 
@@ -113,7 +114,7 @@ def file_caching(path):
     :return: path to cached file
     :rtype: str
     """
-    logging.info('No file caching function set, simply keep given path: %s' % path)
+    logging.info("No file caching function set, simply keep given path: %s" % path)
     return path
 
 
@@ -154,10 +155,10 @@ SIS_HASH = sisyphus.hash.short_hash
 #: with config, other python files in the current directory will be ignored.
 #: If the path ends with '/' everything inside it will be loaded, similar to adding it to PYTHONPATH.
 #: keep 'recipe' for legacy setups
-IMPORT_PATHS = ['config', 'recipe', 'recipe/']
+IMPORT_PATHS = ["config", "recipe", "recipe/"]
 
 #: The work directory
-WORK_DIR = 'work'
+WORK_DIR = "work"
 
 # Name default config file if no config directory is found
 CONFIG_FILE_DEFAULT = "config.py"
@@ -166,13 +167,13 @@ CONFIG_FILE_DEFAULT = "config.py"
 CONFIG_FUNCTION_DEFAULT = "%s.main" % CONFIG_PREFIX
 
 #: Name alias directory
-ALIAS_DIR = 'alias'
+ALIAS_DIR = "alias"
 #: Name output directory
-OUTPUT_DIR = 'output'
+OUTPUT_DIR = "output"
 
 #: If set to a non-empty string aliases and outputs will be placed in a subdir.
 #: This is useful for setups with multiple configs
-ALIAS_AND_OUTPUT_SUBDIR = ''
+ALIAS_AND_OUTPUT_SUBDIR = ""
 
 #: Show job targets on status screen, can significantly slow down startup time if many outputs are used
 SHOW_JOB_TARGETS = True
@@ -210,8 +211,8 @@ PRINT_HOLD = True
 #: Which command should be called to start sisyphus, can be used to replace the python binary
 SIS_COMMAND = [sys.executable, sys.argv[0]]
 # if this first argument is -m it's missing the module name
-if sys.argv[0] == '-m':
-    SIS_COMMAND += ['sisyphus']
+if sys.argv[0] == "-m":
+    SIS_COMMAND += ["sisyphus"]
 
 # Parameter to log used resources by each task
 #: Seconds between checks how much memory and cpu a process is using
@@ -243,21 +244,40 @@ AUTO_SET_JOB_INIT_ATTRIBUTES = False
 #: Remove all environment variables to ensure the same environment between different users
 CLEANUP_ENVIRONMENT = True  # only Trump would say no!
 #: Keep these environment variables if CLEANUP_ENVIRONMENT is set
-DEFAULT_ENVIRONMENT_KEEP = {'CUDA_VISIBLE_DEVICES', 'HOME', 'PWD', 'SGE_STDERR_PATH', 'SGE_TASK_ID', 'TMP', 'TMPDIR',
-                            'USER'}
+DEFAULT_ENVIRONMENT_KEEP = {
+    "CUDA_VISIBLE_DEVICES",
+    "HOME",
+    "PWD",
+    "SGE_STDERR_PATH",
+    "SGE_TASK_ID",
+    "TMP",
+    "TMPDIR",
+    "USER",
+}
 #: Set these environment variables if CLEANUP_ENVIRONMENT is set
-DEFAULT_ENVIRONMENT_SET = {'LANG': 'en_US.UTF-8',
-                           'MKL_NUM_THREADS': 1,
-                           'OMP_NUM_THREADS': 1,
-                           'PATH': ':'.join(['/rbi/sge/bin', '/rbi/sge/bin/lx-amd64',
-                                             '/usr/local/sbin', '/usr/local/bin',
-                                             '/usr/sbin', '/usr/bin',
-                                             '/sbin', '/bin',
-                                             '/usr/games', '/usr/local/games',
-                                             '/snap/bin']),
-                           'SHELL': '/bin/bash'}
+DEFAULT_ENVIRONMENT_SET = {
+    "LANG": "en_US.UTF-8",
+    "MKL_NUM_THREADS": 1,
+    "OMP_NUM_THREADS": 1,
+    "PATH": ":".join(
+        [
+            "/rbi/sge/bin",
+            "/rbi/sge/bin/lx-amd64",
+            "/usr/local/sbin",
+            "/usr/local/bin",
+            "/usr/sbin",
+            "/usr/bin",
+            "/sbin",
+            "/bin",
+            "/usr/games",
+            "/usr/local/games",
+            "/snap/bin",
+        ]
+    ),
+    "SHELL": "/bin/bash",
+}
 #: Directory used by tk.mktemp
-TMP_PREFIX = os.path.join(os.environ.get('TMPDIR', '/tmp'), 'sis_')
+TMP_PREFIX = os.path.join(os.environ.get("TMPDIR", "/tmp"), "sis_")
 
 # Visualization
 #: For http visualization, list job input as common input if it is share between more then X*(total jobs) jobs
@@ -315,14 +335,14 @@ ENGINE_NOT_SETUP_WARNING = True
 
 # Internal functions
 ENVIRONMENT_SETTINGS = {}
-ENVIRONMENT_SETTINGS_PREFIX = 'SIS_'
+ENVIRONMENT_SETTINGS_PREFIX = "SIS_"
 
 #: Stores content of all given settings file allowing to log and recreate them if necessary
-GLOBAL_SETTINGS_FILE_CONTENT = ''
+GLOBAL_SETTINGS_FILE_CONTENT = ""
 
 
 def update_global_settings_from_file(filename):
-    """ Loads setting file and updates state of global_settings with its content
+    """Loads setting file and updates state of global_settings with its content
 
     :param str filename:
     :return: nothing
@@ -330,50 +350,55 @@ def update_global_settings_from_file(filename):
     global GLOBAL_SETTINGS_FILE_CONTENT
 
     try:
-        with open(filename, encoding='utf-8') as f:
+        with open(filename, encoding="utf-8") as f:
             content = f.read()
     except FileNotFoundError as e:
         import logging
+
         logging.warning(f"Settings file '{filename}' does not exist, ignoring it ({e}).")
     else:
-        exec(compile(content, filename, 'exec'), globals())
+        exec(compile(content, filename, "exec"), globals())
         GLOBAL_SETTINGS_FILE_CONTENT += f"##### Settings file: {filename} #####\n{content}\n"
 
 
 def update_global_settings_from_env():
-    """ Updates global_settings from environment variables
+    """Updates global_settings from environment variables
     :return: nothing
     """
     from ast import literal_eval
+
     global GLOBAL_SETTINGS_FILE_CONTENT
 
     content = []
     for k, v in os.environ.items():
         if k.startswith(ENVIRONMENT_SETTINGS_PREFIX):
             ENVIRONMENT_SETTINGS[k] = v
-            k = k[len(ENVIRONMENT_SETTINGS_PREFIX):]
+            k = k[len(ENVIRONMENT_SETTINGS_PREFIX) :]
             # Try to eval parameter, if not possible use as string
             try:
                 v = literal_eval(v)
             except Exception:
                 pass
 
-            if k == 'IMPORT_PATHS' and isinstance(v, str):
-                v = v.split(':')
+            if k == "IMPORT_PATHS" and isinstance(v, str):
+                v = v.split(":")
             globals()[k] = v
             content.append(f"{k} = {repr(v)}\n")
 
     if content:
-        GLOBAL_SETTINGS_FILE_CONTENT += "##### Settings from environment #####\n" + ''.join(content)
+        GLOBAL_SETTINGS_FILE_CONTENT += "##### Settings from environment #####\n" + "".join(content)
 
 
-GLOBAL_SETTINGS_FILE = os.environ.get(ENVIRONMENT_SETTINGS_PREFIX + 'GLOBAL_SETTINGS_FILE',
-                                      GLOBAL_SETTINGS_FILE_DEFAULT)
-for settings_file in GLOBAL_SETTINGS_FILE.split(':'):
+GLOBAL_SETTINGS_FILE = os.environ.get(
+    ENVIRONMENT_SETTINGS_PREFIX + "GLOBAL_SETTINGS_FILE", GLOBAL_SETTINGS_FILE_DEFAULT
+)
+for settings_file in GLOBAL_SETTINGS_FILE.split(":"):
     if settings_file:
         update_global_settings_from_file(settings_file)
 update_global_settings_from_env()
 
 if AUTO_SET_JOB_INIT_ATTRIBUTES:
-    logging.warning('AUTO_SET_JOB_INIT_ATTRIBUTES is deprecated, please set the attributes manually '
-                    'you might want to use self.set_attrs(locals())')
+    logging.warning(
+        "AUTO_SET_JOB_INIT_ATTRIBUTES is deprecated, please set the attributes manually "
+        "you might want to use self.set_attrs(locals())"
+    )

@@ -31,10 +31,10 @@ class ConfigManager:
         import sisyphus.toolkit as toolkit
 
         # Check if file parameters are given
-        if '(' in config_name:
-            filename, parameters = config_name.split('(', 1)
-            parameters, _ = parameters.rsplit(')', 1)
-            parameters = literal_eval('(%s,)' % parameters)
+        if "(" in config_name:
+            filename, parameters = config_name.split("(", 1)
+            parameters, _ = parameters.rsplit(")", 1)
+            parameters = literal_eval("(%s,)" % parameters)
         else:
             filename = config_name
             parameters = []
@@ -44,16 +44,17 @@ class ConfigManager:
 
         # maybe remove import path prefix such as "recipe/"
         for load_path in gs.IMPORT_PATHS:
-            if load_path.endswith('/') and filename.startswith(load_path):
-                filename = filename[len(load_path):]
+            if load_path.endswith("/") and filename.startswith(load_path):
+                filename = filename[len(load_path) :]
                 break
-        filename = filename.replace(os.path.sep, '.')  # allows to use tab completion for file selection
-        assert all(part.isidentifier() for part in filename.split('.')), "Config name is invalid: %s" % filename
-        module_name, function_name = filename.rsplit('.', 1)
+        filename = filename.replace(os.path.sep, ".")  # allows to use tab completion for file selection
+        assert all(part.isidentifier() for part in filename.split(".")), "Config name is invalid: %s" % filename
+        module_name, function_name = filename.rsplit(".", 1)
         try:
             config = importlib.import_module(module_name)
         except SyntaxError:
             import sys
+
             if gs.USE_VERBOSE_TRACEBACK:
                 sys.excepthook = sys.excepthook_org
             raise
@@ -62,14 +63,16 @@ class ConfigManager:
         try:
             func = getattr(config, function_name)
         except AttributeError:
-            if function_name != 'py':
+            if function_name != "py":
                 # If filename ends on py and no function is found we assume we should only read the config file
                 # otherwise we reraise the exception
                 raise
             else:
                 if gs.WARNING_NO_FUNCTION_CALLED:
-                    logging.warning("No function named 'py' found in module '%s'"
-                                    " (hide warning by setting WARNING_NO_FUNCTION_CALLED=False)" % module_name)
+                    logging.warning(
+                        "No function named 'py' found in module '%s'"
+                        " (hide warning by setting WARNING_NO_FUNCTION_CALLED=False)" % module_name
+                    )
 
         task = None
         if inspect.iscoroutinefunction(func):
@@ -81,11 +84,11 @@ class ConfigManager:
                 await async_func
                 self.current_config = None
 
-            logging.info('Loading async config: %s (loaded module: %s)' % (config_name, module_name))
+            logging.info("Loading async config: %s (loaded module: %s)" % (config_name, module_name))
             task = self.loop.create_task(set_root_block(filename, self.current_config, func(*parameters)))
         elif func:
             func(*parameters)
-            logging.info('Loaded config: %s (loaded module: %s)' % (config_name, module_name))
+            logging.info("Loaded config: %s (loaded module: %s)" % (config_name, module_name))
         self.continue_readers()
 
         assert self.current_config
@@ -152,11 +155,13 @@ class ConfigManager:
         # TODO Enable again once we can track all readers reliable
         if False and non_waiting:
             for name, reader in non_waiting:
-                logging.warning("Reader " + name + " is currently in a undefined mode, "
-                                "continue anyway and hope for the best" + str(self._waiting_reader))
+                logging.warning(
+                    "Reader " + name + " is currently in a undefined mode, "
+                    "continue anyway and hope for the best" + str(self._waiting_reader)
+                )
 
     def reader_running(self):
-        """ Return True if any config reader is not finished yet.
+        """Return True if any config reader is not finished yet.
 
         :return:
         """
@@ -188,7 +193,7 @@ class ConfigManager:
             return out
 
     def print_config_reader(self):
-        """ Print running config reader
+        """Print running config reader
 
         :return:
         """
@@ -199,7 +204,7 @@ class ConfigManager:
             else:
                 running_reader.append(name)
         if running_reader:
-            logging.info("Configs waiting for jobs to finish: %s" % ' '.join(running_reader))
+            logging.info("Configs waiting for jobs to finish: %s" % " ".join(running_reader))
 
     def cancel_all_reader(self):
         for name, reader in self._config_readers:
@@ -215,11 +220,11 @@ class ConfigManager:
                     raise e
 
     def add_reader_thread(self, thread_name):
-        reader_name = thread_name.split(':')[0]
+        reader_name = thread_name.split(":")[0]
         self._reader_threads[reader_name][thread_name] = time.time()
 
     def remove_reader_thread(self, thread_name):
-        reader_name = thread_name.split(':')[0]
+        reader_name = thread_name.split(":")[0]
         del self._reader_threads[reader_name][thread_name]
 
 
@@ -229,14 +234,14 @@ class RecipeFinder:
         for load_path in gs.IMPORT_PATHS:
             if load_path.endswith(os.path.sep):
                 module_dir = load_path[:-1]
-                module_prefix = ''
+                module_prefix = ""
             else:
                 module_dir = os.path.dirname(load_path)
                 if not module_dir:
-                    module_dir = '.'
+                    module_dir = "."
                 module_prefix = os.path.basename(load_path)
 
-            if not module_prefix or fullname == module_prefix or fullname.startswith(module_prefix + '.'):
+            if not module_prefix or fullname == module_prefix or fullname.startswith(module_prefix + "."):
                 if path is None:
                     search_path = [os.path.abspath(module_dir)]
                 elif isinstance(path, str):

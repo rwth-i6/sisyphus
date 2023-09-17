@@ -14,33 +14,33 @@ from collections import namedtuple
 from ast import literal_eval
 
 # we are only using cpu so far anyway...
-ENGINE_NAME = 'local'
+ENGINE_NAME = "local"
 LOCAL_DEFAULTS = {
-    'cpu': 1,
-    'mem': 1,
-    'time': 1,
+    "cpu": 1,
+    "mem": 1,
+    "time": 1,
 }
 
 
 def run_task(call, logpath):
-    """ Simple function to run task """
-    with open(logpath, 'a') as logfile:
+    """Simple function to run task"""
+    with open(logpath, "a") as logfile:
         subprocess.check_call(call, stdout=logfile, stderr=logfile)
 
 
 # name is the unique name combined of job id and task name, task_name is only the task name
-TaskQueueInstance = namedtuple('TaskQueueInstance', ['call', 'logpath', 'rqmt', 'name', 'task_name', 'task_id'])
+TaskQueueInstance = namedtuple("TaskQueueInstance", ["call", "logpath", "rqmt", "name", "task_name", "task_id"])
 
 
 def get_process_logging_path(task_path, task_name, task_id):
     path = os.path.join(task_path, gs.PLOGGING_FILE)
-    path = '%s.%s.%i' % (path, task_name, task_id)
+    path = "%s.%s.%i" % (path, task_name, task_id)
     return path
 
 
 class sync_object(object):
 
-    """ Object to be used by the with statement to sync an object via queue
+    """Object to be used by the with statement to sync an object via queue
     e.g.::
 
         self.sobj = sync_object({})
@@ -67,12 +67,12 @@ class sync_object(object):
 
 class LocalEngine(threading.Thread, EngineBase):
 
-    """ Simple engine to execute running tasks locally.
+    """Simple engine to execute running tasks locally.
     CPU and GPU are always checked, all other requirements only if given during initialisation.
     """
 
     def __init__(self, cpus=1, gpus=0, available_gpus="", **kwargs):
-        """ The parameter cpus and gpus are kept for backwards compatibility, if cpu and gpu are given
+        """The parameter cpus and gpus are kept for backwards compatibility, if cpu and gpu are given
         they will overwrite the values of cpus and gpus.
 
         :param int cpus: number of CPUs that can be used
@@ -83,7 +83,7 @@ class LocalEngine(threading.Thread, EngineBase):
         self.lock = threading.Lock()
         # There is a mismatch between the requested resources names (?pus) and internal name (?pu)
         # Keep old naming for backwards compatibility, but internal name will overwrite default values
-        self.max_resources = {'cpu': cpus, 'gpu': gpus}
+        self.max_resources = {"cpu": cpus, "gpu": gpus}
         self.max_resources.update(kwargs)
         self.free_resources = self.max_resources.copy()
         assert gpus == 0 or len(available_gpus.split(",")) == gpus
@@ -91,7 +91,7 @@ class LocalEngine(threading.Thread, EngineBase):
 
         self.running_subprocess = []
         self.started = False
-        self.running = multiprocessing.Value('B', 1)  # set to 0 to stop engine
+        self.running = multiprocessing.Value("B", 1)  # set to 0 to stop engine
 
         threading.Thread.__init__(self)
 
@@ -129,7 +129,7 @@ class LocalEngine(threading.Thread, EngineBase):
 
     def check_finished_tasks(self):
         with self.lock:
-            logging.debug('Check for finished subprocesses')
+            logging.debug("Check for finished subprocesses")
             still_running = []
             # Let jobs started in this process finish
             for p in self.running_subprocess:
@@ -137,11 +137,13 @@ class LocalEngine(threading.Thread, EngineBase):
                     still_running.append(p)
             self.running_subprocess = still_running
 
-            logging.debug('Check for finished tasks')
+            logging.debug("Check for finished tasks")
             with self.running_tasks as running_tasks:
                 for process, task, _ in list(running_tasks.values()):
-                    logging.debug('Task state: %s %i PID: %s %s' % (task.task_name, task.task_id,
-                                                                    process.pid, process.is_running()))
+                    logging.debug(
+                        "Task state: %s %i PID: %s %s"
+                        % (task.task_name, task.task_id, process.pid, process.is_running())
+                    )
                     if not process.is_running():
                         self.task_done(running_tasks, task)
 
@@ -150,9 +152,11 @@ class LocalEngine(threading.Thread, EngineBase):
             free = self.free_resources[key]
             requested = rqmt.get(key, 0)
             if max_available < requested:
-                logging.warning('Requested resources are higher than maximal available resources\n'
-                                'Available resources %s\n'
-                                'Requested resources %s' % (self.max_resources, rqmt))
+                logging.warning(
+                    "Requested resources are higher than maximal available resources\n"
+                    "Available resources %s\n"
+                    "Requested resources %s" % (self.max_resources, rqmt)
+                )
             if free < requested:
                 return False
         return True
@@ -197,11 +201,11 @@ class LocalEngine(threading.Thread, EngineBase):
 
                 wait = True  # wait if no new job is started
                 # get next task
-                logging.debug('Check for new task (Free resources %s)' % self.free_resources)
+                logging.debug("Check for new task (Free resources %s)" % self.free_resources)
                 with self.waiting_tasks as waiting_tasks:  # get object for synchronisation
                     if next_task is None and not self.input_queue.empty():
                         next_task = self.input_queue.get()
-                        logging.debug('Found new task: %s' % str(next_task))
+                        logging.debug("Found new task: %s" % str(next_task))
 
                     # run next task if the capacities are available
                     if next_task is not None:
@@ -210,12 +214,14 @@ class LocalEngine(threading.Thread, EngineBase):
                             if self.enough_free_resources(next_task.rqmt):
                                 selected_gpus = self.reserve_resources(next_task.rqmt)
                                 name = (next_task.name, next_task.task_id)
-                                logging.debug('Start task %s' % str(name))
+                                logging.debug("Start task %s" % str(name))
                                 try:
                                     del waiting_tasks[name]
                                 except KeyError:
-                                    logging.warning('Could not delete %s from waiting queue. '
-                                                    'This should not happen! Probably a bug...' % str(name))
+                                    logging.warning(
+                                        "Could not delete %s from waiting queue. "
+                                        "This should not happen! Probably a bug..." % str(name)
+                                    )
                                 # Start job:
                                 process = self.start_task(next_task, selected_gpus)
                                 running_tasks[name] = (process, next_task, selected_gpus)
@@ -231,22 +237,22 @@ class LocalEngine(threading.Thread, EngineBase):
             pass
 
     def stop_engine(self):
-        logging.debug('Got stop signal')
+        logging.debug("Got stop signal")
         self.running.value = False
         self.check_finished_tasks()
         with self.running_tasks as running_tasks:
             if len(running_tasks) > 0:
                 logging.warning("Still running tasks in local engine: %i" % len(running_tasks))
                 for (task_name, task_id), value in running_tasks.items():
-                    logging.warning(' Running task: %s %i PID: %s' % (task_name, task_id, value[0].pid))
+                    logging.warning(" Running task: %s %i PID: %s" % (task_name, task_id, value[0].pid))
 
     def submit_call(self, call, logpath, rqmt, name, task_name, task_ids):
-        if rqmt.get('multi_node_slots', None):
-            raise NotImplementedError('Multi-node slots are not implemented for local engine')
+        if rqmt.get("multi_node_slots", None):
+            raise NotImplementedError("Multi-node slots are not implemented for local engine")
         # run one thread for each task id
         for task_id in task_ids:
             call_with_id = call[:] + [str(task_id)]
-            call_with_id += ['--redirect_output']
+            call_with_id += ["--redirect_output"]
 
             task = TaskQueueInstance(call_with_id, logpath, rqmt, name, task_name, task_id)
             with self.waiting_tasks as waiting_tasks:
@@ -257,12 +263,13 @@ class LocalEngine(threading.Thread, EngineBase):
     def task_done(self, running_tasks, task):
         name = (task.name, task.task_id)
         selected_gpus = running_tasks[name][2]
-        logging.debug('Task Done %s' % str(name))
+        logging.debug("Task Done %s" % str(name))
         try:
             del running_tasks[name]
         except KeyError:
             logging.warning(
-                'Could not delete %s from waiting queue. This should not happen! Probably a bug...' % str(name))
+                "Could not delete %s from waiting queue. This should not happen! Probably a bug..." % str(name)
+            )
 
         # release used resources
         self.release_resources(task.rqmt, selected_gpus)
@@ -300,11 +307,11 @@ class LocalEngine(threading.Thread, EngineBase):
         try:
             with open(process_logging_filename) as f:
                 d = literal_eval(f.read())
-            pid = d['pid']
+            pid = d["pid"]
             process = psutil.Process(pid)
 
             # Recover instance
-            rqmt = d['requested_resources']
+            rqmt = d["requested_resources"]
             logpath = os.path.relpath(task.path(gs.JOB_LOG_ENGINE))
             call_with_id = task.get_worker_call(task_id)
             name = task.task_name()
@@ -312,25 +319,27 @@ class LocalEngine(threading.Thread, EngineBase):
             task_instance = TaskQueueInstance(call_with_id, logpath, rqmt, name, task_name, task_id)
 
             if call_with_id[1:] != process.cmdline()[1:]:
-                logging.warning('Job %s changed, recovering it anyway.' % name)
-                logging.debug('Job changed: %i %s %s' % (pid, process.cmdline(), task_instance.call))
+                logging.warning("Job %s changed, recovering it anyway." % name)
+                logging.debug("Job changed: %i %s %s" % (pid, process.cmdline(), task_instance.call))
 
             with self.running_tasks as running_tasks:
                 name = (task_instance.name, task_id)
                 used_gpus = process.environ().get("CUDA_VISIBLE_DEVICES", "")
                 running_tasks[name] = (process, task_instance, used_gpus)
                 self.reserve_resources(rqmt, selected_devices=used_gpus)
-            logging.debug('Loaded job: %i %s %s' % (pid, process.cmdline(), task_instance.call))
+            logging.debug("Loaded job: %i %s %s" % (pid, process.cmdline(), task_instance.call))
             return True
 
         except Exception as e:
-            logging.debug('Failed to load running job: %s' % e)
+            logging.debug("Failed to load running job: %s" % e)
         return False
 
     def get_task_id(self, task_id):
         if task_id is not None:
             # task id passed via argument
             return task_id
-        logging.warning("Job in local engine started without task_id, "
-                        "worker is probably started manualy. Continue with task_id=1")
+        logging.warning(
+            "Job in local engine started without task_id, "
+            "worker is probably started manualy. Continue with task_id=1"
+        )
         return 1

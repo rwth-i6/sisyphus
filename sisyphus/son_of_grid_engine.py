@@ -16,8 +16,8 @@ import sisyphus.global_settings as gs
 from sisyphus.engine import EngineBase
 from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE, STATE_QUEUE_ERROR
 
-ENGINE_NAME = 'sge'
-TaskInfo = namedtuple('TaskInfo', ["job_id", "task_id", "state"])
+ENGINE_NAME = "sge"
+TaskInfo = namedtuple("TaskInfo", ["job_id", "task_id", "state"])
 
 
 def escape_name(name):
@@ -25,7 +25,7 @@ def escape_name(name):
     :param str name:
     :rtype: str
     """
-    return name.replace('/', '.')
+    return name.replace("/", ".")
 
 
 def try_to_multiply(y, x, backup_value=None):
@@ -51,7 +51,6 @@ def try_to_multiply(y, x, backup_value=None):
 
 
 class SonOfGridEngine(EngineBase):
-
     def __init__(self, default_rqmt, gateway=None, auto_clean_eqw=True, ignore_jobs=None, pe_name="mpi"):
         """
 
@@ -82,12 +81,12 @@ class SonOfGridEngine(EngineBase):
         :rtype: list[bytes], list[bytes], int
         """
         if self.gateway:
-            system_command = ['ssh', '-x', self.gateway] + [' '.join(['cd', os.getcwd(), '&&'] + command)]
+            system_command = ["ssh", "-x", self.gateway] + [" ".join(["cd", os.getcwd(), "&&"] + command)]
         else:
             # no gateway given, skip ssh local
             system_command = command
 
-        logging.debug('shell_cmd: %s' % ' '.join(system_command))
+        logging.debug("shell_cmd: %s" % " ".join(system_command))
         p = subprocess.Popen(system_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
@@ -99,8 +98,8 @@ class SonOfGridEngine(EngineBase):
             :param bytes o:
             :rtype: list[bytes]
             """
-            o = o.split(b'\n')
-            if o[-1] != b'':
+            o = o.split(b"\n")
+            if o[-1] != b"":
                 print(o[-1])
                 assert False
             return o[:-1]
@@ -112,18 +111,18 @@ class SonOfGridEngine(EngineBase):
         # Check for ssh error
         err_ = []
         for raw_line in err:
-            lstart = 'ControlSocket'
-            lend = 'already exists, disabling multiplexing'
-            line = raw_line.decode('utf8').strip()
+            lstart = "ControlSocket"
+            lend = "already exists, disabling multiplexing"
+            line = raw_line.decode("utf8").strip()
             if line.startswith(lstart) and line.endswith(lend):
                 # found ssh connection problem
-                ssh_file = line[len(lstart):len(lend)].strip()
-                logging.warning('SSH Error %s' % line.strip())
+                ssh_file = line[len(lstart) : len(lend)].strip()
+                logging.warning("SSH Error %s" % line.strip())
                 try:
                     os.unlink(ssh_file)
-                    logging.info('Delete file %s' % ssh_file)
+                    logging.info("Delete file %s" % ssh_file)
                 except OSError:
-                    logging.warning('Could not delete %s' % ssh_file)
+                    logging.warning("Could not delete %s" % ssh_file)
             else:
                 err_.append(raw_line)
 
@@ -132,54 +131,54 @@ class SonOfGridEngine(EngineBase):
     def options(self, rqmt):
         out = []
         try:
-            mem = "%iG" % math.ceil(float(rqmt['mem']))
+            mem = "%iG" % math.ceil(float(rqmt["mem"]))
         except ValueError:
-            mem = rqmt['mem']
+            mem = rqmt["mem"]
         # mem = try_to_multiply(s['mem'], 1024*1024*1024) # convert to Gigabyte if possible
 
-        out.append('-l')
-        out.append('h_vmem=%s' % mem)
+        out.append("-l")
+        out.append("h_vmem=%s" % mem)
 
-        out.append('-l')
+        out.append("-l")
 
-        if 'rss' in rqmt:
+        if "rss" in rqmt:
             try:
-                rss = "%iG" % math.ceil(float(rqmt['rss']))
+                rss = "%iG" % math.ceil(float(rqmt["rss"]))
             except ValueError:
-                rss = rqmt['rss']
+                rss = rqmt["rss"]
             # rss = try_to_multiply(s['rss'], 1024*1024*1024) # convert to Gigabyte if possible
-            out.append('h_rss=%s' % rss)
+            out.append("h_rss=%s" % rss)
         else:
-            out.append('h_rss=%s' % mem)
+            out.append("h_rss=%s" % mem)
 
         try:
-            file_size = "%iG" % math.ceil(float(rqmt['file_size']))
+            file_size = "%iG" % math.ceil(float(rqmt["file_size"]))
         except (ValueError, KeyError):
             # If a different default value is wanted it can be overwritten by adding
             # 'file_size' to the default_rqmt of this engine.
-            file_size = rqmt.get('file_size', "50G")
+            file_size = rqmt.get("file_size", "50G")
 
-        out.append('-l')
-        out.append('h_fsize=%s' % file_size)
+        out.append("-l")
+        out.append("h_fsize=%s" % file_size)
 
-        out.append('-l')
-        out.append('gpu=%s' % rqmt.get('gpu', 0))
+        out.append("-l")
+        out.append("gpu=%s" % rqmt.get("gpu", 0))
 
-        out.append('-l')
-        out.append('num_proc=%s' % rqmt.get('cpu', 1))
+        out.append("-l")
+        out.append("num_proc=%s" % rqmt.get("cpu", 1))
 
         # Try to convert time to float, calculate minutes from it
         # and convert it back to an rounded string
         # If it fails use string directly
-        task_time = try_to_multiply(rqmt['time'], 60 * 60)  # convert to seconds if possible
+        task_time = try_to_multiply(rqmt["time"], 60 * 60)  # convert to seconds if possible
 
-        out.append('-l')
-        out.append('h_rt=%s' % task_time)
+        out.append("-l")
+        out.append("h_rt=%s" % task_time)
 
-        if rqmt.get('multi_node_slots', None):
-            out.extend(['-pe', self.pe_name, str(rqmt['multi_node_slots'])])
+        if rqmt.get("multi_node_slots", None):
+            out.extend(["-pe", self.pe_name, str(rqmt["multi_node_slots"])])
 
-        qsub_args = rqmt.get('qsub_args', [])
+        qsub_args = rqmt.get("qsub_args", [])
         if isinstance(qsub_args, str):
             qsub_args = qsub_args.split()
         out += qsub_args
@@ -236,31 +235,19 @@ class SonOfGridEngine(EngineBase):
         :rtype: str|None
         """
         name = escape_name(name)
-        qsub_call = [
-            'qsub',
-            '-cwd',
-            '-N',
-            name,
-            '-j',
-            'y',
-            '-o',
-            logpath,
-            '-S',
-            '/bin/bash',
-            '-m',
-            'n']
+        qsub_call = ["qsub", "-cwd", "-N", name, "-j", "y", "-o", logpath, "-S", "/bin/bash", "-m", "n"]
         qsub_call += self.options(rqmt)
 
-        qsub_call += ['-t', '%i-%i:%i' % (start_id, end_id, step_size)]
-        command = ' '.join(call) + '\n'
+        qsub_call += ["-t", "%i-%i:%i" % (start_id, end_id, step_size)]
+        command = " ".join(call) + "\n"
         try:
             out, err, retval = self.system_call(qsub_call, command)
         except subprocess.TimeoutExpired:
-            logging.warning('SSH command timeout %s' % str(command))
+            logging.warning("SSH command timeout %s" % str(command))
             time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
             return self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
 
-        ref_output = ['Your', 'job-array', '("%s")' % name, 'has', 'been', 'submitted']
+        ref_output = ["Your", "job-array", '("%s")' % name, "has", "been", "submitted"]
         ref_output = [i.encode() for i in ref_output]
 
         job_id = None
@@ -273,7 +260,7 @@ class SonOfGridEngine(EngineBase):
             if retval != 0 or len(err) > 0 or len(sout) != 7 or sout[0:2] + sout[3:] != ref_output:
                 print(retval, len(err), len(sout), sout[0:2], sout[3:], ref_output)
                 logging.error("Error to submit job")
-                logging.error("QSUB command: %s" % ' '.join(qsub_call))
+                logging.error("QSUB command: %s" % " ".join(qsub_call))
                 for line in out:
                     logging.error("Output: %s" % line.decode())
                 for line in err:
@@ -281,22 +268,22 @@ class SonOfGridEngine(EngineBase):
                 # reset cache, after error
                 self.reset_cache()
             else:
-                sjob_id = sout[2].decode().split('.')
+                sjob_id = sout[2].decode().split(".")
                 assert len(sjob_id) == 2
-                assert sjob_id[1] == '%i-%i:%i' % (start_id, end_id, step_size)
+                assert sjob_id[1] == "%i-%i:%i" % (start_id, end_id, step_size)
                 job_id = sjob_id[0]
 
                 logging.info("Submitted with job_id: %s %s" % (job_id, name))
                 for task_id in range(start_id, end_id, step_size):
-                    self._task_info_cache[(name, task_id)].append((job_id, 'qw'))
+                    self._task_info_cache[(name, task_id)].append((job_id, "qw"))
 
                 if False:  # for debugging
                     logging.warning("Boost job!")
-                    subprocess.check_call(('qalter', '-p', '300', job_id))
+                    subprocess.check_call(("qalter", "-p", "300", job_id))
 
         else:
             logging.error("Error to submit job, return value: %i" % retval)
-            logging.error("QSUB command: %s" % ' '.join(qsub_call))
+            logging.error("QSUB command: %s" % " ".join(qsub_call))
             for line in out:
                 logging.error("Output: %s" % line.decode())
             for line in err:
@@ -310,37 +297,39 @@ class SonOfGridEngine(EngineBase):
         self._task_info_cache_last_update = -10
 
     def queue_state(self):
-        """ Return s list with all currently running tasks in this queue """
+        """Return s list with all currently running tasks in this queue"""
 
         if time.time() - self._task_info_cache_last_update < 30:
             # use cached value
             return self._task_info_cache
 
         # get qstat output
-        system_command = ['qstat', '-xml', '-u', getpass.getuser()]
+        system_command = ["qstat", "-xml", "-u", getpass.getuser()]
         try:
             out, err, retval = self.system_call(system_command)
         except subprocess.TimeoutExpired:
-            logging.warning('SSH command timeout %s' % str(system_command))
+            logging.warning("SSH command timeout %s" % str(system_command))
             time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
             return self.queue_state()
 
-        xml_data = ''.join(i.decode('utf8') for i in out)
+        xml_data = "".join(i.decode("utf8") for i in out)
 
         # parse qstat output
         try:
             etree = xml.etree.cElementTree.fromstring(xml_data)
         except xml.etree.cElementTree.ParseError:
-            logging.warning('qstat -xml parsing error, retrying\n'
-                            'command: %s\n'
-                            'stdout: %s\n'
-                            'stderr: %s\n'
-                            'return value: %s' % (system_command, out, err, retval))
+            logging.warning(
+                "qstat -xml parsing error, retrying\n"
+                "command: %s\n"
+                "stdout: %s\n"
+                "stderr: %s\n"
+                "return value: %s" % (system_command, out, err, retval)
+            )
             time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
             return self.queue_state()
 
         task_infos = defaultdict(list)
-        for job in etree.iter('job_list'):
+        for job in etree.iter("job_list"):
             job_info = {}
             for attr in job:
                 text = attr.text
@@ -348,10 +337,10 @@ class SonOfGridEngine(EngineBase):
                     text = text.strip()
                 job_info[attr.tag] = text
 
-            name = job_info['JB_name'].strip()
-            state = job_info['state'].strip()
-            task_ids = job_info.get('tasks', None)
-            job_number = job_info['JB_job_number'].strip()
+            name = job_info["JB_name"].strip()
+            state = job_info["state"].strip()
+            task_ids = job_info.get("tasks", None)
+            job_number = job_info["JB_job_number"].strip()
 
             def parse_task_ids(string):
                 """
@@ -371,17 +360,17 @@ class SonOfGridEngine(EngineBase):
                 except ValueError:
                     pass
 
-                if ',' in string:
+                if "," in string:
                     # multiple task ids
                     tasks_list = []
-                    for i in string.split(','):
+                    for i in string.split(","):
                         tasks_list += parse_task_ids(i)
                     return tasks_list
 
-                if ':' in string:
+                if ":" in string:
                     # taks list
-                    start_end, step_size = string.split(':')
-                    start, end = start_end.split('-')
+                    start_end, step_size = string.split(":")
+                    start, end = start_end.split("-")
                     return list(range(int(start), int(end) + 1, int(step_size)))
                 logging.warning("Can not parse task: %s : %s" % (str(name), str(string)))
                 return []
@@ -396,7 +385,7 @@ class SonOfGridEngine(EngineBase):
         return task_infos
 
     def task_state(self, task, task_id):
-        """ Return task state:
+        """Return task state:
         'r' == STATE_RUNNING
         'qw' == STATE_QUEUE
         not found == STATE_UNKNOWN
@@ -412,37 +401,37 @@ class SonOfGridEngine(EngineBase):
         # task name should be uniq
         if len(qs) > 1:
             logging.warning(
-                'More then one matching SGE task, use first match < %s > matches: %s' %
-                (str(task_name), str(qs)))
+                "More then one matching SGE task, use first match < %s > matches: %s" % (str(task_name), str(qs))
+            )
 
         if qs == []:
             return STATE_UNKNOWN
         state = qs[0][1]
-        if state in ['r', 't', 'Rr', 'Rt']:
+        if state in ["r", "t", "Rr", "Rt"]:
             return STATE_RUNNING
-        elif state == 'qw':
+        elif state == "qw":
             return STATE_QUEUE
-        elif state == 'Eqw':
+        elif state == "Eqw":
             if self.auto_clean_eqw:
-                logging.info('Clean job in error state: %s, %s, %s' % (name, task_id, qs))
-                self.system_call(['qmod', '-cj', "%s.%s" % (qs[0][0], task_id)])
+                logging.info("Clean job in error state: %s, %s, %s" % (name, task_id, qs))
+                self.system_call(["qmod", "-cj", "%s.%s" % (qs[0][0], task_id)])
             return STATE_QUEUE_ERROR
         else:
             return STATE_QUEUE_ERROR
 
     def start_engine(self):
-        """ No starting action required with the current implementation """
+        """No starting action required with the current implementation"""
         pass
 
     def stop_engine(self):
-        """ No stopping action required with the current implementation """
+        """No stopping action required with the current implementation"""
         pass
 
     @staticmethod
     def get_task_id(task_id):
         assert task_id is None, "SGE task should not be started with task id, it's given via $SGE_TASK_ID"
-        task_id = os.getenv('SGE_TASK_ID')
-        if task_id in ['undefined', None]:
+        task_id = os.getenv("SGE_TASK_ID")
+        if task_id in ["undefined", None]:
             # SGE without an array job
             logging.critical("Job started without task_id, this should not happen! Continue with task_id=1")
             return 1
@@ -459,7 +448,7 @@ class SonOfGridEngine(EngineBase):
         if os.path.isfile(logpath):
             os.unlink(logpath)
 
-        engine_logpath = os.getenv('SGE_STDERR_PATH')
+        engine_logpath = os.getenv("SGE_STDERR_PATH")
         try:
             if os.path.isfile(engine_logpath):
                 os.link(engine_logpath, logpath)
@@ -470,5 +459,5 @@ class SonOfGridEngine(EngineBase):
             pass
 
     def get_logpath(self, logpath_base, task_name, task_id):
-        """ Returns log file for the currently running task """
-        return os.getenv('SGE_STDERR_PATH')
+        """Returns log file for the currently running task"""
+        return os.getenv("SGE_STDERR_PATH")

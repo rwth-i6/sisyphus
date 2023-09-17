@@ -68,8 +68,8 @@ class DelayedBase:
         return DelayedFormat(self, *args, **kwargs)
 
     def rformat(self, fstring, *args, **kwargs):
-        """ Reverse format call e.g.:
-        a.rformat(b, *args, **kwargs) is mapped to b.format(a, *args, **kwargs) """
+        """Reverse format call e.g.:
+        a.rformat(b, *args, **kwargs) is mapped to b.format(a, *args, **kwargs)"""
         return DelayedFormat(fstring, self, *args, **kwargs)
 
     def replace(self, *args, **kwargs):
@@ -79,11 +79,11 @@ class DelayedBase:
         return DelayedFunction(self, func, *args, **kwargs)
 
     def fallback(self, fallback):
-        """ If this variable is not set yet the fallback value will be returned """
+        """If this variable is not set yet the fallback value will be returned"""
         return DelayedFallback(self, fallback)
 
     def get(self):
-        assert False, 'This method needs to be declared in a child class'
+        assert False, "This method needs to be declared in a child class"
 
     def __repr__(self):
         return str(self.get())
@@ -145,7 +145,7 @@ class Delayed(DelayedBase):
 
 
 class DelayedFunctionBase(DelayedBase):
-    """ Base class to delays a function call until the get method is called """
+    """Base class to delays a function call until the get method is called"""
 
     def __init__(self, string, *args, **kwargs):
         self.string = string
@@ -159,7 +159,7 @@ class DelayedFunctionBase(DelayedBase):
 class DelayedFunction(DelayedFunctionBase):
     def __init__(self, string, func, *args, **kwargs):
         self.func = func
-        assert func.__name__ != '<lambda>', "Hashing of lambda functions is not supported"
+        assert func.__name__ != "<lambda>", "Hashing of lambda functions is not supported"
         super().__init__(string, *args, **kwargs)
 
     def get(self):
@@ -178,6 +178,7 @@ class DelayedReplace(DelayedFunctionBase):
 
 class DelayedFallback(DelayedBase):
     """Return second value if first value is not available yet"""
+
     def get(self):
         if self.a.is_set():
             return self.a.get()
@@ -186,7 +187,6 @@ class DelayedFallback(DelayedBase):
 
 
 class DelayedSlice(DelayedBase):
-
     def __init__(self, iterable, index_start=0, index_end=-1, step=1):
         """
         :param Iterable[Any] iterable:
@@ -200,11 +200,10 @@ class DelayedSlice(DelayedBase):
         self.step = step
 
     def get(self):
-        return try_get(self.iterable)[try_get(self.index_start):try_get(self.index_end):try_get(self.step)]
+        return try_get(self.iterable)[try_get(self.index_start) : try_get(self.index_end) : try_get(self.step)]
 
 
 class DelayedJoin(DelayedBase):
-
     def __init__(self, iterable, separator):
         """
 

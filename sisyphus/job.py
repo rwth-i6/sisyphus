@@ -36,13 +36,12 @@ SET_DEFAULT_WARNING_COUNT = 0  # Used to avoid spam in log
 
 
 def get_args(f, args, kwargs):
-    """ Returns function arguments """
+    """Returns function arguments"""
     self = None
     parsed_args = inspect.getcallargs(f, self, *args, **kwargs)
     self = inspect.getfullargspec(f).args[0]
-    if self != 'self':
-        logging.warning('Deleted obj attribute not named self attribute '
-                        'name %s object' % self)
+    if self != "self":
+        logging.warning("Deleted obj attribute not named self attribute " "name %s object" % self)
     del parsed_args[self]
     return parsed_args
 
@@ -51,50 +50,51 @@ def get_args(f, args, kwargs):
 created_jobs = {}
 
 
-@finished_results_cache.caching(get_key=lambda path: ('job', path))
+@finished_results_cache.caching(get_key=lambda path: ("job", path))
 def job_finished(path):
-    """ Return True if given job is finished according to files in directory
+    """Return True if given job is finished according to files in directory
     :param path: path to directory
     :return:
     """
-    return os.path.isfile(os.path.join(path, gs.JOB_FINISHED_MARKER)) or \
-        os.path.isfile(os.path.join(path, gs.JOB_FINISHED_ARCHIVE))
+    return os.path.isfile(os.path.join(path, gs.JOB_FINISHED_MARKER)) or os.path.isfile(
+        os.path.join(path, gs.JOB_FINISHED_ARCHIVE)
+    )
 
 
 class JobSingleton(type):
 
-    """ Meta class to ensure that every Job with the same hash value is
-    only created once """
+    """Meta class to ensure that every Job with the same hash value is
+    only created once"""
 
     def __call__(cls, *args, **kwargs):
-        """ Implemented to ensure that each job is created only once """
+        """Implemented to ensure that each job is created only once"""
         try:
-            if 'sis_tags' in kwargs:
-                tags = kwargs['sis_tags']
+            if "sis_tags" in kwargs:
+                tags = kwargs["sis_tags"]
                 if tags is not None:
                     for tag in tags:
                         for char in tag:
-                            assert char in '-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz'
-                del kwargs['sis_tags']
+                            assert char in "-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
+                del kwargs["sis_tags"]
             else:
                 tags = None
             parsed_args = get_args(cls.__init__, args, kwargs)
         except TypeError:
             logging.error(
-                'Wrong input arguments or missing __init__ function?\n'
-                'Class: %s\nArguments: %s %s' %
-                (str(cls), str(args), str(kwargs)))
+                "Wrong input arguments or missing __init__ function?\n"
+                "Class: %s\nArguments: %s %s" % (str(cls), str(args), str(kwargs))
+            )
             raise
 
         # create key
         sis_hash = cls._sis_hash_static(parsed_args)
         module_name = cls.__module__
-        recipe_prefix = gs.RECIPE_PREFIX + '.'
+        recipe_prefix = gs.RECIPE_PREFIX + "."
         if module_name.startswith(recipe_prefix):
-            sis_name = module_name[len(recipe_prefix):]
+            sis_name = module_name[len(recipe_prefix) :]
         else:
             sis_name = module_name
-        sis_name = os.path.join(sis_name.replace('.', os.path.sep), cls.__name__)
+        sis_name = os.path.join(sis_name.replace(".", os.path.sep), cls.__name__)
         sis_id = "%s.%s" % (sis_name, sis_hash)
 
         # Update tags
@@ -181,11 +181,11 @@ class Job(metaclass=JobSingleton):
         assert len(args) == 1 and len(kwargs) == 0 and isinstance(args[0], str)
         sis_cache_key = args[0]
         if sis_cache_key in created_jobs:
-            logging.debug('Loaded %s sis_id from created job cache' % sis_cache_key)
+            logging.debug("Loaded %s sis_id from created job cache" % sis_cache_key)
             job = created_jobs[sis_cache_key]
         else:
             # create new object
-            logging.debug('Could not find %s sis_id in created job cache' % sis_cache_key)
+            logging.debug("Could not find %s sis_id in created job cache" % sis_cache_key)
             job = super(Job, cls).__new__(cls)
             created_jobs[sis_cache_key] = job
             # other initialization here is not need, pickle will call __setstate__
@@ -197,8 +197,9 @@ class Job(metaclass=JobSingleton):
         for key, arg in parsed_args.items():
             if isinstance(arg, Job):
                 logging.warning(
-                    "The Job %s was used as argument \"%s\" in \"%s\", this might result in undesired behavior" %
-                    (str(arg)[3:], key, self.__class__))
+                    'The Job %s was used as argument "%s" in "%s", this might result in undesired behavior'
+                    % (str(arg)[3:], key, self.__class__)
+                )
 
         self._sis_aliases = None
         self._sis_alias_prefixes = set()
@@ -249,15 +250,11 @@ class Job(metaclass=JobSingleton):
         basepath = self._sis_path()
         if os.path.islink(basepath) and not os.path.exists(basepath):
             # is a broken symlink
-            logging.warning('Found broken link %s to %s while setting up %s' % (basepath, os.readlink(basepath), self))
+            logging.warning("Found broken link %s to %s while setting up %s" % (basepath, os.readlink(basepath), self))
             os.unlink(basepath)
-            logging.warning('Removed broken link %s' % basepath)
+            logging.warning("Removed broken link %s" % basepath)
 
-        for dirname in [
-                gs.JOB_WORK_DIR,
-                gs.JOB_OUTPUT,
-                gs.JOB_INPUT,
-                gs.JOB_LOG_ENGINE]:
+        for dirname in [gs.JOB_WORK_DIR, gs.JOB_OUTPUT, gs.JOB_INPUT, gs.JOB_LOG_ENGINE]:
             path = self._sis_path(dirname)
             try:
                 os.makedirs(path)
@@ -282,44 +279,47 @@ class Job(metaclass=JobSingleton):
                 # replace / with _ to make the directory structure flat
                 # I it would be possible to hit some cases where this could
                 # cause a collision sorry if you are really that unlucky...
-                link_name = os.path.join(self._sis_path(gs.JOB_INPUT), str(job_id).replace('/', '_'))
+                link_name = os.path.join(self._sis_path(gs.JOB_INPUT), str(job_id).replace("/", "_"))
                 if not os.path.isdir(link_name):
-                    os.symlink(src=os.path.abspath(str(creator._sis_path())),
-                               dst=link_name,
-                               target_is_directory=True)
+                    os.symlink(src=os.path.abspath(str(creator._sis_path())), dst=link_name, target_is_directory=True)
 
         # export the actual job
-        with gzip.open(self._sis_path(gs.JOB_SAVE), 'w') as f:
+        with gzip.open(self._sis_path(gs.JOB_SAVE), "w") as f:
             pickle.dump(self, f)
 
-        with open(self._sis_path(gs.JOB_INFO), 'w', encoding='utf-8') as f:
+        with open(self._sis_path(gs.JOB_INFO), "w", encoding="utf-8") as f:
             for tag in self.tags:
-                f.write('TAG: %s\n' % tag)
+                f.write("TAG: %s\n" % tag)
             for i in self._sis_inputs:
-                f.write('INPUT: %s\n' % i)
+                f.write("INPUT: %s\n" % i)
             for key, value in self._sis_kwargs.items():
                 try:
-                    f.write('PARAMETER: %s: %s\n' % (key, value))
+                    f.write("PARAMETER: %s: %s\n" % (key, value))
                 except UnicodeEncodeError as e:
-                    f.write('PARAMETER: %s: <UnicodeEncodeError: %s>\n' % (key, e))
+                    f.write("PARAMETER: %s: <UnicodeEncodeError: %s>\n" % (key, e))
             if self._sis_aliases:
                 for alias in self._sis_aliases:
-                    f.write('ALIAS: %s\n' % alias)
+                    f.write("ALIAS: %s\n" % alias)
             for stacktrace in self._sis_stacktrace:
-                f.write('STACKTRACE:\n')
+                f.write("STACKTRACE:\n")
                 f.writelines(traceback.format_list(stacktrace))
         self._sis_setup_since_restart = True
 
     def __getstate__(self):
         d = self.__dict__.copy()
-        for key in ['_sis_job_lock', '_sis_blocks', 'current_block', '_sis_cleanable_cache',
-                    '_sis_cleaned_or_not_cleanable']:
+        for key in [
+            "_sis_job_lock",
+            "_sis_blocks",
+            "current_block",
+            "_sis_cleanable_cache",
+            "_sis_cleaned_or_not_cleanable",
+        ]:
             if key in d:
                 del d[key]
         return d
 
     def __deepcopy__(self, memo):
-        """ A Job should always be a singleton for the same initialization => a deep copy is a reference to itself
+        """A Job should always be a singleton for the same initialization => a deep copy is a reference to itself
         :param memo:
         :return:
         """
@@ -327,9 +327,9 @@ class Job(metaclass=JobSingleton):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        if '_sis_alias' in state:
-            self._sis_aliases = {state['_sis_alias']}
-        if not hasattr(self, '_sis_job_lock'):
+        if "_sis_alias" in state:
+            self._sis_aliases = {state["_sis_alias"]}
+        if not hasattr(self, "_sis_job_lock"):
             self._sis_job_lock = self.get_lock()
         self._sis_blocks = set()
         self._sis_cleanable_cache = False
@@ -342,11 +342,11 @@ class Job(metaclass=JobSingleton):
                 b.add_job(self)
                 self._sis_add_block(b)
 
-        logging.debug('Set state %s' % state['_sis_id_cache'])
+        logging.debug("Set state %s" % state["_sis_id_cache"])
 
     def __getnewargs__(self):
-        logging.debug('Pickle: %s' % self._sis_id())
-        return self._sis_id(),
+        logging.debug("Pickle: %s" % self._sis_id())
+        return (self._sis_id(),)
 
     def _sis_update_possible(self):
         """
@@ -356,7 +356,7 @@ class Job(metaclass=JobSingleton):
         return self.update.__code__ is not Job.update.__code__
 
     def _sis_update_inputs(self):
-        """ Checks for new inputs
+        """Checks for new inputs
         returns True if inputs changed
         """
         with self._sis_job_lock:
@@ -380,10 +380,10 @@ class Job(metaclass=JobSingleton):
         """
 
         if gs.JOB_USE_TAGS_IN_PATH and self._sis_tags:
-            tags = '.' + '.'.join(sorted(list(self._sis_tags)))
+            tags = "." + ".".join(sorted(list(self._sis_tags)))
             tags = tags[:80]
         else:
-            tags = ''
+            tags = ""
 
         # no path type given, return base path
         if path_type is None:
@@ -396,7 +396,7 @@ class Job(metaclass=JobSingleton):
 
         # Add task id as suffix
         if task_id is not None:
-            path += '.%i' % task_id
+            path += ".%i" % task_id
 
         if abspath and not os.path.isabs(path):
             path = os.path.join(gs.BASE_DIR, path)
@@ -416,8 +416,7 @@ class Job(metaclass=JobSingleton):
 
         # Check single instances of job
         if isinstance(task_id, list):
-            return combine([self._sis_file_logging(log_name, t_id, update=update)
-                            for t_id in task_id])
+            return combine([self._sis_file_logging(log_name, t_id, update=update) for t_id in task_id])
 
         # find logfile
         logfile = self._sis_path(log_name, task_id, abspath=True)
@@ -431,7 +430,7 @@ class Job(metaclass=JobSingleton):
         else:
             # create file
             if update and not current_state:
-                with open(logfile, 'w'):
+                with open(logfile, "w"):
                     pass
             # remove file
             elif not update and current_state:
@@ -442,7 +441,7 @@ class Job(metaclass=JobSingleton):
             return update
 
     def _sis_link_to_team_share_dir(self):
-        """ Link local job to team directory """
+        """Link local job to team directory"""
         assert self._sis_is_finished
 
         if gs.TEAM_SHARE_DIR:
@@ -458,13 +457,11 @@ class Job(metaclass=JobSingleton):
                         # is link but not dir => broken link lets remove it
                         os.unlink(team_path)
                     if not os.path.islink(team_path):
-                        os.symlink(src=os.path.abspath(local_path),
-                                   dst=team_path,
-                                   target_is_directory=True)
+                        os.symlink(src=os.path.abspath(local_path), dst=team_path, target_is_directory=True)
                     os.umask(umask)
 
     def _sis_finished(self):
-        """ Return True if job or task is finished """
+        """Return True if job or task is finished"""
         if self._sis_is_finished:
             return True
 
@@ -482,7 +479,7 @@ class Job(metaclass=JobSingleton):
                 # Mark job as finished
                 self._sis_is_finished = True
                 try:
-                    with self._sis_job_lock, open(self._sis_path(gs.JOB_FINISHED_MARKER), 'w'):
+                    with self._sis_job_lock, open(self._sis_path(gs.JOB_FINISHED_MARKER), "w"):
                         pass
                 except PermissionError:
                     # It's probably not your directory, skip setting the
@@ -506,22 +503,26 @@ class Job(metaclass=JobSingleton):
             return cleanable
 
     def _sis_cleanup(self):
-        """ Clean up job directory """
+        """Clean up job directory"""
         assert self._sis_finished()
         if not os.path.isfile(self._sis_path(gs.JOB_FINISHED_ARCHIVE)):
-            logging.info('clean up: %s' % self._sis_path())
+            logging.info("clean up: %s" % self._sis_path())
             with self._sis_job_lock:
                 try:
                     if not gs.JOB_CLEANUP_KEEP_WORK:
                         shutil.rmtree(os.path.abspath(self._sis_path(gs.JOB_WORK_DIR)))
-                    files = [i for i in os.listdir(self._sis_path())
-                             if i not in (gs.JOB_OUTPUT, gs.JOB_INFO, gs.JOB_WORK_DIR)]
-                    subprocess.check_call(['tar', '-czf', gs.JOB_FINISHED_ARCHIVE] + files,
-                                          cwd=os.path.abspath(self._sis_path()))
+                    files = [
+                        i
+                        for i in os.listdir(self._sis_path())
+                        if i not in (gs.JOB_OUTPUT, gs.JOB_INFO, gs.JOB_WORK_DIR)
+                    ]
+                    subprocess.check_call(
+                        ["tar", "-czf", gs.JOB_FINISHED_ARCHIVE] + files, cwd=os.path.abspath(self._sis_path())
+                    )
                     for i in range(4):  # try three times to clean directory
                         try:
                             if files:
-                                subprocess.check_call(['rm', '-r'] + files, cwd=os.path.abspath(self._sis_path()))
+                                subprocess.check_call(["rm", "-r"] + files, cwd=os.path.abspath(self._sis_path()))
                         except subprocess.CalledProcessError as e:
                             # Remove files from list that are already deleted
                             time.sleep(5)
@@ -535,7 +536,7 @@ class Job(metaclass=JobSingleton):
                     self._sis_cleaned_or_not_cleanable = True
                 except (OSError, subprocess.CalledProcessError) as e:
                     # probably not our directory, just pass
-                    logging.warning('Could not clean up %s: %s' % (self._sis_path(), str(e)))
+                    logging.warning("Could not clean up %s: %s" % (self._sis_path(), str(e)))
                     self._sis_cleaned_or_not_cleanable = True
 
     def _sis_id(self):
@@ -556,10 +557,11 @@ class Job(metaclass=JobSingleton):
         :rtype: str
         """
         h = cls.hash(parsed_args)
-        assert isinstance(h, str), 'hash return value must be str'
-        allowed_characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.-_/'
-        assert all(i in allowed_characters for i in h), \
+        assert isinstance(h, str), "hash return value must be str"
+        allowed_characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.-_/"
+        assert all(i in allowed_characters for i in h), (
             "hash should a only contain these characters: %s" % allowed_characters
+        )
         return h
 
     def _sis_import_from_dirs(self, import_dirs, mode, use_alias=False):
@@ -572,7 +574,7 @@ class Job(metaclass=JobSingleton):
         :param import_dirs:
         :return:
         """
-        assert mode in ('copy', 'symlink', 'dryrun'), "Unsupported mode given: %s" % mode
+        assert mode in ("copy", "symlink", "dryrun"), "Unsupported mode given: %s" % mode
         local_path = self._sis_path()
 
         if use_alias and not self._sis_aliases:
@@ -598,8 +600,10 @@ class Job(metaclass=JobSingleton):
                     if not found_targets:
                         continue
                     elif len(found_targets) > 1:
-                        logging.warning("Skip import: Multiple aliases with different targets "
-                                        "found for %s: %s" % (local_path, found_aliases))
+                        logging.warning(
+                            "Skip import: Multiple aliases with different targets "
+                            "found for %s: %s" % (local_path, found_aliases)
+                        )
                         continue
                     else:
                         import_path = found_targets.pop()
@@ -618,26 +622,23 @@ class Job(metaclass=JobSingleton):
                         import_path = os.path.realpath(import_path)
                         # link job directory to local work directory
                         if not os.path.islink(local_path):
-                            if mode == 'copy':
-                                logging.info('Copy import %s from %s' % (self._sis_id(), import_path))
-                                shutil.copytree(src=os.path.abspath(import_path), dst=local_path,
-                                                symlinks=True)
-                            elif mode == 'symlink':
-                                logging.info('Symlink import %s from %s' % (self._sis_id(), import_path))
-                                os.symlink(src=os.path.abspath(import_path),
-                                           dst=local_path,
-                                           target_is_directory=True)
+                            if mode == "copy":
+                                logging.info("Copy import %s from %s" % (self._sis_id(), import_path))
+                                shutil.copytree(src=os.path.abspath(import_path), dst=local_path, symlinks=True)
+                            elif mode == "symlink":
+                                logging.info("Symlink import %s from %s" % (self._sis_id(), import_path))
+                                os.symlink(src=os.path.abspath(import_path), dst=local_path, target_is_directory=True)
                             else:
-                                logging.info('Possible import %s from %s' % (self._sis_id(), import_path))
+                                logging.info("Possible import %s from %s" % (self._sis_id(), import_path))
                         return True
         return False
 
     def _sis_setup(self):
-        """ True if job directory exists """
+        """True if job directory exists"""
         return os.path.isdir(self._sis_path())
 
     def _sis_state(self, engine):
-        """ Return the state of this job """
+        """Return the state of this job"""
         if self._sis_setup():
             # job is setup, check progress
             if self._sis_is_set_to_hold():
@@ -665,14 +666,14 @@ class Job(metaclass=JobSingleton):
             return gs.STATE_WAITING
 
     def _sis_all_path_available(self):
-        """ True if all current inputs are available no update of the inputs is done """
+        """True if all current inputs are available no update of the inputs is done"""
         for path in list(self._sis_inputs):
             if not path.available(debug_info=self):
                 return False
         return True
 
     def _sis_runnable(self):
-        """ True if all inputs are available, also checks if new inputs are requested """
+        """True if all inputs are available, also checks if new inputs are requested"""
 
         if not self._sis_update_possible():
             # Short cut used for most jobs
@@ -685,8 +686,8 @@ class Job(metaclass=JobSingleton):
         # One last check in case sis_update_inputs was run in a parallel thread
         return self._sis_all_path_available()
 
-    def _sis_migrate_directory(self, src, mode='link'):
-        """ Migrate from previously finished directory
+    def _sis_migrate_directory(self, src, mode="link"):
+        """Migrate from previously finished directory
 
         TODO: a lot duplicated code with _sis_import_from_dirs
         """
@@ -702,41 +703,41 @@ class Job(metaclass=JobSingleton):
         assert not os.path.isfile(dst), "Target directory is a file, remove it: %s" % dst
         # skip if current directory already exists
         if os.path.isdir(dst):
-            logging.warning('Don\'t migrate since directory already exists: %s to %s' % (src, dst))
+            logging.warning("Don't migrate since directory already exists: %s to %s" % (src, dst))
             return False
         if os.path.islink(dst):
             if os.path.isdir(dst):
-                logging.warning('Don\'t migrate since directory already linked: %s to %s' % (src, dst))
+                logging.warning("Don't migrate since directory already linked: %s to %s" % (src, dst))
                 return False
             else:
-                logging.warning('Remove broken link: %s' % dst)
+                logging.warning("Remove broken link: %s" % dst)
                 os.unlink(dst)
 
         # only migrate finished jobs
         if not job_finished(src):
-            logging.warning('Don\'t migrate since src directory is not finished: %s to %s' % (src, dst))
+            logging.warning("Don't migrate since src directory is not finished: %s to %s" % (src, dst))
             return False
 
-        logging.info('%s: %s to %s' % (mode.title().replace('_', ' '), src, dst))
+        logging.info("%s: %s to %s" % (mode.title().replace("_", " "), src, dst))
 
         # make sure the main directory exists
-        if not os.path.isdir(os.path.dirname(dst)) and mode != 'fake':
+        if not os.path.isdir(os.path.dirname(dst)) and mode != "fake":
             os.makedirs(os.path.dirname(dst))
 
-        if mode == 'dryrun':
+        if mode == "dryrun":
             print("%s -> %s" % (src, dst))
-        elif mode == 'link':
+        elif mode == "link":
             os.symlink(os.path.abspath(src), dst)
-        elif mode == 'copy':
+        elif mode == "copy":
             shutil.copytree(src, dst, symlinks=True)
-        elif mode == 'move':
+        elif mode == "move":
             os.rename(src, dst)
-        elif mode == 'move_and_link':
+        elif mode == "move_and_link":
             os.rename(src, dst)
             os.symlink(os.path.abspath(dst), src)
-        elif mode == 'hardlink_or_copy':
+        elif mode == "hardlink_or_copy":
             tools.hardlink_or_copy(src, dst)
-        elif mode == 'hardlink_or_link':
+        elif mode == "hardlink_or_link":
             tools.hardlink_or_copy(src, dst, use_symlink_instead_of_copy=True)
         else:
             assert False, "Unknown mode: %s" % mode
@@ -745,7 +746,7 @@ class Job(metaclass=JobSingleton):
     def __str__(self):
         alias = self.get_one_alias()
         if alias is not None:
-            alias_prefix = '' if len(self._sis_alias_prefixes) == 0 else list(self._sis_alias_prefixes)[0]
+            alias_prefix = "" if len(self._sis_alias_prefixes) == 0 else list(self._sis_alias_prefixes)[0]
             path_str = "%s %s" % (os.path.join(gs.ALIAS_DIR, alias_prefix, alias), self._sis_path())
         else:
             path_str = self._sis_path()
@@ -765,11 +766,11 @@ class Job(metaclass=JobSingleton):
 
     def __hash__(self):
         # TODO Check how uninitialized object should behave here
-        return hash(self.__dict__.get('_sis_id_cache'))
+        return hash(self.__dict__.get("_sis_id_cache"))
 
     def _sis_print_error(self, tasks=1, lines=0):
-        """ Print the last lines of the first tasks of this
-        job that are in an error state """
+        """Print the last lines of the first tasks of this
+        job that are in an error state"""
         for task in self._sis_tasks():
             if tasks <= 0:
                 break
@@ -778,29 +779,29 @@ class Job(metaclass=JobSingleton):
                 task.print_error(lines)
 
     def _sis_move(self) -> None:
-        """ Move job directory a side and set up a new one """
+        """Move job directory a side and set up a new one"""
         path = self._sis_path()
         i = 1
-        while os.path.isdir('%s.cleared.%04i' % (path, i)):
+        while os.path.isdir("%s.cleared.%04i" % (path, i)):
             i += 1
-        trash_path = '%s.cleared.%04i' % (path, i)
-        logging.info('Move: %s to %s' % (path, trash_path))
+        trash_path = "%s.cleared.%04i" % (path, i)
+        logging.info("Move: %s to %s" % (path, trash_path))
         os.rename(path, trash_path)
         self._sis_setup_directory()
         for t in self._sis_tasks():
             t.reset_cache()
 
     def _sis_delete(self) -> None:
-        """ Delete job directory """
+        """Delete job directory"""
         path = self._sis_path()
-        logging.info('Delete: %s' % path)
+        logging.info("Delete: %s" % path)
         try:
             if os.path.islink(path):
                 os.unlink(path)
             else:
                 shutil.rmtree(path)
         except FileNotFoundError:
-            logging.warning('File not Found: %s' % path)
+            logging.warning("File not Found: %s" % path)
 
     def _sis_tasks(self) -> List[Task]:
         """
@@ -809,7 +810,7 @@ class Job(metaclass=JobSingleton):
         """
         if not self._sis_runnable():
             assert False, "Only runnable jobs can list needed tasks"
-        if not hasattr(self, '_sis_task_cache'):
+        if not hasattr(self, "_sis_task_cache"):
             cache = []
             for task in self.tasks():
                 task.set_job(self)
@@ -841,7 +842,7 @@ class Job(metaclass=JobSingleton):
 
     # TODO Move this to toolkit cleanup together with path method
     def _sis_get_needed_jobs(self, visited):
-        """ It will return all jobs that are currently still needed to compute currently not finished jobs.
+        """It will return all jobs that are currently still needed to compute currently not finished jobs.
         This is used to decide if a job can be removed while cleaning up or not.
         """
         jobs = set()
@@ -857,10 +858,9 @@ class Job(metaclass=JobSingleton):
             visited[self._sis_id()] = jobs
         return visited[self._sis_id()]
 
-    @tools.cache_result(clear_cache='clear_cache')
+    @tools.cache_result(clear_cache="clear_cache")
     def _sis_get_all_inputs(self, include_job_path=False):
-        """ Returns a dictionary with all input paths contributing to this job
-        """
+        """Returns a dictionary with all input paths contributing to this job"""
         # updates all inputs till the furthest point we can get
         self._sis_runnable()
         inputs = {i.get_path(): i for i in self._sis_inputs}
@@ -873,22 +873,22 @@ class Job(metaclass=JobSingleton):
         return inputs
 
     def _sis_contains_required_inputs(self, required_inputs, include_job_path=False):
-        """ Returns True if all required inputs are used or created by this job
+        """Returns True if all required inputs are used or created by this job
         :param required_inputs:
         :param include_job_path:
         :return:
         """
-        return all([i in self._sis_get_all_inputs(include_job_path=include_job_path) or i in self._sis_outputs
-                    for i in required_inputs])
+        return all(
+            [
+                i in self._sis_get_all_inputs(include_job_path=include_job_path) or i in self._sis_outputs
+                for i in required_inputs
+            ]
+        )
 
-    def _sis_print_tree(self,
-                        visited,
-                        info='',
-                        current_prefix='',
-                        next_prefix='',
-                        out=sys.stdout,
-                        required_inputs=set()):
-        """ Print tree of dependencies """
+    def _sis_print_tree(
+        self, visited, info="", current_prefix="", next_prefix="", out=sys.stdout, required_inputs=set()
+    ):
+        """Print tree of dependencies"""
         # TODO Move this to a external function
 
         # updates all inputs till the furthest point we can get
@@ -898,18 +898,18 @@ class Job(metaclass=JobSingleton):
         if not self._sis_contains_required_inputs(required_inputs, include_job_path=True):
             return
 
-        if info != '':
-            info = '/%s' % info
+        if info != "":
+            info = "/%s" % info
 
         if self._sis_setup():
             if self._sis_finished():
-                info += ' finished'
+                info += " finished"
             else:
-                info += ' setup'
+                info += " setup"
         elif self._sis_runnable():
-            info += ' runnable'
+            info += " runnable"
         else:
-            info += ' waiting'
+            info += " waiting"
 
         print_details = False
         try:
@@ -929,23 +929,19 @@ class Job(metaclass=JobSingleton):
                 if pos + 1 == len(inputs):
                     # last job, change prefix
                     next_current_prefix = next_prefix + "'-"
-                    next_next_prefix = next_prefix + '  '
+                    next_next_prefix = next_prefix + "  "
                 else:
                     next_current_prefix = next_prefix + "|-"
-                    next_next_prefix = next_prefix + '| '
+                    next_next_prefix = next_prefix + "| "
 
                 if path.creator is not None:
-                    path.creator._sis_print_tree(visited,
-                                                 path.path,
-                                                 next_current_prefix,
-                                                 next_next_prefix,
-                                                 out,
-                                                 required_inputs)
+                    path.creator._sis_print_tree(
+                        visited, path.path, next_current_prefix, next_next_prefix, out, required_inputs
+                    )
                 else:
-                    out.write('%s %s path\n' %
-                              (next_current_prefix, path.path))
+                    out.write("%s %s path\n" % (next_current_prefix, path.path))
         else:
-            out.write('%s\'-   ...    \n' % next_prefix)
+            out.write("%s'-   ...    \n" % next_prefix)
 
     def __lt__(self, other):
         if isinstance(other, Job):
@@ -957,43 +953,41 @@ class Job(metaclass=JobSingleton):
 
     # Filesystem functions
     def __fs_directory__(self):
-        """ Returns all items that should be listed by virtual filesystem
+        """Returns all items that should be listed by virtual filesystem
         :param job:
         :return:
         """
-        for r in ['_work',
-                  '_base',
-                  '_output',
-                  # show job name
-                  '_' + self._sis_id().replace(os.path.sep, '_')]:
+        for r in [
+            "_work",
+            "_base",
+            "_output",
+            # show job name
+            "_" + self._sis_id().replace(os.path.sep, "_"),
+        ]:
             yield r
         for r in dir(self):
-            if not (r.startswith('_') or hasattr(getattr(self, r), '__call__')):
+            if not (r.startswith("_") or hasattr(getattr(self, r), "__call__")):
                 yield r
 
     def __fs_get__(self, step):
-        if step == '_work':
-            return 'symlink', os.path.abspath(self.work_path())
-        elif step == '_base':
-            return 'symlink', os.path.abspath(self._sis_path())
-        elif step == '_output':
-            return 'symlink', os.path.abspath(self._sis_path(gs.JOB_OUTPUT))
-        elif step == '_' + self._sis_id().replace(os.path.sep, '_'):
-            return 'symlink', '_base'
+        if step == "_work":
+            return "symlink", os.path.abspath(self.work_path())
+        elif step == "_base":
+            return "symlink", os.path.abspath(self._sis_path())
+        elif step == "_output":
+            return "symlink", os.path.abspath(self._sis_path(gs.JOB_OUTPUT))
+        elif step == "_" + self._sis_id().replace(os.path.sep, "_"):
+            return "symlink", "_base"
         elif hasattr(self, step):
             return None, getattr(self, step)
         else:
             raise KeyError(step)
 
     def __fs_symlink__(self, mountpoint, full_path, history):
-        if not full_path.startswith('/jobs/'):
-            return os.path.abspath(os.path.join(mountpoint,
-                                                'jobs',
-                                                self._sis_id()))
+        if not full_path.startswith("/jobs/"):
+            return os.path.abspath(os.path.join(mountpoint, "jobs", self._sis_id()))
         elif any(isinstance(job, Job) for job in history):
-            return os.path.abspath(os.path.join(mountpoint,
-                                                'jobs',
-                                                self._sis_id()))
+            return os.path.abspath(os.path.join(mountpoint, "jobs", self._sis_id()))
 
     # marking functions
 
@@ -1003,7 +997,7 @@ class Job(metaclass=JobSingleton):
     # interface functions
 
     def job_id(self):
-        """ Returns a unique string to identify this job """
+        """Returns a unique string to identify this job"""
         return self._sis_id()
 
     def get_aliases(self):
@@ -1051,7 +1045,7 @@ class Job(metaclass=JobSingleton):
         return self._sis_tags
 
     def path_available(self, path):
-        """ Returns True if given path is available yet
+        """Returns True if given path is available yet
 
         :param path: path to check
         :return:
@@ -1061,15 +1055,16 @@ class Job(metaclass=JobSingleton):
         return self._sis_finished()
 
     def set_default(self, name, value):
-        """ Deprecated helper function, will be removed in the future. Don't use it! """
+        """Deprecated helper function, will be removed in the future. Don't use it!"""
 
         global SET_DEFAULT_WARNING_COUNT
         if SET_DEFAULT_WARNING_COUNT < 10:
-            logging.warning('set_default is deprecated, please set the variable manually '
-                            '(%s, %s, %s)' % (self, name, value))
+            logging.warning(
+                "set_default is deprecated, please set the variable manually " "(%s, %s, %s)" % (self, name, value)
+            )
             SET_DEFAULT_WARNING_COUNT += 1
         elif SET_DEFAULT_WARNING_COUNT == 10:
-            logging.warning('stop reporting set_default warning')
+            logging.warning("stop reporting set_default warning")
             SET_DEFAULT_WARNING_COUNT += 1
         else:
             pass
@@ -1091,7 +1086,7 @@ class Job(metaclass=JobSingleton):
         """
         path = Path(filename, self, cached)
         if path.get_path() in self._sis_outputs:
-            logging.warning('Added output %s more than once to %s' % (filename, self))
+            logging.warning("Added output %s more than once to %s" % (filename, self))
             return self._sis_outputs[path.get_path()]
         self._sis_outputs[path.get_path()] = path
         if directory:
@@ -1099,7 +1094,7 @@ class Job(metaclass=JobSingleton):
         return path
 
     def output_var(self, filename, pickle=False, backup=None):
-        """ Adds output path which contains a python object,
+        """Adds output path which contains a python object,
         if directory is True a directory will will be created automatically
         """
         path = Variable(filename, self, pickle=pickle, backup=backup)
@@ -1108,7 +1103,7 @@ class Job(metaclass=JobSingleton):
         return path
 
     def set_rqmt(self, task_name, rqmt):
-        """ Overwrites the given requirements for this job
+        """Overwrites the given requirements for this job
 
         :param str task_name: Which task will be affected
         :param rqmt: the new requirements
@@ -1119,7 +1114,7 @@ class Job(metaclass=JobSingleton):
         return self
 
     def update_rqmt(self, task_name, rqmt):
-        """ Updates the given requirements for this job, values not set in rqmt will not be affected.
+        """Updates the given requirements for this job, values not set in rqmt will not be affected.
 
         :param str task_name: Which task will be affected
         :param rqmt: the new requirements
@@ -1133,56 +1128,52 @@ class Job(metaclass=JobSingleton):
         :return: yields Task's
         :rtype: list[sisyphus.task.Task]
         """
-        yield Task('run')
+        yield Task("run")
 
     def keep_value(self, value=None):
-        """ Return keep_value, if value is given also set keep value """
+        """Return keep_value, if value is given also set keep value"""
         if value is not None:
             assert 0 <= value < 100
             self._sis_keep_value = value
         return self._sis_keep_value
 
     def set_keep_value(self, value):
-        """ Set keep value and return self """
+        """Set keep value and return self"""
         assert 0 <= value < 100
         self._sis_keep_value = value
         return self
 
     def sh(self, command, *args, **kwargs):
-        """ Calls a external shell and
+        """Calls a external shell and
         replaces {args} with job inputs, outputs, args
-        and executes the command """
-        return tools.sh(command,
-                        *args,
-                        sis_quiet=self._sis_quiet,
-                        sis_replace=self.__dict__,
-                        **kwargs)
+        and executes the command"""
+        return tools.sh(command, *args, sis_quiet=self._sis_quiet, sis_replace=self.__dict__, **kwargs)
 
     def set_attrs(self, attrs):
-        """ Adds all attrs to self, used in constructor e.gl:
-        self.set_attrs(locals()) """
+        """Adds all attrs to self, used in constructor e.gl:
+        self.set_attrs(locals())"""
         for k, v in attrs.items():
-            if k == 'self' and self == v:
+            if k == "self" and self == v:
                 # Ignore self
                 pass
             elif hasattr(self, k):
                 logging.warning(
-                    'Not automatically over writing setting '
-                    '%s, %s. %s is already defined for Object %s' %
-                    (k, str(v), k, self))
+                    "Not automatically over writing setting "
+                    "%s, %s. %s is already defined for Object %s" % (k, str(v), k, self)
+                )
             else:
                 setattr(self, k, v)
 
     # Overwritable default functions
     def update(self):
-        """ Run after all inputs are computed,
+        """Run after all inputs are computed,
         allowing the job to analyse the given input
         and ask for additional inputs before running.
         """
         pass
 
     def info(self):
-        """ Returns information about the currently running job
+        """Returns information about the currently running job
         to be displayed on the web interface and the manager view
         :return: string to be displayed or None if not available
         :rtype: str
@@ -1210,11 +1201,11 @@ class Job(metaclass=JobSingleton):
             return tools.sis_hash((d, cls.__sis_version__))
 
     def hold(self):
-        """ A job set to hold will not be started, but all required jobs will be run.
+        """A job set to hold will not be started, but all required jobs will be run.
         :return:
         """
         self._sis_hold_job = True
 
     def _sis_is_set_to_hold(self):
-        """ Return True if job is set to hold """
+        """Return True if job is set to hold"""
         return self._sis_hold_job or os.path.exists(self._sis_path(gs.STATE_HOLD))

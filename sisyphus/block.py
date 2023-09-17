@@ -44,8 +44,12 @@ class Block(object):
     def filtered_children(self):
         if self.sis_graph:
             jobs_in_graph = self.sis_graph.id_to_job_dict()
-            return [child for child in self.children if (isinstance(child, Block) and not child.empty()) or (
-                not isinstance(child, Block) and child._sis_id() in jobs_in_graph)]
+            return [
+                child
+                for child in self.children
+                if (isinstance(child, Block) and not child.empty())
+                or (not isinstance(child, Block) and child._sis_id() in jobs_in_graph)
+            ]
         else:
             return self.children
 
@@ -71,29 +75,29 @@ class Block(object):
 
     # Filesystem functions
     def __fs_directory__(self):
-        """ Returns all items that should be listed by virtual filesystem
+        """Returns all items that should be listed by virtual filesystem
         :param job:
         :return:
         """
 
-        yield '_name_%s' % self.name
+        yield "_name_%s" % self.name
 
         integer_length = str(len(str(len(self.filtered_children()) - 1)))
-        name_template = '%0' + integer_length + 'i_%s'
+        name_template = "%0" + integer_length + "i_%s"
 
         for pos, child in enumerate(self.filtered_children()):
             if isinstance(child, Block):
                 name = name_template % (pos, child.name)
             else:  # assume it's a job
-                name = name_template % (pos, child._sis_id().replace(os.path.sep, '_'))
+                name = name_template % (pos, child._sis_id().replace(os.path.sep, "_"))
             yield name
 
     def __fs_get__(self, step):
-        if step == '_name_%s' % self.name:
+        if step == "_name_%s" % self.name:
             return None, self.name
 
         try:
-            pos = int(step.split('_')[0])
+            pos = int(step.split("_")[0])
             return None, self.filtered_children()[pos]
         except Exception:
             raise KeyError(step)
@@ -192,11 +196,15 @@ class block(object):
 
         if self.cache:
             if inspect.isfunction(f):
+
                 def get_hash(args, kwargs):
                     return sis_hash((args, kwargs))
+
             elif inspect.ismethod(f):
+
                 def get_hash(args, kwargs):
                     return sis_hash((f.__self__.__dict__, args, kwargs))
+
             else:
                 get_hash = None
             assert get_hash is not None
@@ -212,7 +220,9 @@ class block(object):
                     cache[key] = ret, current_block
                 add_to_active_blocks(current_block)
                 return ret
+
         else:
+
             def block_f(*args, **kwargs):
                 with block(block_name):
                     return f(*args, **kwargs)

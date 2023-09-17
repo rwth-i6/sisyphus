@@ -33,7 +33,7 @@ async def async_run(obj: Any):
     :return:
     """
     config_manager.mark_reader_as_waiting(config_manager.current_config)
-    graph.graph.add_target(graph.OutputTarget(name='async_run', inputs=obj))
+    graph.graph.add_target(graph.OutputTarget(name="async_run", inputs=obj))
     all_paths = {p for p in extract_paths(obj) if not p.available()}
 
     with async_context():
@@ -56,7 +56,7 @@ async def async_gather(*aws):
     config_name = config_manager.current_config
     c_aws = []
     for i, aw in enumerate(aws):
-        thread_name = '%s:thread_%i' % (config_name, i)
+        thread_name = "%s:thread_%i" % (config_name, i)
         c_aws.append(__async_helper_set_config(aw, thread_name))
 
     config_manager.current_config = None

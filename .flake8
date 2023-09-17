@@ -1,5 +1,6 @@
 [flake8]
 ignore = F401, C901, F403, F405, W503
+extend-ignore = E203  # https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html
 max-line-length = 120
 max-complexity = 18
 select = B,C,E,F,W,T4,B9

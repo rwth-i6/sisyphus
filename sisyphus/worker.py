@@ -24,16 +24,12 @@ def format_time(t):
 
 
 def format_bytes(b):
-    return format_number(b,
-                         factor=1024,
-                         mapping=['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB' 'YB'],
-                         use_decimal_after=3)
+    return format_number(
+        b, factor=1024, mapping=["B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB" "YB"], use_decimal_after=3
+    )
 
 
-def format_number(number,
-                  factor=1000,
-                  mapping=[''] + ['e+%02i' % i for i in range(3, 31, 3)],
-                  use_decimal_after=1):
+def format_number(number, factor=1000, mapping=[""] + ["e+%02i" % i for i in range(3, 31, 3)], use_decimal_after=1):
     if use_decimal_after is None:
         use_decimal_after = len(mapping)
     residual = 0
@@ -49,8 +45,7 @@ def format_number(number,
 
 
 class LoggingThread(Thread):
-    """ Thread to log memory and time consumption of job
-    """
+    """Thread to log memory and time consumption of job"""
 
     def __init__(self, job, task, task_id):
         """
@@ -77,21 +72,23 @@ class LoggingThread(Thread):
         usage_file_path = self.task.get_process_logging_path(self.task_id)
         user = os.geteuid()
         try:
-            user = pwd.getpwuid(user).pw_name,
+            user = (pwd.getpwuid(user).pw_name,)
         except KeyError:
             pass
 
         def log_usage(current):
-            with open(usage_file_path, 'w') as usage_file:
-                usage = {'max': max_resources,
-                         'current': current,
-                         'pid': os.getpid(),
-                         'user': user,
-                         'used_time': (time.time() - start_time) / 3600.,
-                         'host': socket.gethostname(),
-                         'current_time': time.ctime(),
-                         'out_of_memory': self.out_of_memory,
-                         'requested_resources': self.rqmt}
+            with open(usage_file_path, "w") as usage_file:
+                usage = {
+                    "max": max_resources,
+                    "current": current,
+                    "pid": os.getpid(),
+                    "user": user,
+                    "used_time": (time.time() - start_time) / 3600.0,
+                    "host": socket.gethostname(),
+                    "current_time": time.ctime(),
+                    "out_of_memory": self.out_of_memory,
+                    "requested_resources": self.rqmt,
+                }
                 usage_file.write("%s\n" % pprint.pformat(usage))
 
         last_log_value = 0
@@ -101,18 +98,22 @@ class LoggingThread(Thread):
             try:
                 resources = gs.active_engine.get_job_used_resources(current_process)
             except psutil.AccessDenied as e:
-                logging.warning('Logging thread got psutil.AccessDenied Exception, subprocess probably ended %s' %
-                                str(e))
+                logging.warning(
+                    "Logging thread got psutil.AccessDenied Exception, subprocess probably ended %s" % str(e)
+                )
                 continue
             # Only print log if rss changed at least bey PLOGGING_MIN_CHANGE
-            if last_rss is None or abs(last_rss - resources['rss']) / last_rss > gs.PLOGGING_MIN_CHANGE:
+            if last_rss is None or abs(last_rss - resources["rss"]) / last_rss > gs.PLOGGING_MIN_CHANGE:
                 if not gs.PLOGGING_QUIET:
-                    logging.info("Run time: {time} CPU: {cpu:.2f}% RSS: {rss} VMS: {vms}".format(
-                                 time=format_time(time.time() - start_time),
-                                 cpu=resources['cpu'],
-                                 rss=format_bytes(resources['rss'] * 1024 ** 3),
-                                 vms=format_bytes(resources['vms'] * 1024 ** 3)))
-                last_rss = resources['rss']
+                    logging.info(
+                        "Run time: {time} CPU: {cpu:.2f}% RSS: {rss} VMS: {vms}".format(
+                            time=format_time(time.time() - start_time),
+                            cpu=resources["cpu"],
+                            rss=format_bytes(resources["rss"] * 1024**3),
+                            vms=format_bytes(resources["vms"] * 1024**3),
+                        )
+                    )
+                last_rss = resources["rss"]
 
             # store max used resources
             for k, v in resources.items():
@@ -124,10 +125,12 @@ class LoggingThread(Thread):
             # at least every PLOGGING_UPDATE_FILE_PERIOD seconds or
             # if rss usage grow relative more then PLOGGING_MIN_CHANGE
             # if (max_resources['rss'] > last_log_value and time.time() - last_log_time > 30) or \
-            if time.time() - last_log_time > gs.PLOGGING_UPDATE_FILE_PERIOD or\
-                    (max_resources['rss'] - last_log_value) / last_log_value > gs.PLOGGING_MIN_CHANGE:
+            if (
+                time.time() - last_log_time > gs.PLOGGING_UPDATE_FILE_PERIOD
+                or (max_resources["rss"] - last_log_value) / last_log_value > gs.PLOGGING_MIN_CHANGE
+            ):
                 log_usage(resources)
-                last_log_value = max_resources['rss']
+                last_log_value = max_resources["rss"]
                 last_log_time = time.time()
 
             with self._cond:
@@ -139,11 +142,15 @@ class LoggingThread(Thread):
             #     self.task.check_state(gs.JOB_CLOSE_TO_MAX_MEM, task_id=self.task_id, update=True)
 
         log_usage(resources)
-        logging.info("Max resources: Run time: {time} CPU: {cpu}% RSS: {rss} VMS: {vms}"
-                     "".format(time=format_time(time.time() - start_time),
-                               cpu=max_resources['cpu'],
-                               rss=format_bytes(max_resources['rss'] * 1024 ** 3),
-                               vms=format_bytes(max_resources['vms'] * 1024 ** 3)))
+        logging.info(
+            "Max resources: Run time: {time} CPU: {cpu}% RSS: {rss} VMS: {vms}"
+            "".format(
+                time=format_time(time.time() - start_time),
+                cpu=max_resources["cpu"],
+                rss=format_bytes(max_resources["rss"] * 1024**3),
+                vms=format_bytes(max_resources["vms"] * 1024**3),
+            )
+        )
 
     def stop(self):
         with self._cond:
@@ -169,7 +176,7 @@ def worker(args):
                 os.link(log_file, error_file)
             except OSError:
                 if not os.path.isfile(error_file):
-                    with open(error_file, 'w'):
+                    with open(error_file, "w"):
                         pass
         raise
     finally:
@@ -177,7 +184,7 @@ def worker(args):
 
 
 def worker_helper(args):
-    """ This program is run on the client side when running the job """
+    """This program is run on the client side when running the job"""
 
     # Redirect stdout and stderr by starting a subprocess
     # Starting a subprocess was the only reliable way I found to redirect all outputs to a file,
@@ -189,14 +196,14 @@ def worker_helper(args):
         # Make sure Sisyphus is called again with the same python executable.
         # Adding the executable in front of the call could cause problems with the worker_wrapper
         if shutil.which(os.path.basename(sys.executable)) != sys.executable:
-            os.environ['PATH'] = os.path.dirname(sys.executable) + ':' + os.environ['PATH']
+            os.environ["PATH"] = os.path.dirname(sys.executable) + ":" + os.environ["PATH"]
 
         call = sys.argv
-        del call[call.index('--redirect_output')]
+        del call[call.index("--redirect_output")]
 
-        with open(log_file, 'a') as logfile:
+        with open(log_file, "a") as logfile:
             if logfile.tell() > 0:
-                logfile.write('\n' + ('#' * 80) + '\nRETRY OR CONTINUE TASK\n' + ('#' * 80) + '\n\n')
+                logfile.write("\n" + ("#" * 80) + "\nRETRY OR CONTINUE TASK\n" + ("#" * 80) + "\n\n")
             subprocess.check_call(call, stdout=logfile, stderr=logfile)
         return
 
@@ -238,7 +245,7 @@ def worker_helper(args):
     gs.active_engine.init_worker(task)
 
     # cleanup environment
-    if hasattr(task._job, '_sis_environment') and task._job._sis_environment:
+    if hasattr(task._job, "_sis_environment") and task._job._sis_environment:
         task._job._sis_environment.modify_environment()
 
     # run task

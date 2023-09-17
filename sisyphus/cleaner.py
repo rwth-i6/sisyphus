@@ -32,7 +32,7 @@ JOB_WITHOUT_KEEP_VALUE = -1
 
 
 def extract_keep_values_from_graph():
-    """ Go through loaded graph and create dict with all jobs and keep values
+    """Go through loaded graph and create dict with all jobs and keep values
 
     :return:
     """
@@ -60,7 +60,7 @@ def extract_keep_values_from_graph():
     # create directory with all jobs and partial paths to these jobs
     job_dirs = {}
     for k, v in active_paths.items():
-        if hasattr(v, 'creator') and v.creator:
+        if hasattr(v, "creator") and v.creator:
             job = v.creator
             path = job._sis_path()
             if path in needed:
@@ -81,7 +81,7 @@ def extract_keep_values_from_graph():
 
 
 def find_too_low_keep_value(job_dirs, min_keep_value):
-    """ Check all given job if they can be removed and have a keep value lower min_keep_value.
+    """Check all given job if they can be removed and have a keep value lower min_keep_value.
 
     :param job_dirs: dict with all keep values, can be created with extract_keep_values_from_graph
     :param min_keep_value: minimal keep value
@@ -102,7 +102,7 @@ def find_too_low_keep_value(job_dirs, min_keep_value):
 
 
 def list_all_graph_directories():
-    """ Create dict containing all filesystem directories used by jobs inside the loaded graph
+    """Create dict containing all filesystem directories used by jobs inside the loaded graph
 
     :return: dict
     """
@@ -118,23 +118,23 @@ def list_all_graph_directories():
 
 
 def save_used_paths(outfile=None, job_dirs=None):
-    """ Write dict of directories in the graph to file
+    """Write dict of directories in the graph to file
 
     :param outfile: Filename of output file, if not given write to stdout
     :param job_dirs: Job dirs that will be written to file, if not given it will be extracted from current graph
     :return:
     """
-    out = open(outfile, 'a') if outfile else sys.stdout
+    out = open(outfile, "a") if outfile else sys.stdout
     if job_dirs is None:
         job_dirs = list_all_graph_directories()
     for path, status in job_dirs.items():
-        out.write('%s %i\n' % (path, status))
+        out.write("%s %i\n" % (path, status))
     if out != sys.stdout:
         out.close()
 
 
 def load_used_paths(infile):
-    """ Load list save with save_used_paths
+    """Load list save with save_used_paths
 
     :param infile: Filename to load from
     :return: remove_list
@@ -148,18 +148,18 @@ def load_used_paths(infile):
 
 
 def save_remove_list(to_remove, outfile):
-    """ Write list of files that should be removed to file
+    """Write list of files that should be removed to file
     :param to_remove: List of directories
     :param outfile: Filename of output file
     :return:
     """
-    with open(outfile, 'w') as f:
+    with open(outfile, "w") as f:
         for i in sorted(to_remove):
-            f.write(i + '\n')
+            f.write(i + "\n")
 
 
 def load_remove_list(infile):
-    """ Load list save with save_remove_list
+    """Load list save with save_remove_list
 
     :param infile: Filename to load from
     :return: remove_list
@@ -172,7 +172,7 @@ def load_remove_list(infile):
 
 
 def search_for_unused(job_dirs, current=gs.WORK_DIR, verbose=True):
-    """ Check work directory and list all subdirectories which do not belong to the given list of directories.
+    """Check work directory and list all subdirectories which do not belong to the given list of directories.
 
     :param job_dirs: dict with all used directories, can be created with list_all_graph_directories.
     :param current: current work directory
@@ -187,7 +187,7 @@ def search_for_unused(job_dirs, current=gs.WORK_DIR, verbose=True):
 
     all_dirs = os.listdir(current)
     if verbose:
-        logging.info('Directories in %s: %i' % (current, len(all_dirs)))
+        logging.info("Directories in %s: %i" % (current, len(all_dirs)))
     for short_path in all_dirs:
         path = os.path.join(current, short_path)
         status = job_dirs.get(path)
@@ -199,15 +199,15 @@ def search_for_unused(job_dirs, current=gs.WORK_DIR, verbose=True):
             found = search_for_unused(job_dirs, path, verbose)
             unused.update(found)
             if verbose:
-                logging.info('found %s unused directories in %s (total so far: %s)' % (len(found), path, len(unused)))
+                logging.info("found %s unused directories in %s (total so far: %s)" % (len(found), path, len(unused)))
         else:
             # if nothing else matches it's a job of this graph so let's keep it
             pass
     return unused
 
 
-def remove_directories(dirs, message, move_postfix='.cleanup', mode='remove', force=False):
-    """ list all directories that will be deleted and add a security check """
+def remove_directories(dirs, message, move_postfix=".cleanup", mode="remove", force=False):
+    """list all directories that will be deleted and add a security check"""
     if isinstance(dirs, str):
         dirs = load_remove_list(dirs)
     tmp = list(dirs)
@@ -218,14 +218,14 @@ def remove_directories(dirs, message, move_postfix='.cleanup', mode='remove', fo
     if len(dirs) == 0:
         return
 
-    input_var = 'UNSET'
-    while input_var.lower() not in ('n', 'y', ''):
+    input_var = "UNSET"
+    while input_var.lower() not in ("n", "y", ""):
         input_var = input("Calculate size of affected directories? (Y/n): ")
-    if input_var.lower() == 'n':
-        input_var = 'UNSET'
-        while input_var.lower() not in ('n', 'y', ''):
+    if input_var.lower() == "n":
+        input_var = "UNSET"
+        while input_var.lower() not in ("n", "y", ""):
             input_var = input("List affected directories? (Y/n): ")
-        if input_var.lower() != 'n':
+        if input_var.lower() != "n":
             logging.info("Affected directories:")
             for i in tmp:
                 logging.info(i)
@@ -234,29 +234,29 @@ def remove_directories(dirs, message, move_postfix='.cleanup', mode='remove', fo
             for directory in dirs:
                 tmp_file.write(directory + "\x00")
             tmp_file.flush()
-            command = 'du -sch --files0-from=%s' % tmp_file.name
+            command = "du -sch --files0-from=%s" % tmp_file.name
             p = os.popen(command)
             print(p.read())
             p.close()
 
-    input_var = 'UNSET'
-    if mode == 'dryrun':
-        input_var = 'n'
+    input_var = "UNSET"
+    if mode == "dryrun":
+        input_var = "n"
     elif force:
-        input_var = 'y'
+        input_var = "y"
 
-    while input_var.lower() not in ('n', 'y'):
-        message = 'Move directories?' if mode == 'move' else 'Delete directories?'
+    while input_var.lower() not in ("n", "y"):
+        message = "Move directories?" if mode == "move" else "Delete directories?"
         input_var = input("%s (y/n): " % message)
 
-    if input_var.lower() == 'y':
+    if input_var.lower() == "y":
         for num, k in enumerate(dirs, 1):
-            if mode == 'move':
-                logging.info('move: %s' % k)
+            if mode == "move":
+                logging.info("move: %s" % k)
                 # todo: k.{postfix} is may already used
-                shutil.move(k, k + '.' + move_postfix)
-            elif mode == 'remove':
-                logging.info('Delete: (%d/%d) %s' % (num, len(dirs), k))
+                shutil.move(k, k + "." + move_postfix)
+            elif mode == "remove":
+                logging.info("Delete: (%d/%d) %s" % (num, len(dirs), k))
                 if os.path.islink(k):
                     os.unlink(k)
                 else:
@@ -271,34 +271,32 @@ def remove_directories(dirs, message, move_postfix='.cleanup', mode='remove', fo
 
 
 def cleanup_jobs():
-    """ Go through all jobs in the current graph. If they are finished it remove its work directory and compress
-    the log files """
+    """Go through all jobs in the current graph. If they are finished it remove its work directory and compress
+    the log files"""
     for job in graph.graph.jobs():
         if job is not True and job._sis_cleanable():
             # clean job directory if possible
-            logging.info('cleanup: %s' % job._sis_path())
+            logging.info("cleanup: %s" % job._sis_path())
             job._sis_cleanup()
 
 
-def cleanup_keep_value(min_keep_value, load_from: str = '', mode: str = 'remove'):
-    """ Go through all jobs in the current graph to remove all jobs with a lower keep value that the given minimum
-    """
+def cleanup_keep_value(min_keep_value, load_from: str = "", mode: str = "remove"):
+    """Go through all jobs in the current graph to remove all jobs with a lower keep value that the given minimum"""
     if min_keep_value <= 0:
-        logging.error('Keep value must be larger than 0')
+        logging.error("Keep value must be larger than 0")
     if load_from:
         job_dirs = load_used_paths(load_from)
     else:
         job_dirs = extract_keep_values_from_graph()
 
     to_remove = find_too_low_keep_value(job_dirs, min_keep_value)
-    remove_directories(to_remove, 'Remove jobs with lower keep value than min',
-                       move_postfix='.cleanup',
-                       mode=mode,
-                       force=False)
+    remove_directories(
+        to_remove, "Remove jobs with lower keep value than min", move_postfix=".cleanup", mode=mode, force=False
+    )
 
 
-def cleanup_unused(load_from: str = '', job_dirs=None, mode='remove'):
-    """ Check work directory and remove all subdirectories which do not belong to the given list of directories.
+def cleanup_unused(load_from: str = "", job_dirs=None, mode="remove"):
+    """Check work directory and remove all subdirectories which do not belong to the given list of directories.
     If no input is given it removes everything that is not in the current graph
 
     :param load_from: File name to load list with used directories
@@ -313,4 +311,4 @@ def cleanup_unused(load_from: str = '', job_dirs=None, mode='remove'):
     else:
         job_dirs = list_all_graph_directories()
     to_remove = search_for_unused(job_dirs, verbose=True)
-    remove_directories(to_remove, 'Not used in graph', mode=mode, force=False)
+    remove_directories(to_remove, "Not used in graph", mode=mode, force=False)

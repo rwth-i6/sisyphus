@@ -31,7 +31,7 @@ def get_system_informations(file=sys.stdout):
 
 
 def str_to_GB(m):
-    """ Takes a string with size units and converts it into float as GB.
+    """Takes a string with size units and converts it into float as GB.
     If only a number is given it assumes it's gigabytes
 
     :param m:
@@ -40,21 +40,21 @@ def str_to_GB(m):
     try:
         m = float(m)
     except ValueError:
-        if m[-1] == 'T':
+        if m[-1] == "T":
             m = float(m[:-1]) * 1024
-        if m[-1] == 'G':
+        if m[-1] == "G":
             m = float(m[:-1])
-        elif m[-1] == 'M':
-            m = float(m[:-1]) / 1024.
-        elif m[-1] == 'K':
-            m = float(m[:-1]) / 1024. / 1024.
+        elif m[-1] == "M":
+            m = float(m[:-1]) / 1024.0
+        elif m[-1] == "K":
+            m = float(m[:-1]) / 1024.0 / 1024.0
         else:
             assert False
     return m
 
 
 def str_to_hours(t):
-    """ Takes a string and converts it into seconds
+    """Takes a string and converts it into seconds
     If only a number is given it assumes it's hours
 
     :param m:
@@ -63,7 +63,7 @@ def str_to_hours(t):
     try:
         t = float(t)
     except ValueError:
-        t = t.split(':')
+        t = t.split(":")
         assert len(t) == 3
         t = int(t[0]) * 3600 + int(t[1]) * 60 + int(t[2])
         t /= 3600.0
@@ -86,25 +86,25 @@ def extract_paths(args: Any) -> Set:
         visited_obj_ids[id(obj)] = obj
         if isinstance(obj, Block) or isinstance(obj, enum.Enum):
             continue
-        if hasattr(obj, '_sis_path') and obj._sis_path is True and not type(obj) is type:
+        if hasattr(obj, "_sis_path") and obj._sis_path is True and not type(obj) is type:
             out.add(obj)
         elif isinstance(obj, (list, tuple, set)):
             queue.extend(obj)
         elif isinstance(obj, dict):
             for k, v in obj.items():
-                if not type(k) == str or not k.startswith('_sis_'):
+                if not type(k) == str or not k.startswith("_sis_"):
                     queue.append(v)
-        elif hasattr(obj, '__sis_state__') and not inspect.isclass(obj):
+        elif hasattr(obj, "__sis_state__") and not inspect.isclass(obj):
             queue.append(obj.__sis_state__())
-        elif hasattr(obj, '__getstate__') and not inspect.isclass(obj):
+        elif hasattr(obj, "__getstate__") and not inspect.isclass(obj):
             queue.append(obj.__getstate__())
-        elif hasattr(obj, '__dict__'):
+        elif hasattr(obj, "__dict__"):
             for k, v in obj.__dict__.items():
-                if not type(k) == str or not k.startswith('_sis_'):
+                if not type(k) == str or not k.startswith("_sis_"):
                     queue.append(v)
-        elif hasattr(obj, '__slots__'):
+        elif hasattr(obj, "__slots__"):
             for k in obj.__slots__:
-                if hasattr(obj, k) and not k.startswith('_sis_'):
+                if hasattr(obj, k) and not k.startswith("_sis_"):
                     a = getattr(obj, k)
                     queue.append(a)
     return out
@@ -121,7 +121,7 @@ def sis_hash(obj):
 
 
 def try_get(v):
-    """ Tries to call the get method, if an attribute error is raise return the original value.
+    """Tries to call the get method, if an attribute error is raise return the original value.
     Useful to convert a sisyphus path or variable into the stored object
     """
 
@@ -133,7 +133,7 @@ def try_get(v):
 
 class execute_in_dir(object):
 
-    """ Object to be used by the with statement.
+    """Object to be used by the with statement.
     All code after the with will be executed in the given directory,
     working directory will be changed back after with statement.
     e.g.:
@@ -157,7 +157,7 @@ class execute_in_dir(object):
 
 class cache_result(object):
 
-    """ decorated to cache the result of a function for x_seconds """
+    """decorated to cache the result of a function for x_seconds"""
 
     def __init__(self, cache_time=30, force_update=None, clear_cache=None):
         self.cache = {}
@@ -194,21 +194,24 @@ class cache_result(object):
             else:
                 ret = self.cache[key]
             return ret
+
         return cache_f
 
 
-def sh(command,
-       capture_output=False,
-       pipefail=True,
-       executable=None,
-       except_return_codes=(0,),
-       sis_quiet=False,
-       sis_replace={},
-       include_stderr=False,
-       **kwargs):
-    """ Calls a external shell and
+def sh(
+    command,
+    capture_output=False,
+    pipefail=True,
+    executable=None,
+    except_return_codes=(0,),
+    sis_quiet=False,
+    sis_replace={},
+    include_stderr=False,
+    **kwargs,
+):
+    """Calls a external shell and
     replaces {args} with job inputs, outputs, args
-    and executes the command """
+    and executes the command"""
 
     replace = {}
     replace.update(sis_replace)
@@ -226,15 +229,16 @@ def sh(command,
     sys.stderr.flush()
 
     if executable is None:
-        executable = '/bin/bash'
+        executable = "/bin/bash"
         if pipefail:
             # this ensures that the job will fail if any part inside of a pipe fails
-            command = 'set -ueo pipefail && ' + command
+            command = "set -ueo pipefail && " + command
 
     try:
         if capture_output:
-            return subprocess.check_output(command, shell=True, executable=executable,
-                                           stderr=subprocess.STDOUT if include_stderr else None).decode()
+            return subprocess.check_output(
+                command, shell=True, executable=executable, stderr=subprocess.STDOUT if include_stderr else None
+            ).decode()
         else:
             subprocess.check_call(command, shell=True, executable=executable)
     except subprocess.CalledProcessError as e:
@@ -245,7 +249,7 @@ def sh(command,
 
 
 def hardlink_or_copy(src, dst, use_symlink_instead_of_copy=False):
-    """ Emulate coping of directories by using hardlinks, if hardlink fails copy file.
+    """Emulate coping of directories by using hardlinks, if hardlink fails copy file.
     Recursively creates new directories and creates hardlinks of all source files into these directories
     if linking files copy file.
 
@@ -256,7 +260,7 @@ def hardlink_or_copy(src, dst, use_symlink_instead_of_copy=False):
 
     for dirpath, dirnames, filenames in os.walk(src):
         # get relative path to given to source directory
-        relpath = dirpath[len(src) + 1:]
+        relpath = dirpath[len(src) + 1 :]
 
         # create directory if it doesn't exist
         try:
@@ -282,10 +286,10 @@ def hardlink_or_copy(src, dst, use_symlink_instead_of_copy=False):
             except OSError as e:
                 if e.errno != 18:
                     if use_symlink_instead_of_copy:
-                        logging.warning('Could not hardlink %s to %s, use symlink' % (src, dst))
+                        logging.warning("Could not hardlink %s to %s, use symlink" % (src, dst))
                         shutil.copy2(src_file, dst_file)
                     else:
-                        logging.warning('Could not hardlink %s to %s, use copy' % (src, dst))
+                        logging.warning("Could not hardlink %s to %s, use copy" % (src, dst))
                         os.symlink(os.path.abspath(src), dst)
                 else:
                     raise e
@@ -392,9 +396,10 @@ def format_signum(signum):
     :rtype: str
     """
     import signal
+
     signum_to_signame = {
-        k: v for v, k in reversed(sorted(signal.__dict__.items()))
-        if v.startswith('SIG') and not v.startswith('SIG_')}
+        k: v for v, k in reversed(sorted(signal.__dict__.items())) if v.startswith("SIG") and not v.startswith("SIG_")
+    }
     return "%s (%s)" % (signum, signum_to_signame.get(signum, "unknown"))
 
 
@@ -418,6 +423,7 @@ def install_signal_handler_if_default(signum, exceptions_are_fatal=False):
     """
     try:
         import signal
+
         if signal.getsignal(signum) == signal.SIG_DFL:
             signal.signal(signum, signal_handler)
         return True
@@ -430,6 +436,7 @@ def install_signal_handler_if_default(signum, exceptions_are_fatal=False):
 
 def maybe_install_signal_handers():
     import signal
+
     install_signal_handler_if_default(signal.SIGUSR1)
     install_signal_handler_if_default(signal.SIGUSR2)
 
@@ -444,7 +451,7 @@ class MemoryProfiler:
 
     def snapshot(self):
         snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
+        top_stats = snapshot.statistics("lineno")
         total = sum(stat.size for stat in top_stats)
         if abs(self.last_total - total) < self.min_change:
             return
@@ -452,16 +459,16 @@ class MemoryProfiler:
         self.last_total = total
 
         self.log_stream.write("Top %s lines at %s\n" % (self.limit, time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())))
-        for index, stat in enumerate(top_stats[:self.limit], 1):
+        for index, stat in enumerate(top_stats[: self.limit], 1):
             frame = stat.traceback[0]
             # replace "/path/to/module/file.py" with "module/file.py"
             filename = os.sep.join(frame.filename.split(os.sep)[-2:])
             self.log_stream.write("#%s: %s:%s: %.1f KiB\n" % (index, filename, frame.lineno, stat.size / 1024))
             line = linecache.getline(frame.filename, frame.lineno).strip()
             if line:
-                self.log_stream.write('    %s\n' % line)
+                self.log_stream.write("    %s\n" % line)
 
-        other = top_stats[self.limit:]
+        other = top_stats[self.limit :]
         if other:
             size = sum(stat.size for stat in other)
             self.log_stream.write("%s other: %.1f KiB\n" % (len(other), size / 1024))
@@ -506,10 +513,10 @@ class EnvironmentModifier:
                 os.environ[k] = str(v)
 
         for k, v in os.environ.items():
-            logging.debug('environment var %s=%s' % (k, v))
+            logging.debug("environment var %s=%s" % (k, v))
 
     def __repr__(self):
-        return repr(self.keep_vars) + ' ' + repr(self.set_vars)
+        return repr(self.keep_vars) + " " + repr(self.set_vars)
 
 
 class FinishedResultsCache:
@@ -526,14 +533,14 @@ class FinishedResultsCache:
         try:
             if os.path.exists(path):
                 logging.info("Loading cached results from %s" % repr(path))
-                with open(path, 'rb') as f:
+                with open(path, "rb") as f:
                     self.cache = pickle.load(f)
         except Exception as e:
             logging.warning("Failed to read cached file, use empty cache instead. %s" % e)
 
     def write_to_file(self):
         if self.changed:
-            with open(self.cache_file, 'wb') as f:
+            with open(self.cache_file, "wb") as f:
                 cache = self.cache.copy()
                 pickle.dump(cache, f)
             self.changed = False
@@ -564,7 +571,9 @@ class FinishedResultsCache:
                     if cache_if(res, *args, **kwargs):
                         self[key] = res
                     return res
+
             return cached_call
+
         return caching_decorator
 
 
