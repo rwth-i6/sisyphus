@@ -55,7 +55,7 @@ class ConfigManager:
         except SyntaxError:
             import sys
 
-            if gs.USE_VERBOSE_TRACEBACK:
+            if gs.USE_VERBOSE_TRACEBACK and getattr(sys, "excepthook_org", None) is not None:
                 sys.excepthook = sys.excepthook_org
             raise
 
