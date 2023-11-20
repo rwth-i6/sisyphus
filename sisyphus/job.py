@@ -497,7 +497,11 @@ class Job(metaclass=JobSingleton):
         elif self._sis_cleanable_cache:
             return True
         else:
-            cleanable = not os.path.isfile(self._sis_path(gs.JOB_FINISHED_ARCHIVE)) and self._sis_finished()
+            cleanable = (
+                not os.path.islink(self._sis_path())
+                and not os.path.isfile(self._sis_path(gs.JOB_FINISHED_ARCHIVE))
+                and self._sis_finished()
+            )
             if cleanable:
                 self._sis_cleanable_cache = True
             return cleanable
