@@ -453,7 +453,7 @@ def import_work_directory(directories: Union[str, List[str]], mode="dryrun", use
     Link or copy finished jobs from other work directories.
 
     :param str directories: Path to other work directories
-    :param str mode: How to import job directories. Options: (copy, symlink, dryrun)
+    :param str mode: How to import job directories. Options: (copy, symlink, hardlink, dryrun)
     """
 
     if isinstance(directories, str):

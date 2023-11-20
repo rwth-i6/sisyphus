@@ -574,7 +574,7 @@ class Job(metaclass=JobSingleton):
         :param import_dirs:
         :return:
         """
-        assert mode in ("copy", "symlink", "dryrun"), "Unsupported mode given: %s" % mode
+        assert mode in ("copy", "symlink", "hardlink", "dryrun"), "Unsupported mode given: %s" % mode
         local_path = self._sis_path()
 
         if use_alias and not self._sis_aliases:
@@ -628,6 +628,14 @@ class Job(metaclass=JobSingleton):
                             elif mode == "symlink":
                                 logging.info("Symlink import %s from %s" % (self._sis_id(), import_path))
                                 os.symlink(src=os.path.abspath(import_path), dst=local_path, target_is_directory=True)
+                            elif mode == "hardlink":
+                                logging.info("Hardlink import %s from %s" % (self._sis_id(), import_path))
+                                shutil.copytree(
+                                    src=os.path.abspath(import_path),
+                                    dst=local_path,
+                                    symlinks=True,
+                                    copy_function=os.link,
+                                )
                             else:
                                 logging.info("Possible import %s from %s" % (self._sis_id(), import_path))
                         return True
