@@ -236,7 +236,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         job_id = None
         if len(out) == 1:
             sout = out[0].split()
-            if retval != 0 or len(err) > 0 or len(sout) != 4 or sout[0:3] != ref_output:
+            if retval != 0 or len(sout) != 4 or sout[0:3] != ref_output:
                 print(retval, len(err), len(sout), sout[0:3], ref_output)
                 logging.error("Error to submit job")
                 logging.error("SBATCH command: %s" % " ".join(sbatch_call))
@@ -252,6 +252,14 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 logging.info("Submitted with job_id: %s %s" % (job_id, name))
                 for task_id in range(start_id, end_id, step_size):
                     self._task_info_cache[(name, task_id)].append((job_id, "PD"))
+
+                if err:
+                    logging.warning(f"Got error while submitting job (but job {job_id} was submitted)")
+                    logging.warning("SBATCH command: %s" % " ".join(sbatch_call))
+                    for line in out:
+                        logging.warning("Output: %s" % line.decode())
+                    for line in err:
+                        logging.warning("Error: %s" % line.decode())
 
         else:
             logging.error("Error to submit job, return value: %i" % retval)
