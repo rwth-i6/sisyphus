@@ -1,5 +1,6 @@
 # Author: Wilfried Michel <michel@cs.rwth-aachen.de>
 
+from typing import Any
 from collections import defaultdict, namedtuple
 from enum import Enum
 import getpass  # used to get username
@@ -69,6 +70,11 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self.ignore_jobs = ignore_jobs
         self.memory_allocation_type = memory_allocation_type
         self.job_name_mapping = job_name_mapping
+
+    def _system_call_timeout_warn_msg(self, command: Any) -> str:
+        if self.gateway:
+            return f"SSH command timeout: {command!s}"
+        return f"Command timeout: {command!s}"
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -223,12 +229,14 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         sbatch_call += ["-a", "%i-%i:%i" % (start_id, end_id, step_size)]
         command = '"' + " ".join(call) + '"'
         sbatch_call += ["--wrap=%s" % " ".join(call)]
-        try:
-            out, err, retval = self.system_call(sbatch_call)
-        except subprocess.TimeoutExpired:
-            logging.warning("SSH command timeout %s" % str(command))
-            time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
-            return self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
+        while True:
+            try:
+                out, err, retval = self.system_call(sbatch_call)
+            except subprocess.TimeoutExpired:
+                logging.warning(self._system_call_timeout_warn_msg(command))
+                time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
+                continue
+            break
 
         ref_output = ["Submitted", "batch", "job"]
         ref_output = [i.encode() for i in ref_output]
@@ -285,12 +293,14 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             "-O",
             "arrayjobid,arraytaskid,state,name:1000",
         ]
-        try:
-            out, err, retval = self.system_call(system_command)
-        except subprocess.TimeoutExpired:
-            logging.warning("SSH command timeout %s" % str(system_command))
-            time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
-            return self.queue_state()
+        while True:
+            try:
+                out, err, retval = self.system_call(system_command)
+            except subprocess.TimeoutExpired:
+                logging.warning(self._system_call_timeout_warn_msg(system_command))
+                time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
+                continue
+            break
 
         task_infos = defaultdict(list)
         for line in out:

@@ -1,5 +1,6 @@
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
+from typing import Any
 import os
 import subprocess
 
@@ -72,6 +73,11 @@ class SonOfGridEngine(EngineBase):
             ignore_jobs = []
         self.ignore_jobs = ignore_jobs
         self.pe_name = pe_name
+
+    def _system_call_timeout_warn_msg(self, command: Any) -> str:
+        if self.gateway:
+            return f"SSH command timeout: {command!s}"
+        return f"Command timeout: {command!s}"
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -240,12 +246,14 @@ class SonOfGridEngine(EngineBase):
 
         qsub_call += ["-t", "%i-%i:%i" % (start_id, end_id, step_size)]
         command = " ".join(call) + "\n"
-        try:
-            out, err, retval = self.system_call(qsub_call, command)
-        except subprocess.TimeoutExpired:
-            logging.warning("SSH command timeout %s" % str(command))
-            time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
-            return self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
+        while True:
+            try:
+                out, err, retval = self.system_call(qsub_call, command)
+            except subprocess.TimeoutExpired:
+                logging.warning(self._system_call_timeout_warn_msg(command))
+                time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
+                continue
+            break
 
         ref_output = ["Your", "job-array", '("%s")' % name, "has", "been", "submitted"]
         ref_output = [i.encode() for i in ref_output]
@@ -305,12 +313,14 @@ class SonOfGridEngine(EngineBase):
 
         # get qstat output
         system_command = ["qstat", "-xml", "-u", getpass.getuser()]
-        try:
-            out, err, retval = self.system_call(system_command)
-        except subprocess.TimeoutExpired:
-            logging.warning("SSH command timeout %s" % str(system_command))
-            time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
-            return self.queue_state()
+        while True:
+            try:
+                out, err, retval = self.system_call(system_command)
+            except subprocess.TimeoutExpired:
+                logging.warning(self._system_call_timeout_warn_msg(system_command))
+                time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
+                continue
+            break
 
         xml_data = "".join(i.decode("utf8") for i in out)
 

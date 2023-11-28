@@ -1,5 +1,6 @@
 # Author: Wilfried Michel <michel@cs.rwth-aachen.de>
 
+from typing import Any
 import os
 import subprocess
 
@@ -41,6 +42,11 @@ class LoadSharingFacilityEngine(EngineBase):
         self.gateway = gateway
         self.default_rqmt = default_rqmt
         self.auto_clean_eqw = auto_clean_eqw
+
+    def _system_call_timeout_warn_msg(self, command: Any) -> str:
+        if self.gateway:
+            return f"SSH command timeout: {command!s}"
+        return f"Command timeout: {command!s}"
 
     def system_call(self, command, send_to_stdin=None):
         if self.gateway:
@@ -177,14 +183,16 @@ class LoadSharingFacilityEngine(EngineBase):
             + "\n"
         )
 
-        try:
-            logging.info("bsub_call: %s" % bsub_call)
-            logging.info("command: %s" % command)
-            out, err, retval = self.system_call(bsub_call, command)
-        except subprocess.TimeoutExpired:
-            logging.warning("SSH command timeout %s" % str(command))
-            time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
-            return self.submit_helper(call, logpath, rqmt, name, task_name, rangestring)
+        while True:
+            try:
+                logging.info("bsub_call: %s" % bsub_call)
+                logging.info("command: %s" % command)
+                out, err, retval = self.system_call(bsub_call, command)
+            except subprocess.TimeoutExpired:
+                logging.warning(self._system_call_timeout_warn_msg(command))
+                time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
+                continue
+            break
 
         ref_output = ["Job", "is", "submitted", "to", "queue"]
         ref_output = [i.encode() for i in ref_output]
@@ -238,12 +246,14 @@ class LoadSharingFacilityEngine(EngineBase):
 
         # get bjobs output
         system_command = ["bjobs", "-w"]
-        try:
-            out, err, retval = self.system_call(system_command)
-        except subprocess.TimeoutExpired:
-            logging.warning("SSH command timeout %s" % str(system_command))
-            time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
-            return self.queue_state()
+        while True:
+            try:
+                out, err, retval = self.system_call(system_command)
+            except subprocess.TimeoutExpired:
+                logging.warning(self._system_call_timeout_warn_msg(system_command))
+                time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
+                continue
+            break
 
         task_infos = defaultdict(list)
         for line in out[1:]:
