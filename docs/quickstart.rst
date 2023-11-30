@@ -36,7 +36,7 @@ Cheatsheet
    - ``./sis worker <path/to/job.hash> <task_name>``
  * - create a non-existing job manually
    - #. ``./sis c``
-     #. | ``jobs = tk.find_jobs("<query>")``
+     #. | ``jobs = tk.find_job("<query>")``
         | this will list all found jobs
      #. ``j = jobs[<desired_index>]``
      #. ``tk.setup_job_directory(j)``
