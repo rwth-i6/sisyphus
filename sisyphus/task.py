@@ -1,3 +1,4 @@
+import math
 import os
 import logging
 import sys
@@ -137,13 +138,24 @@ class Task(object):
             else:
                 logging.info("%s (Variable: %s, %s)" % (i.get_path(), str(i), type(i.get())))
 
+            if gs.WAIT_PERIOD_FOR_INPUTS_AVAILABLE:
+                for _ in range(math.ceil(gs.WAIT_PERIOD_FOR_INPUTS_AVAILABLE)):
+                    if os.path.exists(i.get_path()):
+                        break
+                    logging.warning("Input path does not exist, waiting: %s" % i.get_path())
+                    time.sleep(1)
+
             # each input must be at least X seconds old
             # if an input file is too young it's may not synced in a network filesystem yet
             try:
                 input_age = time.time() - os.stat(i.get_path()).st_mtime
                 time.sleep(max(0, gs.WAIT_PERIOD_MTIME_OF_INPUTS - input_age))
             except FileNotFoundError:
-                logging.warning("Input path does not exist: %s" % i.get_path())
+                (logging.error if gs.TASK_INPUTS_MUST_BE_AVAILABLE else logging.warning)(
+                    "Input path does not exist: %s" % i.get_path()
+                )
+                if gs.TASK_INPUTS_MUST_BE_AVAILABLE:
+                    raise
 
         tools.get_system_informations(sys.stdout)
         sys.stdout.flush()
