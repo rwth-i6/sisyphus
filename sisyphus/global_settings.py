@@ -195,6 +195,11 @@ WAIT_PERIOD_HTTP_RETRY_BIND = 10
 WAIT_PERIOD_JOB_CLEANUP = 10
 #: How many seconds should all inputs be available before starting a job to avoid file system synchronization problems
 WAIT_PERIOD_MTIME_OF_INPUTS = 60
+#: How long to wait for all inputs to be available in Task.run (https://github.com/rwth-i6/sisyphus/issues/159)
+WAIT_PERIOD_FOR_INPUTS_AVAILABLE = 60
+
+#: Fail when not all inputs are available after WAIT_PERIOD_FOR_INPUTS_AVAILABLE
+TASK_INPUTS_MUST_BE_AVAILABLE = True
 
 #: set true to automatically clean jobs in error state and retry
 CLEAR_ERROR = False
