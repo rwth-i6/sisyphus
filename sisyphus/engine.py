@@ -1,6 +1,7 @@
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
 import collections
+import copy
 import logging
 import os
 import psutil
@@ -72,7 +73,7 @@ class EngineBase:
         return id_to_rqmt
 
     def add_defaults_to_rqmt(self, task, rqmt):
-        s = self.get_default_rqmt(task).copy()
+        s = copy.deepcopy(self.get_default_rqmt(task))
         s.update(rqmt)
         return s
 
