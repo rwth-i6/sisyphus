@@ -109,7 +109,6 @@ class JobSingleton(type):
         else:
             # create new object
             job = super(Job, cls).__new__(cls)
-            assert isinstance(job, Job)
             job._sis_tags = tags
 
             # store _sis_id
