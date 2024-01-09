@@ -259,7 +259,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
 
                 logging.info("Submitted with job_id: %s %s" % (job_id, name))
                 for task_id in range(start_id, end_id, step_size):
-                    self._task_info_cache[(name, task_id)].append((job_id, "PD"))
+                    self._task_info_cache[(name, task_id)].append((job_id, "PENDING"))
 
                 if err:
                     logging.warning(f"Got error while submitting job (but job {job_id} was submitted)")
