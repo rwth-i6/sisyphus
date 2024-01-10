@@ -57,7 +57,7 @@ class LoggingThread(Thread):
         self.task = task
         self.task_id = task_id
         self.start_time = None
-        super().__init__()
+        super().__init__(daemon=True)
         self.out_of_memory = False
         self._cond = Condition()
         self.__stop = False
@@ -248,5 +248,8 @@ def worker_helper(args):
     if hasattr(task._job, "_sis_environment") and task._job._sis_environment:
         task._job._sis_environment.modify_environment()
 
-    # run task
-    task.run(task_id, resume_job, logging_thread=logging_thread)
+    try:
+        # run task
+        task.run(task_id, resume_job, logging_thread=logging_thread)
+    finally:
+        logging_thread.stop()
