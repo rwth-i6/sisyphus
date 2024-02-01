@@ -242,6 +242,10 @@ def worker_helper(args):
     logging_thread = LoggingThread(job, task, task_id)
     logging_thread.start()
 
+    # TODO init hang detection thread here...
+    # based on task.running(task_id), which causes
+    # "Job marked as running but logging file has not been updated" warnings when False
+
     sisyphus.job_path.Path.cacheing_enabled = True
     resume_job = False
     gs.active_engine.init_worker(task)
