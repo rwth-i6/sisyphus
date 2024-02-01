@@ -59,7 +59,7 @@ class LoggingThread(Thread):
         self.task = task
         self.task_id = task_id
         self.start_time = None
-        super().__init__(daemon=True)
+        super().__init__(daemon=True, name="LoggingThread")
         self.out_of_memory = False
         self._cond = Condition()
         self.__stop = False
