@@ -124,7 +124,6 @@ class EngineBase:
         This function should only be used by the worker.
 
         :param psutil.Process current_process:
-        :param engine_selector:
         """
         d = {}
 
