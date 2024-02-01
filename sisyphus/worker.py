@@ -1,3 +1,4 @@
+from typing import Optional
 import gzip
 import logging
 import os
@@ -12,6 +13,7 @@ import subprocess
 import time
 from threading import Thread, Condition
 
+import sisyphus
 import sisyphus.global_settings as gs
 import sisyphus.job_path
 import sisyphus.toolkit
@@ -223,7 +225,7 @@ def worker_helper(args):
         path.cached = False
 
     # find task
-    task = None
+    task: Optional[sisyphus.Task] = None
     for task_check in job._sis_tasks():
         if task_check.name() == args.task_name:
             task = task_check
