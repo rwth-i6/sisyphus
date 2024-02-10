@@ -10,6 +10,7 @@ JOB_WORK_DIR = "work"
 JOB_FINISHED_MARKER = "finished"
 JOB_FINISHED_ARCHIVE = "finished.tar.gz"
 JOB_INFO = "info"
+JOB_STARTUP_HOOK_PY = "startup_hook.py"
 
 # engine path
 ENGINE_LOG = "log"

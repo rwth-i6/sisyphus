@@ -65,7 +65,6 @@ T = TypeVar("T", bound="Job")
 
 
 class JobSingleton(type):
-
     """Meta class to ensure that every Job with the same hash value is
     only created once"""
 
@@ -225,6 +224,7 @@ class Job(metaclass=JobSingleton):
             self._sis_environment = tools.EnvironmentModifier()
             self._sis_environment.keep(gs.DEFAULT_ENVIRONMENT_KEEP)
             self._sis_environment.set(gs.DEFAULT_ENVIRONMENT_SET)
+        self._sis_environ_updates = {}
 
         if gs.AUTO_SET_JOB_INIT_ATTRIBUTES:
             self.set_attrs(parsed_args)
@@ -285,6 +285,15 @@ class Job(metaclass=JobSingleton):
                 link_name = os.path.join(self._sis_path(gs.JOB_INPUT), str(job_id).replace("/", "_"))
                 if not os.path.isdir(link_name):
                     os.symlink(src=os.path.abspath(str(creator._sis_path())), dst=link_name, target_is_directory=True)
+
+        if self._sis_environ_updates:
+            startup_hook_py_file = self._sis_path(gs.JOB_STARTUP_HOOK_PY)
+            with open(startup_hook_py_file, "w") as f:
+                f.write("import os\n\n")
+                f.write("os.environ.update({\n")
+                for k, v in self._sis_environ_updates.items():
+                    f.write(f"    {k!r}: {v!r},\n")
+                f.write("})\n\n")
 
         # export the actual job
         with gzip.open(self._sis_path(gs.JOB_SAVE), "w") as f:
@@ -1136,6 +1145,10 @@ class Job(metaclass=JobSingleton):
         """
         self._sis_task_rqmt_overwrite[task_name] = rqmt.copy(), False
         return self
+
+    def putenv(self, key: str, value: str):
+        """this environment var will be set at job startup"""
+        self._sis_environ_updates[key] = value
 
     def tasks(self) -> Iterator[Task]:
         """
