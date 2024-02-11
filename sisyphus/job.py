@@ -286,15 +286,6 @@ class Job(metaclass=JobSingleton):
                 if not os.path.isdir(link_name):
                     os.symlink(src=os.path.abspath(str(creator._sis_path())), dst=link_name, target_is_directory=True)
 
-        if self._sis_environ_updates:
-            startup_hook_py_file = self._sis_path(gs.JOB_STARTUP_HOOK_PY)
-            with open(startup_hook_py_file, "w") as f:
-                f.write("import os\n\n")
-                f.write("os.environ.update({\n")
-                for k, v in self._sis_environ_updates.items():
-                    f.write(f"    {k!r}: {v!r},\n")
-                f.write("})\n\n")
-
         # export the actual job
         with gzip.open(self._sis_path(gs.JOB_SAVE), "w") as f:
             pickle.dump(self, f)
