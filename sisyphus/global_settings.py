@@ -213,6 +213,9 @@ PRINT_ERROR_LINES = 40
 #: Print message for held jobs
 PRINT_HOLD = True
 
+#: Log for finished outputs.
+FINISHED_LOG = "log/finished.log"
+
 #: Which command should be called to start sisyphus, can be used to replace the python binary
 SIS_COMMAND = [sys.executable, sys.argv[0]]
 # if this first argument is -m it's missing the module name

@@ -16,6 +16,7 @@ import pprint
 import threading
 from typing import DefaultDict, Optional, List
 from multiprocessing.pool import ThreadPool
+from datetime import datetime
 
 
 class Node(object):
@@ -112,6 +113,15 @@ class OutputPath(OutputTarget):
                     # Set new link if needed
                     os.symlink(os.path.realpath(self._sis_path.get_path()), outfile_name)
                     logging.info("Finished output: %s" % outfile_name)
+
+                    if gs.FINISHED_LOG:
+                        if "/" in gs.FINISHED_LOG and not os.path.exists(os.path.dirname(gs.FINISHED_LOG)):
+                            os.makedirs(os.path.dirname(gs.FINISHED_LOG))
+                        with open(gs.FINISHED_LOG, "a") as f:
+                            f.write(
+                                datetime.now().strftime("%Y-%m-%d %H:%M:%S: ") + f"Finished output: {outfile_name}\n"
+                            )
+
                 except OSError as e:
                     logging.warning("Failed to updated output %s. Exception: %s" % (outfile_name, e))
 
