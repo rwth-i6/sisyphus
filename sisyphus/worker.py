@@ -245,14 +245,8 @@ def worker_helper(args):
     gs.active_engine.init_worker(task)
 
     # cleanup environment
-    if hasattr(task._job, "_sis_environment") and task._job._sis_environment:
+    if getattr(task._job, "_sis_environment", None):
         task._job._sis_environment.modify_environment()
-
-    # Maybe update some env vars.
-    # Use getattr for compatibility with older serialized jobs.
-    if getattr(task._job, "_sis_environ_updates", None):
-        for k, v in task._job._sis_environ_updates.items():
-            os.environ[k] = v
 
     try:
         # run task

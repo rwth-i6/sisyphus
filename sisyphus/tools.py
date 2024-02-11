@@ -132,7 +132,6 @@ def try_get(v):
 
 
 class execute_in_dir(object):
-
     """Object to be used by the with statement.
     All code after the with will be executed in the given directory,
     working directory will be changed back after with statement.
@@ -156,7 +155,6 @@ class execute_in_dir(object):
 
 
 class cache_result(object):
-
     """decorated to cache the result of a function for x_seconds"""
 
     def __init__(self, cache_time=30, force_update=None, clear_cache=None):
@@ -481,33 +479,42 @@ class EnvironmentModifier:
     A class to cleanup the environment before a job starts
     """
 
-    def __init__(self):
+    def __init__(self, *, cleanup_env: bool = True):
+        self.cleanup_env = cleanup_env
         self.keep_vars = set()
         self.set_vars = {}
 
     def keep(self, var):
-        if type(var) == str:
+        if isinstance(var, str):
             self.keep_vars.add(var)
         else:
             self.keep_vars.update(var)
 
     def set(self, var, value=None):
-        if type(var) == dict:
+        if isinstance(var, dict):
             self.set_vars.update(var)
         else:
             self.set_vars[var] = value
+
+    def set_var(self, key: str, value: str, *, allow_env_substitute: bool = False):
+        if not allow_env_substitute:
+            # Need to escape $ for string.Template.substitute below.
+            value = value.replace("$", "$$")
+        self.set_vars[key] = value
 
     def modify_environment(self):
         import os
         import string
 
         orig_env = dict(os.environ)
-        keys = list(os.environ.keys())
-        for k in keys:
-            if k not in self.keep_vars:
-                del os.environ[k]
+        if self.cleanup_env:
+            keys = list(os.environ.keys())
+            for k in keys:
+                if k not in self.keep_vars:
+                    del os.environ[k]
+
         for k, v in self.set_vars.items():
-            if type(v) == str:
+            if isinstance(v, str):
                 os.environ[k] = string.Template(v).substitute(orig_env)
             else:
                 os.environ[k] = str(v)
@@ -516,7 +523,11 @@ class EnvironmentModifier:
             logging.debug("environment var %s=%s" % (k, v))
 
     def __repr__(self):
-        return repr(self.keep_vars) + " " + repr(self.set_vars)
+        return (
+            f"cleanup_env={self.cleanup_env} "
+            + (f"keep={self.keep_vars!r} " if self.cleanup_env else "")
+            + f"set={self.set_vars!r}"
+        )
 
 
 class FinishedResultsCache:

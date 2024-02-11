@@ -219,12 +219,9 @@ class Job(metaclass=JobSingleton):
         self._sis_is_finished = False
         self._sis_setup_since_restart = False
 
-        self._sis_environment = None
-        if gs.CLEANUP_ENVIRONMENT:
-            self._sis_environment = tools.EnvironmentModifier()
-            self._sis_environment.keep(gs.DEFAULT_ENVIRONMENT_KEEP)
-            self._sis_environment.set(gs.DEFAULT_ENVIRONMENT_SET)
-        self._sis_environ_updates = {}
+        self._sis_environment = tools.EnvironmentModifier(cleanup_env=gs.CLEANUP_ENVIRONMENT)
+        self._sis_environment.keep(gs.DEFAULT_ENVIRONMENT_KEEP)
+        self._sis_environment.set(gs.DEFAULT_ENVIRONMENT_SET)
 
         if gs.AUTO_SET_JOB_INIT_ATTRIBUTES:
             self.set_attrs(parsed_args)
@@ -1139,7 +1136,7 @@ class Job(metaclass=JobSingleton):
 
     def set_env(self, key: str, value: str):
         """this environment var will be set at job startup"""
-        self._sis_environ_updates[key] = value
+        self._sis_environment.set_var(key, value)
 
     def tasks(self) -> Iterator[Task]:
         """
