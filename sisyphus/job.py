@@ -1146,7 +1146,7 @@ class Job(metaclass=JobSingleton):
         self._sis_task_rqmt_overwrite[task_name] = rqmt.copy(), False
         return self
 
-    def putenv(self, key: str, value: str):
+    def set_env(self, key: str, value: str):
         """this environment var will be set at job startup"""
         self._sis_environ_updates[key] = value
 
