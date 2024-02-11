@@ -483,6 +483,7 @@ class EnvironmentModifier:
         self.cleanup_env = cleanup_env
         self.keep_vars = set()
         self.set_vars = {}
+        self.set_vars_verbatim = {}  # does not go through string.Template(v).substitute
 
     def keep(self, var):
         if isinstance(var, str):
@@ -497,10 +498,7 @@ class EnvironmentModifier:
             self.set_vars[var] = value
 
     def set_var(self, key: str, value: str, *, allow_env_substitute: bool = False):
-        if not allow_env_substitute:
-            # Need to escape $ for string.Template.substitute below.
-            value = value.replace("$", "$$")
-        self.set_vars[key] = value
+        (self.set_vars if allow_env_substitute else self.set_vars_verbatim)[key] = value
 
     def modify_environment(self):
         import os
@@ -518,6 +516,9 @@ class EnvironmentModifier:
                 os.environ[k] = string.Template(v).substitute(orig_env)
             else:
                 os.environ[k] = str(v)
+
+        for k, v in self.set_vars_verbatim.items():
+            os.environ[k] = v
 
         for k, v in os.environ.items():
             logging.debug("environment var %s=%s" % (k, v))
