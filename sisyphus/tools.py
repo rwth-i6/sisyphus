@@ -497,8 +497,8 @@ class EnvironmentModifier:
         else:
             self.set_vars[var] = value
 
-    def set_var(self, key: str, value: str, *, allow_env_substitute: bool = False):
-        (self.set_vars if allow_env_substitute else self.set_vars_verbatim)[key] = value
+    def set_verbatim(self, key: str, value: str):
+        self.set_vars_verbatim[key] = value
 
     def modify_environment(self):
         import os

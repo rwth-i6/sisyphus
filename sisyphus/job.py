@@ -1136,7 +1136,7 @@ class Job(metaclass=JobSingleton):
 
     def set_env(self, key: str, value: str):
         """this environment var will be set at job startup"""
-        self._sis_environment.set_var(key, value)
+        self._sis_environment.set_verbatim(key, value)
 
     def tasks(self) -> Iterator[Task]:
         """
