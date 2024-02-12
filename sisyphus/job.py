@@ -220,8 +220,9 @@ class Job(metaclass=JobSingleton):
         self._sis_setup_since_restart = False
 
         self._sis_environment = tools.EnvironmentModifier(cleanup_env=gs.CLEANUP_ENVIRONMENT)
-        self._sis_environment.keep(gs.DEFAULT_ENVIRONMENT_KEEP)
-        self._sis_environment.set(gs.DEFAULT_ENVIRONMENT_SET)
+        if gs.CLEANUP_ENVIRONMENT:  # for compat, only set those below if CLEANUP_ENVIRONMENT is enabled
+            self._sis_environment.keep(gs.DEFAULT_ENVIRONMENT_KEEP)
+            self._sis_environment.set(gs.DEFAULT_ENVIRONMENT_SET)
 
         if gs.AUTO_SET_JOB_INIT_ATTRIBUTES:
             self.set_attrs(parsed_args)
