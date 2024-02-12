@@ -1135,9 +1135,18 @@ class Job(metaclass=JobSingleton):
         self._sis_task_rqmt_overwrite[task_name] = rqmt.copy(), False
         return self
 
-    def set_env(self, key: str, value: str):
-        """this environment var will be set at job startup"""
-        self._sis_environment.set_verbatim(key, value)
+    def set_env(self, key: str, value: str, *, verbatim: bool = True):
+        """
+        Set environment variable. This environment var will be set at job startup in the worker.
+
+        :param key: variable name
+        :param value:
+        :param verbatim: True: set it as-is; False: use string.Template(value).substitute(orig_env)
+        """
+        if verbatim:
+            self._sis_environment.set_verbatim(key, value)
+        else:
+            self._sis_environment.set(key, value)
 
     def tasks(self) -> Iterator[Task]:
         """
