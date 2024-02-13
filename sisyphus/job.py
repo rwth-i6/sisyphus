@@ -65,7 +65,6 @@ T = TypeVar("T", bound="Job")
 
 
 class JobSingleton(type):
-
     """Meta class to ensure that every Job with the same hash value is
     only created once"""
 
@@ -220,9 +219,8 @@ class Job(metaclass=JobSingleton):
         self._sis_is_finished = False
         self._sis_setup_since_restart = False
 
-        self._sis_environment = None
-        if gs.CLEANUP_ENVIRONMENT:
-            self._sis_environment = tools.EnvironmentModifier()
+        self._sis_environment = tools.EnvironmentModifier(cleanup_env=gs.CLEANUP_ENVIRONMENT)
+        if gs.CLEANUP_ENVIRONMENT:  # for compat, only set those below if CLEANUP_ENVIRONMENT is enabled
             self._sis_environment.keep(gs.DEFAULT_ENVIRONMENT_KEEP)
             self._sis_environment.set(gs.DEFAULT_ENVIRONMENT_SET)
 
@@ -1136,6 +1134,19 @@ class Job(metaclass=JobSingleton):
         """
         self._sis_task_rqmt_overwrite[task_name] = rqmt.copy(), False
         return self
+
+    def set_env(self, key: str, value: str, *, verbatim: bool = True):
+        """
+        Set environment variable. This environment var will be set at job startup in the worker.
+
+        :param key: variable name
+        :param value:
+        :param verbatim: True: set it as-is; False: use string.Template(value).substitute(orig_env)
+        """
+        if verbatim:
+            self._sis_environment.set_verbatim(key, value)
+        else:
+            self._sis_environment.set(key, value)
 
     def tasks(self) -> Iterator[Task]:
         """
