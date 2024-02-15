@@ -254,7 +254,7 @@ class PBSEngine(EngineBase):
             break
 
         import json
-        job_dict = json.loads(b"\n".join(out))
+        job_dict = json.loads(b"\n".join(out).decode('utf-8','ignore'), strict=False)
         task_infos = defaultdict(list)
         username = getpass.getuser()
         for job_id, job in job_dict["Jobs"].items():
@@ -292,10 +292,10 @@ class PBSEngine(EngineBase):
             break
 
         import json
-        job_dict = json.loads(b"\n".join(out))
+        job_dict = json.loads(b"\n".join(out).decode('utf-8', 'ignore'), strict=False)
         job_id = os.getenv("PBS_JOBID")
         job = job_dict["Jobs"][job_id]
-        return job["Output_Path"].split(":")[-1]
+        return job["Output_Path"].split(":")[-1] + f"{job_id}.OU"
 
     def task_state(self, task, task_id):
         """Return task state:
