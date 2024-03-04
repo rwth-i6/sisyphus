@@ -228,7 +228,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
 
         sbatch_call += ["-a", "%i-%i:%i" % (start_id, end_id, step_size)]
         command = '"' + " ".join(call) + '"'
-        sbatch_call += ["--wrap=%s" % " ".join(call)]
+        sbatch_call += ["--wrap='%s'" % " ".join(call)]
         while True:
             try:
                 out, err, retval = self.system_call(sbatch_call)
