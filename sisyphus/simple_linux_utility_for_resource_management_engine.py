@@ -7,6 +7,7 @@ import getpass  # used to get username
 import logging
 import math
 import os
+import shlex
 import subprocess
 import time
 
@@ -84,7 +85,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :rtype: list[bytes], list[bytes], int
         """
         if self.gateway:
-            system_command = ["ssh", "-x", self.gateway] + [" ".join(["cd", os.getcwd(), "&&"] + command)]
+            escaped_command = [shlex.quote(s) for s in command]  # parameters need to be shell safe when sending via ssh
+            system_command = ["ssh", "-x", self.gateway] + [" ".join(["cd", os.getcwd(), "&&"] + escaped_command)]
         else:
             # no gateway given, skip ssh local
             system_command = command
@@ -228,7 +230,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
 
         sbatch_call += ["-a", "%i-%i:%i" % (start_id, end_id, step_size)]
         command = '"' + " ".join(call) + '"'
-        sbatch_call += ["--wrap='%s'" % " ".join(call)]
+        sbatch_call += ["--wrap=%s" % " ".join(call)]
         while True:
             try:
                 out, err, retval = self.system_call(sbatch_call)
