@@ -210,6 +210,7 @@ class Job(metaclass=JobSingleton):
         self._sis_outputs = {}
         self._sis_keep_value = None
         self._sis_hold_job = False
+        self._sis_worker_wrapper = gs.worker_wrapper
 
         self._sis_blocks = set()
         self._sis_kwargs = parsed_args
@@ -314,6 +315,7 @@ class Job(metaclass=JobSingleton):
             "current_block",
             "_sis_cleanable_cache",
             "_sis_cleaned_or_not_cleanable",
+            "_sis_worker_wrapper",
         ]:
             if key in d:
                 del d[key]
