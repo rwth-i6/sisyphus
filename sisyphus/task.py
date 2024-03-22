@@ -484,5 +484,6 @@ class Task(object):
         if hasattr(self, "_job"):
             call = self._job._sis_worker_wrapper(self._job, self.name(), call)
         else:
+            logging.warning(f"Task {self.name()} run without an associated Job. Using global worker_wrapper.")
             call = gs.worker_wrapper(None, self.name(), call)
         return call
