@@ -203,13 +203,15 @@ class LocalEngine(threading.Thread, EngineBase):
                 # get next task
                 logging.debug("Check for new task (Free resources %s)" % self.free_resources)
                 with self.waiting_tasks as waiting_tasks:  # get object for synchronisation
-                    if next_task is None and not self.input_queue.empty():
+                    next_task = None
+                    if not self.input_queue.empty():
                         next_task = self.input_queue.get()
                         logging.debug("Found new task: %s" % str(next_task))
 
                     # run next task if the capacities are available
                     if next_task is not None:
                         with self.running_tasks as running_tasks:
+                            wait = False
                             # if enough free resources => run job
                             if self.enough_free_resources(next_task.rqmt):
                                 selected_gpus = self.reserve_resources(next_task.rqmt)
@@ -225,8 +227,12 @@ class LocalEngine(threading.Thread, EngineBase):
                                 # Start job:
                                 process = self.start_task(next_task, selected_gpus)
                                 running_tasks[name] = (process, next_task, selected_gpus)
-                                next_task = None
-                                wait = False
+                            else:
+                                # Put next_task at end of queue and try to schedule the next one
+                                if self.input_queue.empty():
+                                    # Wait if this is the only task in the queue
+                                    wait = True
+                                self.input_queue.put(next_task)
 
                 if wait:
                     # check only once per second for new jobs
