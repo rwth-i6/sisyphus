@@ -194,7 +194,7 @@ class LocalEngine(threading.Thread, EngineBase):
 
     @tools.default_handle_exception_interrupt_main_thread
     def run(self):
-        next_task = None
+        checked_tasks_since_last_wait = 0
         try:
             while self.running.value:
                 self.check_finished_tasks()
@@ -229,7 +229,8 @@ class LocalEngine(threading.Thread, EngineBase):
                                 running_tasks[name] = (process, next_task, selected_gpus)
                             else:
                                 # Put next_task at end of queue and try to schedule the next one
-                                if self.input_queue.empty():
+                                checked_tasks_since_last_wait += 1
+                                if checked_tasks_since_last_wait > self.input_queue.qsize():
                                     # Wait if this is the only task in the queue
                                     wait = True
                                 self.input_queue.put(next_task)
@@ -238,6 +239,7 @@ class LocalEngine(threading.Thread, EngineBase):
                     # check only once per second for new jobs
                     # if no job has been started
                     time.sleep(1)
+                    checked_tasks_since_last_wait = 0
         except KeyboardInterrupt:
             #  KeyboardInterrupt is handled in manager
             pass
