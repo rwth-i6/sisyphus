@@ -199,8 +199,8 @@ class LocalEngine(threading.Thread, EngineBase):
                 self.check_finished_tasks()
 
                 wait = True  # wait if no new job is started
-                # get next task
-                logging.debug("Check for new task (Free resources %s)" % self.free_resources)
+                # check runnable tasks
+                logging.debug("Check for new tasks (Free resources %s)" % self.free_resources)
                 # get object for synchronisation
                 with self.waiting_tasks as waiting_tasks, self.runnable_tasks as runnable_tasks:
                     total_runnable_tasks = len(runnable_tasks)
