@@ -203,11 +203,10 @@ class LocalEngine(threading.Thread, EngineBase):
                 logging.debug("Check for new tasks (Free resources %s)" % self.free_resources)
                 # get object for synchronisation
                 with self.waiting_tasks as waiting_tasks, self.runnable_tasks as runnable_tasks:
-                    total_runnable_tasks = len(runnable_tasks)
                     runnable_task_idx = 0
 
                     # run next task if the capacities are available
-                    while runnable_task_idx < total_runnable_tasks:
+                    while runnable_task_idx < len(runnable_tasks):
                         next_task = runnable_tasks[runnable_task_idx]
                         with self.running_tasks as running_tasks:
                             # if enough free resources => run job
@@ -226,7 +225,6 @@ class LocalEngine(threading.Thread, EngineBase):
                                 process = self.start_task(next_task, selected_gpus)
                                 running_tasks[name] = (process, next_task, selected_gpus)
                                 del runnable_tasks[runnable_task_idx]
-                                total_runnable_tasks -= 1
                                 wait = False
                             else:
                                 runnable_task_idx += 1
