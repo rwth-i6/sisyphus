@@ -799,9 +799,6 @@ class Job(metaclass=JobSingleton):
         trash_path = "%s.cleared.%04i" % (path, i)
         logging.info("Move: %s to %s" % (path, trash_path))
         os.rename(path, trash_path)
-        self._sis_setup_directory()
-        for t in self._sis_tasks():
-            t.reset_cache()
 
     def _sis_delete(self) -> None:
         """Delete job directory"""
