@@ -64,7 +64,8 @@ def get_object_state(obj):
 
     if isinstance(obj, enum.Enum):
         assert isinstance(state, dict)
-        state.pop("_sort_order_", None)  # compat with Python <=3.10, https://github.com/rwth-i6/sisyphus/issues/188
+        # In Python >=3.11, keep hash same as in Python <=3.10, https://github.com/rwth-i6/sisyphus/issues/188
+        state.pop("_sort_order_", None)
 
     if args is None:
         return state
@@ -125,5 +126,6 @@ def sis_hash_helper(obj):
 
 def _obj_type_qualname(obj) -> bytes:
     if type(obj) is enum.EnumMeta:  # EnumMeta is old alias for EnumType
-        return b"EnumMeta"  # compat with Python <=3.10, https://github.com/rwth-i6/sisyphus/issues/188
+        # In Python >=3.11, keep hash same as in Python <=3.10, https://github.com/rwth-i6/sisyphus/issues/188
+        return b"EnumMeta"
     return type(obj).__qualname__.encode()
