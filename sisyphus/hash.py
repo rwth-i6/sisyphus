@@ -1,3 +1,4 @@
+import enum
 import hashlib
 from inspect import isclass, isfunction
 
@@ -61,6 +62,10 @@ def get_object_state(obj):
         assert args is not None, "Failed to get object state of: %s" % repr(obj)
         state = None
 
+    if isinstance(obj, enum.Enum):
+        assert isinstance(state, dict)
+        state.pop("_sort_order_", None)  # compat with Python <=3.10, https://github.com/rwth-i6/sisyphus/issues/188
+
     if args is None:
         return state
     else:
@@ -76,7 +81,7 @@ def sis_hash_helper(obj):
     """
 
     # Store type to ensure it's unique
-    byte_list = [type(obj).__qualname__.encode()]
+    byte_list = [_obj_type_qualname(obj)]
 
     # Using type and not isinstance to avoid derived types
     if isinstance(obj, bytes):
@@ -116,3 +121,9 @@ def sis_hash_helper(obj):
         return hashlib.sha256(byte_str).digest()
     else:
         return byte_str
+
+
+def _obj_type_qualname(obj) -> bytes:
+    if type(obj) is enum.EnumMeta:  # EnumMeta is old alias for EnumType
+        return b"EnumMeta"  # compat with Python <=3.10, https://github.com/rwth-i6/sisyphus/issues/188
+    return type(obj).__qualname__.encode()
