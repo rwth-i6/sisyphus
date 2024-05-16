@@ -195,7 +195,6 @@ class Job(metaclass=JobSingleton):
 
     # Init
     def _sis_init(self, args, kwargs, parsed_args):
-
         for key, arg in parsed_args.items():
             if isinstance(arg, Job):
                 logging.warning(
@@ -793,7 +792,7 @@ class Job(metaclass=JobSingleton):
                 task.print_error(lines)
 
     def _sis_move(self) -> None:
-        """Move job directory a side and set up a new one"""
+        """Move job directory aside"""
         path = self._sis_path()
         i = 1
         while os.path.isdir("%s.cleared.%04i" % (path, i)):
@@ -801,9 +800,6 @@ class Job(metaclass=JobSingleton):
         trash_path = "%s.cleared.%04i" % (path, i)
         logging.info("Move: %s to %s" % (path, trash_path))
         os.rename(path, trash_path)
-        self._sis_setup_directory()
-        for t in self._sis_tasks():
-            t.reset_cache()
 
     def _sis_delete(self) -> None:
         """Delete job directory"""

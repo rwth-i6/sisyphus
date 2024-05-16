@@ -247,6 +247,9 @@ class Manager(threading.Thread):
         for job in self.jobs[state]:
             logging.warning("Clearing: %s" % job)
             job._sis_move()
+            job._sis_setup_directory()
+            for t in job._sis_tasks():
+                t.reset_cache()
             job_cleared = True
         self.update_jobs()
         return job_cleared
