@@ -56,10 +56,11 @@ class LoadSharingFacilityEngine(EngineBase):
             system_command = command
 
         logging.debug("shell_cmd: %s" % " ".join(system_command))
-        p = subprocess.Popen(system_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
-        out, err = p.communicate(input=send_to_stdin, timeout=30)
+        p = subprocess.run(
+            system_command, stdin=send_to_stdin, capture_output=True, timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS
+        )
 
         def fix_output(o):
             # split output and drop last empty line
@@ -69,9 +70,9 @@ class LoadSharingFacilityEngine(EngineBase):
                 assert False
             return o[:-1]
 
-        out = fix_output(out)
-        err = fix_output(err)
-        retval = p.wait(timeout=30)
+        out = fix_output(p.stdout)
+        err = fix_output(p.stderr)
+        retval = p.returncode
 
         # Check for ssh error
         err_ = []
