@@ -86,7 +86,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         """
         if self.gateway:
             escaped_command = [shlex.quote(s) for s in command]  # parameters need to be shell safe when sending via ssh
-            system_command = ["ssh", "-x", self.gateway] + [" ".join(["cd", os.getcwd(), "&&"] + escaped_command)]
+            system_command = ["ssh", "-x", self.gateway, "-o", "ConnectTimeout", gs.WAIT_PERIOD_BETWEEN_CHECKS] + [
+                " ".join(["cd", os.getcwd(), "&&"] + escaped_command)
+            ]
         else:
             # no gateway given, skip ssh local
             system_command = command
@@ -95,7 +97,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         p = subprocess.Popen(system_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
-        out, err = p.communicate(input=send_to_stdin, timeout=30)
+        out, err = p.communicate(input=send_to_stdin, timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS)
 
         def fix_output(o):
             """
@@ -289,7 +291,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
     def queue_state(self):
         """Returns list with all currently running tasks in this queue"""
 
-        if time.time() - self._task_info_cache_last_update < 30:
+        if time.time() - self._task_info_cache_last_update < gs.WAIT_PERIOD_BETWEEN_CHECKS:
             # use cached value
             return self._task_info_cache
 

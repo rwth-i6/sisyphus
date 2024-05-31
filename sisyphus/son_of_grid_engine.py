@@ -87,7 +87,9 @@ class SonOfGridEngine(EngineBase):
         :rtype: list[bytes], list[bytes], int
         """
         if self.gateway:
-            system_command = ["ssh", "-x", self.gateway] + [" ".join(["cd", os.getcwd(), "&&"] + command)]
+            system_command = ["ssh", "-x", self.gateway, "-o", "ConnectTimeout", gs.WAIT_PERIOD_BETWEEN_CHECKS] + [
+                " ".join(["cd", os.getcwd(), "&&"] + command)
+            ]
         else:
             # no gateway given, skip ssh local
             system_command = command
@@ -96,7 +98,7 @@ class SonOfGridEngine(EngineBase):
         p = subprocess.Popen(system_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
-        out, err = p.communicate(input=send_to_stdin, timeout=30)
+        out, err = p.communicate(input=send_to_stdin, timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS)
 
         def fix_output(o):
             """
@@ -112,7 +114,7 @@ class SonOfGridEngine(EngineBase):
 
         out = fix_output(out)
         err = fix_output(err)
-        retval = p.wait(timeout=30)
+        retval = p.wait(timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS)
 
         # Check for ssh error
         err_ = []
@@ -307,7 +309,7 @@ class SonOfGridEngine(EngineBase):
     def queue_state(self):
         """Return s list with all currently running tasks in this queue"""
 
-        if time.time() - self._task_info_cache_last_update < 30:
+        if time.time() - self._task_info_cache_last_update < gs.WAIT_PERIOD_BETWEEN_CHECKS:
             # use cached value
             return self._task_info_cache
 
