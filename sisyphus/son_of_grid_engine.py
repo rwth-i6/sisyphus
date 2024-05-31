@@ -100,8 +100,6 @@ class SonOfGridEngine(EngineBase):
         p = subprocess.run(
             system_command,
             stdin=send_to_stdin,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
             timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS,
         )
 
