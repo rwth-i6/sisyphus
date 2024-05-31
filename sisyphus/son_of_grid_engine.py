@@ -97,11 +97,7 @@ class SonOfGridEngine(EngineBase):
         logging.debug("shell_cmd: %s" % " ".join(system_command))
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
-        p = subprocess.run(
-            system_command,
-            stdin=send_to_stdin,
-            timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS,
-        )
+        p = subprocess.run(system_command, stdin=send_to_stdin, timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS)
 
         def fix_output(o):
             """
