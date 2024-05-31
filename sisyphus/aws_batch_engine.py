@@ -91,7 +91,7 @@ class AWSBatchEngine(EngineBase):
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
         p = subprocess.run(
-            system_command, stdin=send_to_stdin, capture_output=True, timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS
+            system_command, input=send_to_stdin, capture_output=True, timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS
         )
 
         def fix_output(o):
