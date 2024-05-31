@@ -86,7 +86,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         """
         if self.gateway:
             escaped_command = [shlex.quote(s) for s in command]  # parameters need to be shell safe when sending via ssh
-            system_command = ["ssh", "-x", self.gateway, "-o", "ConnectTimeout", gs.WAIT_PERIOD_BETWEEN_CHECKS] + [
+            system_command = ["ssh", "-x", self.gateway, "-o", "BatchMode=yes"] + [
                 " ".join(["cd", os.getcwd(), "&&"] + escaped_command)
             ]
         else:
@@ -116,9 +116,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 assert False
             return o[:-1]
 
-        out = fix_output(out)
-        err = fix_output(err)
-        retval = p.wait(timeout=30)
+        out = fix_output(p.stdout)
+        err = fix_output(p.stderr)
+        retval = p.returncode
 
         # Check for ssh error
         err_ = []

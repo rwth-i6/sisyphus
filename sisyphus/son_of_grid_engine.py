@@ -87,7 +87,7 @@ class SonOfGridEngine(EngineBase):
         :rtype: list[bytes], list[bytes], int
         """
         if self.gateway:
-            system_command = ["ssh", "-x", self.gateway, "-o", "ConnectTimeout", gs.WAIT_PERIOD_BETWEEN_CHECKS] + [
+            system_command = ["ssh", "-x", self.gateway, "-o", "BatchMode=yes"] + [
                 " ".join(["cd", os.getcwd(), "&&"] + command)
             ]
         else:
@@ -117,9 +117,9 @@ class SonOfGridEngine(EngineBase):
                 assert False
             return o[:-1]
 
-        out = fix_output(out)
-        err = fix_output(err)
-        retval = p.wait(timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS)
+        out = fix_output(p.stdout)
+        err = fix_output(p.stderr)
+        retval = p.returncode
 
         # Check for ssh error
         err_ = []
