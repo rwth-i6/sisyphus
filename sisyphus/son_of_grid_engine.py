@@ -97,9 +97,7 @@ class SonOfGridEngine(EngineBase):
         logging.debug("shell_cmd: %s" % " ".join(system_command))
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
-        p = subprocess.run(
-            system_command, input=send_to_stdin, capture_output=True, timeout=gs.WAIT_PERIOD_BETWEEN_CHECKS
-        )
+        p = subprocess.run(system_command, input=send_to_stdin, capture_output=True, timeout=30)
 
         def fix_output(o):
             """
@@ -310,7 +308,7 @@ class SonOfGridEngine(EngineBase):
     def queue_state(self):
         """Return s list with all currently running tasks in this queue"""
 
-        if time.time() - self._task_info_cache_last_update < gs.WAIT_PERIOD_BETWEEN_CHECKS:
+        if time.time() - self._task_info_cache_last_update < 30:
             # use cached value
             return self._task_info_cache
 
