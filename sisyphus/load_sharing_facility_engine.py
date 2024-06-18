@@ -62,6 +62,7 @@ class LoadSharingFacilityEngine(EngineBase):
             p = subprocess.run(system_command, input=send_to_stdin, capture_output=True, timeout=30)
         except subprocess.TimeoutExpired:
             logging.warning("Timeout expired for command: %s" % " ".join(system_command))
+            return [], ["TimeoutExpired"], -1
 
         def fix_output(o):
             # split output and drop last empty line
