@@ -1,4 +1,4 @@
-""" This is an experimental implementation for the aws batch engine.
+"""This is an experimental implementation for the aws batch engine.
 
 WARNING: After running some setups I can currently not recommend using aws batch with Sisyphus.
 AWS parallelcluster (https://aws.amazon.com/blogs/opensource/aws-parallelcluster/) looks like a easy way how
@@ -88,10 +88,13 @@ class AWSBatchEngine(EngineBase):
         system_command = command
 
         logging.debug("shell_cmd: %s" % " ".join(system_command))
-        p = subprocess.Popen(system_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
-        out, err = p.communicate(input=send_to_stdin, timeout=30)
+        try:
+            p = subprocess.run(system_command, input=send_to_stdin, capture_output=True, timeout=30)
+        except subprocess.TimeoutExpired:
+            logging.warning("Timeout expired for command: %s" % " ".join(system_command))
+            return [], ["TimeoutExpired"], -1
 
         def fix_output(o):
             """
@@ -105,9 +108,9 @@ class AWSBatchEngine(EngineBase):
                 assert False
             return o[:-1]
 
-        out = fix_output(out)
-        err = fix_output(err)
-        retval = p.wait(timeout=30)
+        out = fix_output(p.stdout)
+        err = fix_output(p.stderr)
+        retval = p.returncode
 
         return out, err, retval
 
