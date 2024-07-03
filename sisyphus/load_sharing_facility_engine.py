@@ -58,7 +58,7 @@ class LoadSharingFacilityEngine(EngineBase):
         logging.debug("shell_cmd: %s" % " ".join(system_command))
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
-        
+
         p = subprocess.run(system_command, input=send_to_stdin, capture_output=True, timeout=30)
 
         def fix_output(o):
