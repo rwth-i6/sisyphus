@@ -61,7 +61,7 @@ class LoadSharingFacilityEngine(EngineBase):
         try:
             p = subprocess.run(system_command, input=send_to_stdin, capture_output=True, timeout=30)
         except subprocess.TimeoutExpired:
-            logging.warning("Timeout expired for command: %s" % " ".join(system_command))
+            logging.warning(self._system_call_timeout_warn_msg(system_command))
             return [], ["TimeoutExpired".encode()], -1
 
         def fix_output(o):
@@ -187,12 +187,10 @@ class LoadSharingFacilityEngine(EngineBase):
         )
 
         while True:
-            try:
-                logging.info("bsub_call: %s" % bsub_call)
-                logging.info("command: %s" % command)
-                out, err, retval = self.system_call(bsub_call, command)
-            except subprocess.TimeoutExpired:
-                logging.warning(self._system_call_timeout_warn_msg(command))
+            logging.info("bsub_call: %s" % bsub_call)
+            logging.info("command: %s" % command)
+            out, err, retval = self.system_call(bsub_call, command)
+            if retval != 0:
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
                 continue
             break
@@ -250,10 +248,8 @@ class LoadSharingFacilityEngine(EngineBase):
         # get bjobs output
         system_command = ["bjobs", "-w"]
         while True:
-            try:
-                out, err, retval = self.system_call(system_command)
-            except subprocess.TimeoutExpired:
-                logging.warning(self._system_call_timeout_warn_msg(system_command))
+            out, err, retval = self.system_call(system_command)
+            if retval != 0:
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
                 continue
             break

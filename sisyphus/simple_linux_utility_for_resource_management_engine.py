@@ -99,7 +99,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         try:
             p = subprocess.run(system_command, input=send_to_stdin, capture_output=True, timeout=30)
         except subprocess.TimeoutExpired:
-            logging.warning("Timeout expired for command: %s" % " ".join(system_command))
+            logging.warning(self._system_call_timeout_warn_msg(system_command))
             return [], ["TimeoutExpired".encode()], -1
 
         def fix_output(o):
@@ -234,13 +234,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         sbatch_call += self.options(rqmt)
 
         sbatch_call += ["-a", "%i-%i:%i" % (start_id, end_id, step_size)]
-        command = '"' + " ".join(call) + '"'
         sbatch_call += ["--wrap=%s" % " ".join(call)]
         while True:
-            try:
-                out, err, retval = self.system_call(sbatch_call)
-            except subprocess.TimeoutExpired:
-                logging.warning(self._system_call_timeout_warn_msg(command))
+            out, err, retval = self.system_call(sbatch_call)
+            if retval != 0:
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
                 continue
             break
@@ -309,10 +306,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             "arrayjobid,arraytaskid,state,name:1000",
         ]
         while True:
-            try:
-                out, err, retval = self.system_call(system_command)
-            except subprocess.TimeoutExpired:
-                logging.warning(self._system_call_timeout_warn_msg(system_command))
+            out, err, retval = self.system_call(system_command)
+            if retval != 0:
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
                 continue
             break
