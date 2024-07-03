@@ -1,9 +1,10 @@
+from __future__ import annotations
 import math
 import os
 import logging
 import sys
 import time
-import typing
+from typing import Optional, Union, Any, Sequence, Dict, List
 import subprocess as sp
 from ast import literal_eval
 
@@ -11,27 +12,27 @@ import sisyphus.tools as tools
 import sisyphus.global_settings as gs
 
 
-class Task(object):
+class Task:
     """
     Object to hold information what function should be run with which requirements.
     """
 
     def __init__(
         self,
-        start,
-        resume=None,
-        rqmt=None,
-        args=None,
-        mini_task=False,
+        start: str,
+        resume: Optional[str] = None,
+        rqmt: Optional[Dict[str, Any]] = None,
+        args: Optional[Sequence[Union[List[Any], Any]]] = None,
+        mini_task: bool = False,
         update_rqmt=None,
-        parallel=0,
-        tries=1,
-        continuable=False,
+        parallel: int = 0,
+        tries: int = 1,
+        continuable: bool = False,
     ):
         """
-        :param str start: name of the function which will be executed on start
-        :param str resume: name of the function which will be executed on resume, often set equal to start
-        :param dict[str] rqmt: job requirements
+        :param start: name of the function which will be executed on start
+        :param resume: name of the function which will be executed on resume, often set equal to start
+        :param rqmt: job requirements
             Might contain:
                 "cpu": number of cpus
                 "gpu": number of gpus
@@ -40,14 +41,14 @@ class Task(object):
                 "multi_node_slots": amount of slots, distributed potentially over multiple nodes.
                                     E.g. maps to `--ntasks <multi_node_slots>` parameter for Slurm,
                                     and to `-pe <pe_name> <multi_node_slots>` for SGE (SGE parallel environment (PE)).
-        :param typing.Sequence[typing.Union[typing.List[object],object]] args: job arguments
-        :param bool mini_task: will be run on engine for short jobs if True
+        :param args: job arguments
+        :param mini_task: will be run on engine for short jobs if True
         :param (dict[str],dict[str])->dict[str] update_rqmt: function to update job requirements for interrupted jobs
-        :param int parallel: if set to > 0, groups jobs for individual arguments together into the number of batches
-                             specified here. Will then submit at max `parallel` jobs into the engine at a time.
-        :param int tries: how often this task is resubmitted after failure
-        :param bool continuable: If set to True this task will not set a finished marker, useful for tasks that can be
-                                 continued for arbitrarily long, e.g. adding more epochs to neural network training
+        :param parallel: if set to > 0, groups jobs for individual arguments together into the number of batches
+                         specified here. Will then submit at max `parallel` jobs into the engine at a time.
+        :param tries: how often this task is resubmitted after failure
+        :param continuable: If set to True this task will not set a finished marker, useful for tasks that can be
+                            continued for arbitrarily long, e.g. adding more epochs to neural network training
         """
         if rqmt is None:
             rqmt = {}
