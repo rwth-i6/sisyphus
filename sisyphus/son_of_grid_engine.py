@@ -97,11 +97,8 @@ class SonOfGridEngine(EngineBase):
         logging.debug("shell_cmd: %s" % " ".join(system_command))
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
-        try:
-            p = subprocess.run(system_command, input=send_to_stdin, capture_output=True, timeout=30)
-        except subprocess.TimeoutExpired:
-            logging.warning("Timeout expired for command: %s" % " ".join(system_command))
-            return [], ["TimeoutExpired".encode()], -1
+
+        p = subprocess.run(system_command, input=send_to_stdin, capture_output=True, timeout=30)
 
         def fix_output(o):
             """
@@ -255,7 +252,7 @@ class SonOfGridEngine(EngineBase):
             try:
                 out, err, retval = self.system_call(qsub_call, command)
             except subprocess.TimeoutExpired:
-                logging.warning(self._system_call_timeout_warn_msg(command))
+                logging.warning(self._system_call_timeout_warn_msg(qsub_call))
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
                 continue
             break
