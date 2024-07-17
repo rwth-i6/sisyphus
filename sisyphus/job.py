@@ -516,10 +516,12 @@ class Job(metaclass=JobSingleton):
                 try:
                     if not gs.JOB_CLEANUP_KEEP_WORK:
                         shutil.rmtree(os.path.abspath(self._sis_path(gs.JOB_WORK_DIR)))
+                    if not gs.JOB_CLEANUP_KEEP_INPUT:
+                        shutil.rmtree(os.path.abspath(self._sis_path(gs.JOB_INPUT)))
                     files = [
                         i
                         for i in os.listdir(self._sis_path())
-                        if i not in (gs.JOB_OUTPUT, gs.JOB_INFO, gs.JOB_WORK_DIR)
+                        if i not in (gs.JOB_OUTPUT, gs.JOB_INFO, gs.JOB_WORK_DIR, gs.JOB_INPUT)
                     ]
                     subprocess.check_call(
                         ["tar", "-czf", gs.JOB_FINISHED_ARCHIVE] + files, cwd=os.path.abspath(self._sis_path())
