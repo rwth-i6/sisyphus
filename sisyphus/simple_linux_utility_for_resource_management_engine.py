@@ -77,6 +77,11 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             return f"SSH command timeout: {command!s}"
         return f"Command timeout: {command!s}"
 
+    def _system_call_error_warn_msg(self, command: Any) -> str:
+        if self.gateway:
+            return f"SSH command error: {command!s}"
+        return f"Command error: {command!s}"
+
     def system_call(self, command, send_to_stdin=None):
         """
         :param list[str] command: qsub command
@@ -235,6 +240,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         while True:
             try:
                 out, err, retval = self.system_call(sbatch_call)
+                if retval != 0:
+                    logging.warning(self._system_call_error_warn_msg(sbatch_call))
+                    time.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
+                    continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(sbatch_call))
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
@@ -307,6 +316,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         while True:
             try:
                 out, err, retval = self.system_call(system_command)
+                if retval != 0:
+                    logging.warning(self._system_call_error_warn_msg(sbatch_call))
+                    time.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
+                    continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(system_command))
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
