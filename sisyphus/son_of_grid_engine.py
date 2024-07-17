@@ -1,6 +1,5 @@
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
-from typing import Any
 import os
 import subprocess
 
@@ -73,16 +72,6 @@ class SonOfGridEngine(EngineBase):
             ignore_jobs = []
         self.ignore_jobs = ignore_jobs
         self.pe_name = pe_name
-
-    def _system_call_timeout_warn_msg(self, command: Any) -> str:
-        if self.gateway:
-            return f"SSH command timeout: {command!s}"
-        return f"Command timeout: {command!s}"
-
-    def _system_call_error_warn_msg(self, command: Any) -> str:
-        if self.gateway:
-            return f"SSH command error: {command!s}"
-        return f"Command error: {command!s}"
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -258,7 +247,7 @@ class SonOfGridEngine(EngineBase):
                 out, err, retval = self.system_call(qsub_call, command)
                 if retval != 0:
                     logging.warning(self._system_call_error_warn_msg(qsub_call))
-                    time.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
+                    time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
                     continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(qsub_call))
@@ -329,7 +318,7 @@ class SonOfGridEngine(EngineBase):
                 out, err, retval = self.system_call(system_command)
                 if retval != 0:
                     logging.warning(self._system_call_error_warn_msg(system_command))
-                    time.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
+                    time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
                     continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(system_command))

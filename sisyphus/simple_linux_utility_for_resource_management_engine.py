@@ -242,7 +242,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 out, err, retval = self.system_call(sbatch_call)
                 if retval != 0:
                     logging.warning(self._system_call_error_warn_msg(sbatch_call))
-                    time.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
+                    time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
                     continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(sbatch_call))
@@ -318,7 +318,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 out, err, retval = self.system_call(system_command)
                 if retval != 0:
                     logging.warning(self._system_call_error_warn_msg(system_command))
-                    time.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
+                    time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
                     continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(system_command))
