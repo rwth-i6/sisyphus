@@ -130,8 +130,10 @@ JOB_AUTO_CLEANUP = True
 JOB_CLEANER_INTERVAL = 60
 #: How many threads should be cleaning in parallel
 JOB_CLEANER_WORKER = 5
-#: If the job internal work directory should be keeped re deleted during clean up
+#: If the job internal work directory should be kept or deleted during clean up
 JOB_CLEANUP_KEEP_WORK = False
+#: If the job internal input directory with symlinks to input jobs should be kept or deleted during clean up
+JOB_CLEANUP_KEEP_INPUT = True
 #: Default value for job used by tk.cleaner to determine if a job should be removed or not
 JOB_DEFAULT_KEEP_VALUE = 50
 #: How many threads should update the graph in parallel, useful if the filesystem has a high latency
