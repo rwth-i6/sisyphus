@@ -256,10 +256,6 @@ class SonOfGridEngine(EngineBase):
         while True:
             try:
                 out, err, retval = self.system_call(qsub_call, command)
-                if retval != 0:
-                    logging.warning(self._system_call_error_warn_msg(qsub_call))
-                    time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
-                    continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(qsub_call))
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)

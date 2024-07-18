@@ -193,10 +193,6 @@ class LoadSharingFacilityEngine(EngineBase):
             logging.info("command: %s" % command)
             try:
                 out, err, retval = self.system_call(bsub_call, command)
-                if retval != 0:
-                    logging.warning(self._system_call_error_warn_msg(bsub_call))
-                    time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
-                    continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(bsub_call))
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
