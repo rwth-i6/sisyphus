@@ -1,5 +1,6 @@
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
+from typing import Any
 import os
 import subprocess
 
@@ -72,6 +73,16 @@ class SonOfGridEngine(EngineBase):
             ignore_jobs = []
         self.ignore_jobs = ignore_jobs
         self.pe_name = pe_name
+
+    def _system_call_timeout_warn_msg(self, command: Any) -> str:
+        if self.gateway:
+            return f"SSH command timeout: {command!s}"
+        return f"Command timeout: {command!s}"
+
+    def _system_call_error_warn_msg(self, command: Any) -> str:
+        if self.gateway:
+            return f"SSH command error: {command!s}"
+        return f"Command error: {command!s}"
 
     def system_call(self, command, send_to_stdin=None):
         """
