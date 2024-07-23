@@ -257,7 +257,7 @@ class AbstractPath(DelayedBase):
 
 class Path(AbstractPath):
     """
-    Object do hold the connecting path to files:
+    Object to hold the connecting path to files:
 
     that are exchanged between jobs
     each path can have a creator or a direct pass to the target and many users.
