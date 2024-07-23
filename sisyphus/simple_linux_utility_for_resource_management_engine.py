@@ -13,7 +13,7 @@ import time
 
 import sisyphus.global_settings as gs
 from sisyphus.engine import EngineBase
-from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE
+from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE, STATE_QUEUE_ERROR
 
 ENGINE_NAME = "slurm"
 TaskInfo = namedtuple("TaskInfo", ["job_id", "task_id", "state"])
@@ -76,6 +76,11 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         if self.gateway:
             return f"SSH command timeout: {command!s}"
         return f"Command timeout: {command!s}"
+
+    def _system_call_error_warn_msg(self, command: Any) -> str:
+        if self.gateway:
+            return f"SSH command error: {command!s}"
+        return f"Command error: {command!s}"
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -307,6 +312,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         while True:
             try:
                 out, err, retval = self.system_call(system_command)
+                if retval != 0:
+                    logging.warning(self._system_call_error_warn_msg(system_command))
+                    time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
+                    continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(system_command))
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
@@ -358,7 +367,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         elif state in ["PENDING", "CONFIGURING"]:
             return STATE_QUEUE
         else:
-            return STATE_UNKNOWN
+            return STATE_QUEUE_ERROR
 
     def start_engine(self):
         """No starting action required with the current implementation"""

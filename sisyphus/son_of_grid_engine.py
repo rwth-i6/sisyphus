@@ -79,6 +79,11 @@ class SonOfGridEngine(EngineBase):
             return f"SSH command timeout: {command!s}"
         return f"Command timeout: {command!s}"
 
+    def _system_call_error_warn_msg(self, command: Any) -> str:
+        if self.gateway:
+            return f"SSH command error: {command!s}"
+        return f"Command error: {command!s}"
+
     def system_call(self, command, send_to_stdin=None):
         """
         :param list[str] command: qsub command
@@ -318,6 +323,10 @@ class SonOfGridEngine(EngineBase):
         while True:
             try:
                 out, err, retval = self.system_call(system_command)
+                if retval != 0:
+                    logging.warning(self._system_call_error_warn_msg(system_command))
+                    time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
+                    continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(system_command))
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
