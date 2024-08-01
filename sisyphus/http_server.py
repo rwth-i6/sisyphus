@@ -10,7 +10,7 @@ import sys
 import threading
 import time
 
-from sisyphus.graph import OutputReport
+from sisyphus.graph import OutputReport, OutputPath
 from sisyphus.job import Job
 from sisyphus.job_path import AbstractPath
 from sisyphus.tools import cache_result
@@ -95,7 +95,11 @@ def keepalive(sec):
 @keepalive(2)
 def output_view():
     outputs = []
-    for name, path in g_sis_graph.output.items():
+    for target in g_sis_graph.targets:
+        if not isinstance(target, OutputPath):
+            continue
+        name = target.name
+        path = target._sis_path
         if path.creator:
             job = path.creator
             state = job._sis_state(g_sis_engine)
