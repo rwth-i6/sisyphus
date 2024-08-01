@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 
+from sisyphus.graph import OutputReport
 from sisyphus.job import Job
 from sisyphus.job_path import AbstractPath
 from sisyphus.tools import cache_result
@@ -108,6 +109,31 @@ def output_view():
 
     outputs.sort(key=lambda x: x.name)
     return render_template("outputs.html", outputs=outputs)
+
+
+@app.route("/reports")
+@keepalive(2)
+def report_view():
+    reports = []
+    for target in g_sis_graph.targets:
+        if not isinstance(target, OutputReport):
+            continue
+        reports.append(target.name)
+
+    reports.sort()
+    return render_template("reports.html", reports=reports)
+
+
+@app.route("/report/<path:output_path>")
+@keepalive(2)
+def print_report(output_path):
+    if not output_path:
+        logging.warning("No output path given: " + str(parameters))  # noqa F821
+        return "No output path given: " + str(parameters)  # noqa F821
+
+    output_report = g_sis_graph.targets_dict[output_path]
+
+    return render_template("report_details.html", report=output_report.format_report())
 
 
 @app.route("/all")
