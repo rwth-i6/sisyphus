@@ -324,9 +324,7 @@ class SonOfGridEngine(EngineBase):
             try:
                 out, err, retval = self.system_call(system_command)
                 if retval != 0:
-                    logging.warning(self._system_call_error_warn_msg(system_command))
-                    time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
-                    continue
+                    raise subprocess.CalledProcessError(self._system_call_error_warn_msg(system_command))
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(system_command))
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
@@ -416,7 +414,10 @@ class SonOfGridEngine(EngineBase):
         name = task.task_name()
         name = escape_name(name)
         task_name = (name, task_id)
-        queue_state = self.queue_state()
+        try:
+            queue_state = self.queue_state()
+        except subprocess.CalledProcessError:
+            return STATE_QUEUE_ERROR
         qs = queue_state[task_name]
 
         # task name should be uniq
