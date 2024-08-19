@@ -60,6 +60,26 @@ def worker_wrapper(job, task_name, call):
     return call
 
 
+def on_job_failure(job):
+    """
+    Job failure hook.
+
+    Can be used for generic job-independent error monitoring, handling or retry
+    logic.
+
+    Sispyhus will call this function w/ the job instance if the job enters the
+    failure state. The callback itself is then responsible for any retry logic,
+    realized by e.g. analyzing the job log file and removing error files in the job
+    directory as needed.
+
+    Do:
+        - use with caution
+        - ensure you don't build infinite retry loops
+        - limit to specific use cases (e.g. local disk full, GPU broken, etc.)
+    """
+    pass
+
+
 def update_engine_rqmt(last_rqmt: Dict, last_usage: Dict):
     """Update requirements after a job got interrupted, double limits if needed
 
