@@ -13,7 +13,7 @@ import time
 
 import sisyphus.global_settings as gs
 from sisyphus.engine import EngineBase
-from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE, STATE_QUEUE_ERROR
+from sisyphus.global_settings import STATE_RUNNABLE, STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE, STATE_QUEUE_ERROR
 
 ENGINE_NAME = "slurm"
 TaskInfo = namedtuple("TaskInfo", ["job_id", "task_id", "state"])
@@ -353,7 +353,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         try:
             queue_state = self.queue_state()
         except subprocess.CalledProcessError:
-            return STATE_QUEUE_ERROR
+            return STATE_RUNNABLE
         qs = queue_state[task_name]
 
         # task name should be uniq
