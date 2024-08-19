@@ -324,7 +324,7 @@ class SonOfGridEngine(EngineBase):
             try:
                 out, err, retval = self.system_call(system_command)
                 if retval != 0:
-                    raise subprocess.CalledProcessError(self._system_call_error_warn_msg(system_command))
+                    raise subprocess.CalledProcessError(retval, self._system_call_error_warn_msg(system_command))
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(system_command))
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
