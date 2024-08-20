@@ -222,10 +222,7 @@ class AWSBatchEngine(EngineBase):
         """Return task state:"""
         name = task.task_name()
         task_name = escape_name(name, task_id)
-        try:
-            queue_state = self.queue_state()
-        except subprocess.CalledProcessError:
-            return STATE_RUNNABLE
+        queue_state = self.queue_state()
         qs = queue_state.get(task_name)
 
         # task name should be uniq

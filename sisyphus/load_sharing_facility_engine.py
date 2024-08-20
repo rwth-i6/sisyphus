@@ -255,9 +255,9 @@ class LoadSharingFacilityEngine(EngineBase):
             try:
                 out, err, retval = self.system_call(system_command)
                 if retval != 0:
-                    raise subprocess.CalledProcessError(
-                        retval, system_command, self._system_call_error_warn_msg(system_command)
-                    )
+                    logging.warning(self._system_call_error_warn_msg(system_command))
+                    time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
+                    continue
             except subprocess.TimeoutExpired:
                 logging.warning(self._system_call_timeout_warn_msg(system_command))
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
@@ -292,10 +292,7 @@ class LoadSharingFacilityEngine(EngineBase):
         name = task.task_name()
         name = escape_name(name).encode()
         task_name = (name, task_id)
-        try:
-            queue_state = self.queue_state()
-        except subprocess.CalledProcessError:
-            return STATE_RUNNABLE
+        queue_state = self.queue_state()
         qs = queue_state[task_name]
 
         # task name should be uniq
