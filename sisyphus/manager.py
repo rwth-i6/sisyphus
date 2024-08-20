@@ -577,9 +577,9 @@ class Manager(threading.Thread):
         return True
 
     def handle_job_failure(self, prev_jobs: Dict[str, List[Job]], cur_jobs: Dict[str, List[Job]]):
-        prev_jobs = set(prev_jobs.get(gs.STATE_ERROR, []))
+        prev_errored_jobs = set(prev_jobs.get(gs.STATE_ERROR, []))
         for job in cur_jobs.get(gs.STATE_ERROR, []):
-            if job not in prev_jobs:
+            if job not in prev_errored_jobs:
                 gs.on_job_failure(job)
 
     @tools.default_handle_exception_interrupt_main_thread
