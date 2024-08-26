@@ -39,7 +39,6 @@ def get_process_logging_path(task_path, task_name, task_id):
 
 
 class sync_object(object):
-
     """Object to be used by the with statement to sync an object via queue
     e.g.::
 
@@ -66,7 +65,6 @@ class sync_object(object):
 
 
 class LocalEngine(threading.Thread, EngineBase):
-
     """Simple engine to execute running tasks locally.
     CPU and GPU are always checked, all other requirements only if given during initialisation.
     """
