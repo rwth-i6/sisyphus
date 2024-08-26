@@ -235,7 +235,7 @@ class AWSBatchEngine(EngineBase):
         if qs == "FAILED":
             return STATE_QUEUE_ERROR
         logging.warning("Unknown AWS engine state %s" % qs)
-        return STATE_UNKNOWN
+        return STATE_QUEUE_ERROR
 
     def start_engine(self):
         """No starting action required with the current implementation"""
