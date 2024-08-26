@@ -220,7 +220,7 @@ class EngineSelector(EngineBase):
         for k, v in engines.items():
             assert isinstance(k, str) and isinstance(
                 v, EngineBase
-            ), "engines must only contain strings as keys " "and Engines as value: (%r, %r)" % (k, v)
+            ), "engines must only contain strings as keys and Engines as value: (%r, %r)" % (k, v)
         self.engines = engines
         self.default_engine = default_engine
 
