@@ -576,7 +576,7 @@ class Manager(threading.Thread):
             self.job_cleaner.start()
         return True
 
-    def handle_job_failure(self, prev_jobs: Dict[str, List[Job]], cur_jobs: Dict[str, List[Job]]):
+    def handle_job_failure(self, prev_jobs: Dict[str, List["Job"]], cur_jobs: Dict[str, List["Job"]]):
         prev_errored_jobs = set(prev_jobs.get(gs.STATE_ERROR, []))
         for job in cur_jobs.get(gs.STATE_ERROR, []):
             if job not in prev_errored_jobs:
