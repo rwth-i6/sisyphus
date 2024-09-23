@@ -67,10 +67,15 @@ def on_job_failure(job):
     Can be used for generic job-independent error monitoring, handling or retry
     logic.
 
-    Sispyhus will call this function w/ the job instance if the job enters the
-    failure state. The callback itself is then responsible for any retry logic,
-    realized by e.g. analyzing the job log file and removing error files in the job
-    directory as needed.
+    Sispyhus will call this function w/ the job instance for any failed job.
+
+    The callback itself is then responsible for any retry logic, realized by e.g.
+    analyzing the job log file and removing error files in the job directory as
+    needed.
+
+    The callback needs to be stateless and indempotent, as it can be called multiple
+    times on the same job, especially if the job remains in the error state after the
+    callback has finished.
 
     Do:
         - use with caution
