@@ -5,7 +5,6 @@ import os
 import sys
 import threading
 import time
-from typing import TYPE_CHECKING, Dict, List
 import warnings
 
 from multiprocessing.pool import ThreadPool
@@ -15,9 +14,6 @@ from sisyphus.loader import config_manager
 from sisyphus.block import Block
 from sisyphus.tools import finished_results_cache
 import sisyphus.global_settings as gs
-
-if TYPE_CHECKING:
-    from sisyphus.job import Job
 
 
 class JobCleaner(threading.Thread):
