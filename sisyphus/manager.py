@@ -593,7 +593,6 @@ class Manager(threading.Thread):
             self.check_output(write_output=self.link_outputs)
 
             config_manager.continue_readers()
-
             self.update_jobs()
 
             if gs.CLEAR_ERROR or self.clear_errors_once:
