@@ -620,6 +620,9 @@ class Manager(threading.Thread):
             self.resume_jobs()
             self.run_jobs()
 
+            for job in self.jobs.get(gs.STATE_ERROR, []):
+                gs.on_job_failure(job)
+
         # Stop config reader
         config_manager.cancel_all_reader()
 
