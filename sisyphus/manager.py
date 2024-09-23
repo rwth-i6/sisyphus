@@ -576,12 +576,6 @@ class Manager(threading.Thread):
             self.job_cleaner.start()
         return True
 
-    def handle_job_failure(self, prev_jobs: Dict[str, List["Job"]], cur_jobs: Dict[str, List["Job"]]):
-        prev_errored_jobs = set(prev_jobs.get(gs.STATE_ERROR, []))
-        for job in cur_jobs.get(gs.STATE_ERROR, []):
-            if job not in prev_errored_jobs:
-                gs.on_job_failure(job)
-
     @tools.default_handle_exception_interrupt_main_thread
     def run(self):
         if not self.startup():
@@ -604,8 +598,7 @@ class Manager(threading.Thread):
 
             config_manager.continue_readers()
 
-            prev_jobs = self.jobs
-            cur_jobs = self.update_jobs()
+            self.update_jobs()
 
             if gs.CLEAR_ERROR or self.clear_errors_once:
                 self.clear_errors_once = False
@@ -631,7 +624,9 @@ class Manager(threading.Thread):
             self.setup_holded_jobs()
             self.resume_jobs()
             self.run_jobs()
-            self.handle_job_failure(prev_jobs, cur_jobs)
+
+            for job in self.jobs.get(gs.STATE_ERROR, []):
+                gs.on_job_failure(job)
 
         # Stop config reader
         config_manager.cancel_all_reader()
