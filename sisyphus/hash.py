@@ -59,7 +59,6 @@ def get_object_state(obj):
         state = obj.__getstate__()
     else:
         state = _getmembers(obj)
-        print("  ***", state)
         if not state and not hasattr(obj, "__dict__") and not hasattr(obj, "__slots__"):
             # Keep compatibility with old behavior.
             assert args is not None, "Failed to get object state of: %s" % repr(obj)
