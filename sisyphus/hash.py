@@ -134,7 +134,6 @@ def _obj_type_qualname(obj) -> bytes:
 
 
 def _getmembers(obj):
-    print("***", obj, type(obj), "dir:", dir(obj))
     res = {}
     if hasattr(obj, "__dict__"):
         res.update(obj.__dict__)
