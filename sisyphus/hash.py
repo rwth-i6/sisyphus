@@ -159,23 +159,20 @@ def _getmembers(obj):
         if key in res:
             continue
         # Get class attribute first, to maybe skip descriptors.
-        has_cls_attr = False
-        cls_value = None
         if key in cls_dict:
-            has_cls_attr = True
             cls_value = cls_dict[key]
             if hasattr(cls_value, "__get__"):  # descriptor
+                # descriptor are e.g. properties, bound methods, etc. We don't want to have those.
+                # But member descriptors are usually for slots (even for native types without __slots__),
+                # so that is why we keep them.
                 if not ismemberdescriptor(cls_value):
-                    # descriptor are e.g. properties, bound methods, etc. We don't want to have those.
-                    # but not member d
                     continue
-            print("  -", key, cls_value)
         try:
             value = getattr(obj, key)
         except AttributeError:
             # dir might not be reliable. just skip this
             continue
-        if has_cls_attr and cls_value is value:
+        if key in cls_dict and cls_dict[key] is value:
             continue  # this is a class attribute
         res[key] = value
     return res
