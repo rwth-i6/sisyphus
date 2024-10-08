@@ -31,4 +31,4 @@ jobs:
         flake8 . --count --max-complexity=10 --show-source --statistics
     - name: Test with pytest
       run: |
-        pytest tests/*_unittest.py -v
+        pytest -vv tests/*_unittest.py
