@@ -52,10 +52,19 @@ def get_object_state(obj):
 
     if hasattr(obj, "__sis_state__"):
         state = obj.__sis_state__()
+    elif getattr(obj, "__class__", None) and getattr(obj.__class__, "__dictoffset__", 0) > 0:
+        # This type has some native attribs, which are not in __dict__ (and neither in __slots__).
+        # `dir()` should be able to list those.
+        # One example is the native `_functools.partial`.
+        # https://github.com/rwth-i6/sisyphus/issues/207
+        return {k: getattr(obj, k) for k in dir(obj) if not k.startswith("__")}
     elif hasattr(obj, "__getstate__"):
         state = obj.__getstate__()
-    elif hasattr(obj, "__dict__"):
+    elif hasattr(obj, "__dict__") and not hasattr(obj, "__slots__"):
         state = obj.__dict__
+    elif hasattr(obj, "__dict__") and hasattr(obj, "__slots__"):
+        state = obj.__dict__.copy()
+        state.update({k: getattr(obj, k) for k in obj.__slots__ if hasattr(obj, k)})
     elif hasattr(obj, "__slots__"):
         state = {k: getattr(obj, k) for k in obj.__slots__ if hasattr(obj, k)}
     else:
