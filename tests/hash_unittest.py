@@ -47,6 +47,12 @@ class HashTest(unittest.TestCase):
             ),
         )
 
+    def test_pathlib_Path(self):
+        from pathlib import Path
+
+        obj = Path("/etc/passwd")
+        self.assertEqual(sis_hash_helper(obj), b"(PosixPath, (str, '/etc/passwd'))")
+
 
 if __name__ == "__main__":
     unittest.main()

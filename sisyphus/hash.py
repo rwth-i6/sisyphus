@@ -1,5 +1,6 @@
 import enum
 import hashlib
+import pathlib
 from inspect import isclass, isfunction, ismemberdescriptor
 
 
@@ -42,6 +43,13 @@ def get_object_state(obj):
 
     Comment: Maybe obj.__reduce__() is a better idea? is it stable for hashing?
     """
+
+    if isinstance(obj, pathlib.PurePath):
+        # pathlib paths have a somewhat technical internal state
+        # ('_drv', '_root', '_parts', '_str', '_hash', '_pparts', '_cached_cparts'),
+        # so we don't want to rely on this, but instead just use the string representation as state.
+        # https://github.com/rwth-i6/sisyphus/pull/208#issuecomment-2405560718
+        return str(obj)
 
     if hasattr(obj, "__getnewargs_ex__"):
         args = obj.__getnewargs_ex__()
