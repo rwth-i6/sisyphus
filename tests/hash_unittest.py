@@ -32,6 +32,27 @@ class HashTest(unittest.TestCase):
             + b" (tuple, (str, '_name_'), (str, 'Entry1')), (tuple, (str, '_value_'), (int, 1))))",
         )
 
+    def test_functools_partial(self):
+        from functools import partial
+
+        obj = partial(int, 42)
+        self.assertEqual(
+            sis_hash_helper(obj),
+            (
+                b"(partial, (dict,"
+                b" (tuple, (str, 'args'), (tuple, (int, 42))),"
+                b" (tuple, (str, 'func'), (type,"
+                b" (tuple, (str, 'builtins'), (str, 'int')))),"
+                b" (tuple, (str, 'keywords'), (dict))))"
+            ),
+        )
+
+    def test_pathlib_Path(self):
+        from pathlib import Path
+
+        obj = Path("/etc/passwd")
+        self.assertEqual(sis_hash_helper(obj), b"(PosixPath, (str, '/etc/passwd'))")
+
 
 if __name__ == "__main__":
     unittest.main()

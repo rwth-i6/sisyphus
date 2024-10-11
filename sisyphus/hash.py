@@ -1,6 +1,7 @@
 import enum
 import hashlib
-from inspect import isclass, isfunction
+import pathlib
+from inspect import isclass, isfunction, ismemberdescriptor
 
 
 def md5(obj):
@@ -43,6 +44,13 @@ def get_object_state(obj):
     Comment: Maybe obj.__reduce__() is a better idea? is it stable for hashing?
     """
 
+    if isinstance(obj, pathlib.PurePath):
+        # pathlib paths have a somewhat technical internal state
+        # ('_drv', '_root', '_parts', '_str', '_hash', '_pparts', '_cached_cparts'),
+        # so we don't want to rely on this, but instead just use the string representation as state.
+        # https://github.com/rwth-i6/sisyphus/pull/208#issuecomment-2405560718
+        return str(obj)
+
     if hasattr(obj, "__getnewargs_ex__"):
         args = obj.__getnewargs_ex__()
     elif hasattr(obj, "__getnewargs__"):
@@ -52,15 +60,19 @@ def get_object_state(obj):
 
     if hasattr(obj, "__sis_state__"):
         state = obj.__sis_state__()
-    elif hasattr(obj, "__getstate__"):
+    # Note: Since Python 3.11, there is a default object.__getstate__.
+    # However, this default object.__getstate__ is not correct for some native types, e.g. _functools.partial.
+    # https://github.com/rwth-i6/sisyphus/issues/207
+    # https://github.com/python/cpython/issues/125094
+    # Thus, only use __getstate__ if it is not the default object.__getstate__.
+    elif hasattr(obj, "__getstate__") and obj.__class__.__getstate__ is not getattr(object, "__getstate__", None):
         state = obj.__getstate__()
-    elif hasattr(obj, "__dict__"):
-        state = obj.__dict__
-    elif hasattr(obj, "__slots__"):
-        state = {k: getattr(obj, k) for k in obj.__slots__ if hasattr(obj, k)}
     else:
-        assert args is not None, "Failed to get object state of: %s" % repr(obj)
-        state = None
+        state = _getmembers(obj)
+        if not state and not hasattr(obj, "__dict__") and not hasattr(obj, "__slots__"):
+            # Keep compatibility with old behavior.
+            assert args is not None, "Failed to get object state of: %s" % repr(obj)
+            state = None
 
     if isinstance(obj, enum.Enum):
         assert isinstance(state, dict)
@@ -129,3 +141,48 @@ def _obj_type_qualname(obj) -> bytes:
         # In Python >=3.11, keep hash same as in Python <=3.10, https://github.com/rwth-i6/sisyphus/issues/188
         return b"EnumMeta"
     return type(obj).__qualname__.encode()
+
+
+def _getmembers(obj):
+    res = {}
+    if hasattr(obj, "__dict__"):
+        res.update(obj.__dict__)
+    if hasattr(obj, "__slots__"):
+        for key in obj.__slots__:
+            try:
+                res[key] = getattr(obj, key)
+            except AttributeError:
+                pass
+    # Note, there are cases where `__dict__` or `__slots__` don't contain all attributes,
+    # e.g. for some native types, e.g. _functools.partial.
+    # (https://github.com/rwth-i6/sisyphus/issues/207)
+    # `dir()` usually still lists those attributes.
+    # However, to keep the behavior as before, we only want to return the object attributes here,
+    # not the class attributes.
+    cls_dict = {}
+    for cls in reversed(type(obj).__mro__):
+        if getattr(cls, "__dict__", None):
+            cls_dict.update(cls.__dict__)
+    for key in dir(obj):
+        if key.startswith("__"):
+            continue
+        if key in res:
+            continue
+        # Get class attribute first, to maybe skip descriptors.
+        if key in cls_dict:
+            cls_value = cls_dict[key]
+            if hasattr(cls_value, "__get__"):  # descriptor
+                # descriptor are e.g. properties, bound methods, etc. We don't want to have those.
+                # But member descriptors are usually for slots (even for native types without __slots__),
+                # so that is why we keep them.
+                if not ismemberdescriptor(cls_value):
+                    continue
+        try:
+            value = getattr(obj, key)
+        except AttributeError:
+            # dir might not be reliable. just skip this
+            continue
+        if key in cls_dict and cls_dict[key] is value:
+            continue  # this is a class attribute
+        res[key] = value
+    return res
