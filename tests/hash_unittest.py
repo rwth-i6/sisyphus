@@ -23,6 +23,22 @@ class HashTest(unittest.TestCase):
         self.assertEqual(sis_hash_helper(b), b"(function, (tuple, (str, '" + __name__.encode() + b"'), (str, 'b')))")
         self.assertRaises(AssertionError, sis_hash_helper, c)
 
+    def test_get_object_state_cls(self):
+        # Note: the hash of a class currently does not depend on get_object_state,
+        # but there is special logic in sis_hash_helper for classes,
+        # thus it doesn't really matter for the hash what is being returned here.
+        # However, this is used by extract_paths, so we test it here.
+        s = get_object_state(str)
+        self.assertEqual(s, ("builtins", "str"))
+
+    def test_get_object_state_function(self):
+        # Note: the hash of a function currently does not depend on get_object_state,
+        # but there is special logic in sis_hash_helper for functions,
+        # thus it doesn't really matter for the hash what is being returned here.
+        # However, this is used by extract_paths, so we test it here.
+        s = get_object_state(b)
+        self.assertEqual(s, (b.__module__, b.__name__))
+
     def test_enum(self):
         self.assertEqual(
             sis_hash_helper(MyEnum.Entry1),

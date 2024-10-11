@@ -44,6 +44,19 @@ def get_object_state(obj):
     Comment: Maybe obj.__reduce__() is a better idea? is it stable for hashing?
     """
 
+    # Note: sis_hash_helper does not call get_object_state in these cases.
+    # However, other code might (e.g. extract_paths),
+    # so we keep consistent to the behavior of sis_hash_helper.
+    if obj is None:
+        return None
+    if isinstance(obj, (bool, int, float, complex, str)):
+        return obj
+    if isfunction(obj) or isclass(obj):
+        # Note: sis_hash_helper does not call get_object_state in these cases.
+        # However, other code might (e.g. extract_paths),
+        # so we keep consistent to the behavior of sis_hash_helper.
+        return obj.__module__, obj.__qualname__
+
     if isinstance(obj, pathlib.PurePath):
         # pathlib paths have a somewhat technical internal state
         # ('_drv', '_root', '_parts', '_str', '_hash', '_pparts', '_cached_cparts'),
@@ -58,18 +71,14 @@ def get_object_state(obj):
     else:
         args = None
 
-    if hasattr(obj, "__sis_state__") and not isinstance(obj, type):
+    if hasattr(obj, "__sis_state__"):
         state = obj.__sis_state__()
     # Note: Since Python 3.11, there is a default object.__getstate__.
     # However, this default object.__getstate__ is not correct for some native types, e.g. _functools.partial.
     # https://github.com/rwth-i6/sisyphus/issues/207
     # https://github.com/python/cpython/issues/125094
     # Thus, only use __getstate__ if it is not the default object.__getstate__.
-    elif (
-        hasattr(obj, "__getstate__")
-        and obj.__class__.__getstate__ is not getattr(object, "__getstate__", None)
-        and not isinstance(obj, type)
-    ):
+    elif hasattr(obj, "__getstate__") and obj.__class__.__getstate__ is not getattr(object, "__getstate__", None):
         state = obj.__getstate__()
     else:
         state = _getmembers(obj)

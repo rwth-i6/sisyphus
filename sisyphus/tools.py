@@ -85,6 +85,10 @@ def extract_paths(args: Any) -> Set:
         if id(obj) in visited_obj_ids:
             continue
         visited_obj_ids[id(obj)] = obj
+        if obj is None:
+            continue
+        if isinstance(obj, (bool, int, float, complex, str)):
+            continue
         if isinstance(obj, Block) or isinstance(obj, enum.Enum):
             continue
         if hasattr(obj, "_sis_path") and obj._sis_path is True and not type(obj) is type:
