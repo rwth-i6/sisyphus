@@ -52,9 +52,6 @@ def get_object_state(obj):
     if isinstance(obj, (bool, int, float, complex, str)):
         return obj
     if isfunction(obj) or isclass(obj):
-        # Note: sis_hash_helper does not call get_object_state in these cases.
-        # However, other code might (e.g. extract_paths),
-        # so we keep consistent to the behavior of sis_hash_helper.
         return obj.__module__, obj.__qualname__
 
     if isinstance(obj, pathlib.PurePath):
