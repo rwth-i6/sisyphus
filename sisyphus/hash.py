@@ -58,14 +58,18 @@ def get_object_state(obj):
     else:
         args = None
 
-    if hasattr(obj, "__sis_state__"):
+    if hasattr(obj, "__sis_state__") and not isinstance(obj, type):
         state = obj.__sis_state__()
     # Note: Since Python 3.11, there is a default object.__getstate__.
     # However, this default object.__getstate__ is not correct for some native types, e.g. _functools.partial.
     # https://github.com/rwth-i6/sisyphus/issues/207
     # https://github.com/python/cpython/issues/125094
     # Thus, only use __getstate__ if it is not the default object.__getstate__.
-    elif hasattr(obj, "__getstate__") and obj.__class__.__getstate__ is not getattr(object, "__getstate__", None):
+    elif (
+        hasattr(obj, "__getstate__")
+        and obj.__class__.__getstate__ is not getattr(object, "__getstate__", None)
+        and not isinstance(obj, type)
+    ):
         state = obj.__getstate__()
     else:
         state = _getmembers(obj)

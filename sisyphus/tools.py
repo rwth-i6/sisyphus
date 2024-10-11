@@ -23,6 +23,7 @@ except ModuleNotFoundError:
 
 import sisyphus.global_settings as gs
 from sisyphus.block import Block
+from sisyphus.hash import get_object_state
 
 
 def get_system_informations(file=sys.stdout):
@@ -88,25 +89,14 @@ def extract_paths(args: Any) -> Set:
             continue
         if hasattr(obj, "_sis_path") and obj._sis_path is True and not type(obj) is type:
             out.add(obj)
-        elif isinstance(obj, (list, tuple, set)):
+        elif isinstance(obj, (list, tuple, set, frozenset)):
             queue.extend(obj)
         elif isinstance(obj, dict):
             for k, v in obj.items():
                 if not type(k) == str or not k.startswith("_sis_"):
                     queue.append(v)
-        elif hasattr(obj, "__sis_state__") and not inspect.isclass(obj):
-            queue.append(obj.__sis_state__())
-        elif hasattr(obj, "__getstate__") and not inspect.isclass(obj):
-            queue.append(obj.__getstate__())
-        elif hasattr(obj, "__dict__"):
-            for k, v in obj.__dict__.items():
-                if not type(k) == str or not k.startswith("_sis_"):
-                    queue.append(v)
-        elif hasattr(obj, "__slots__"):
-            for k in obj.__slots__:
-                if hasattr(obj, k) and not k.startswith("_sis_"):
-                    a = getattr(obj, k)
-                    queue.append(a)
+        else:
+            queue.append(get_object_state(obj))
     return out
 
 
