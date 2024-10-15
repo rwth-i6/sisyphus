@@ -7,8 +7,10 @@ Module to contain all job related code
 """
 
 import copy
+from functools import lru_cache
 import gzip
 import inspect
+import io
 import logging
 import multiprocessing
 import os
@@ -241,69 +243,74 @@ class Job(metaclass=JobSingleton):
 
         self._sis_stacktrace = []
 
+
+    def _create_gzipped_pickle(self):
+        """Create a gzipped pickle of the job object in memory."""
+        with io.BytesIO() as memory_file:
+            with gzip.GzipFile(fileobj=memory_file, mode='wb', compresslevel=1) as gzip_file:
+                pickle.dump(self, gzip_file, protocol=pickle.HIGHEST_PROTOCOL)
+            return memory_file.getvalue()
+
+    def _write_gzipped_pickle_to_disk(self, gzipped_pickle):
+        """Write the gzipped pickle to disk in one operation."""
+        job_save_path = self._sis_path(gs.JOB_SAVE)
+        with open(job_save_path, 'wb') as f:
+            f.write(gzipped_pickle)
+
     # Functions directly used to run the job
     def _sis_setup_directory(self, force=False):
-        """Setup the working directory"""
-
         if self._sis_setup_since_restart and self._sis_setup() and not force:
             return
 
         basepath = self._sis_path()
         if os.path.islink(basepath) and not os.path.exists(basepath):
-            # is a broken symlink
-            logging.warning("Found broken link %s to %s while setting up %s" % (basepath, os.readlink(basepath), self))
+            logging.warning(f"Found broken link {basepath} to {os.readlink(basepath)} while setting up {self}")
             os.unlink(basepath)
-            logging.warning("Removed broken link %s" % basepath)
+            logging.warning(f"Removed broken link {basepath}")
 
-        for dirname in [gs.JOB_WORK_DIR, gs.JOB_OUTPUT, gs.JOB_INPUT, gs.JOB_LOG_ENGINE]:
-            path = self._sis_path(dirname)
-            try:
-                os.makedirs(path)
-            except FileExistsError:
-                assert os.path.isdir(path)
+        # Group directory creation
+        dirs_to_create = [self._sis_path(dirname) for dirname in [gs.JOB_WORK_DIR, gs.JOB_OUTPUT, gs.JOB_INPUT, gs.JOB_LOG_ENGINE]]
+        dirs_to_create.extend([str(dirname) for dirname in self._sis_output_dirs])
+        for path in dirs_to_create:
+            os.makedirs(path, exist_ok=True)
 
-        for dirname in self._sis_output_dirs:
-            path = str(dirname)
-            if not os.path.isdir(path):
-                os.makedirs(path)
-
-        # link input jobs
+        # Create symlinks for input jobs
         for input_path in self._sis_inputs:
             creator = input_path.creator
             if creator:
                 job_id = creator._sis_id()
                 if len(job_id) > 255:
-                    # Many filesystems have a restriction of 255 bytes per filename (basename).
-                    # We would hit that limit by the flattening below...
-                    # To avoid that (but also risking further collisions...):
                     job_id = job_id.split("/")[-1]
-                # replace / with _ to make the directory structure flat
-                # I it would be possible to hit some cases where this could
-                # cause a collision sorry if you are really that unlucky...
                 link_name = os.path.join(self._sis_path(gs.JOB_INPUT), str(job_id).replace("/", "_"))
                 if not os.path.isdir(link_name):
-                    os.symlink(src=os.path.abspath(str(creator._sis_path())), dst=link_name, target_is_directory=True)
+                    os.symlink(os.path.abspath(str(creator._sis_path())), link_name, target_is_directory=True)
 
-        # export the actual job
-        with gzip.open(self._sis_path(gs.JOB_SAVE), "w") as f:
-            pickle.dump(self, f)
+        # Export the actual job
+        gzipped_pickle = self._create_gzipped_pickle()
+        self._write_gzipped_pickle_to_disk(gzipped_pickle)
 
+        # Prepare job info content in memory
+        job_info_content = []
+        for tag in self.tags:
+            job_info_content.append(f"TAG: {tag}\n")
+        for i in self._sis_inputs:
+            job_info_content.append(f"INPUT: {i}\n")
+        for key, value in self._sis_kwargs.items():
+            try:
+                job_info_content.append(f"PARAMETER: {key}: {value}\n")
+            except UnicodeEncodeError as e:
+                job_info_content.append(f"PARAMETER: {key}: <UnicodeEncodeError: {e}>\n")
+        if self._sis_aliases:
+            for alias in self._sis_aliases:
+                job_info_content.append(f"ALIAS: {alias}\n")
+        for stacktrace in self._sis_stacktrace:
+            job_info_content.append("STACKTRACE:\n")
+            job_info_content.extend(traceback.format_list(stacktrace))
+
+        # Write job info in one operation
         with open(self._sis_path(gs.JOB_INFO), "w", encoding="utf-8") as f:
-            for tag in self.tags:
-                f.write("TAG: %s\n" % tag)
-            for i in self._sis_inputs:
-                f.write("INPUT: %s\n" % i)
-            for key, value in self._sis_kwargs.items():
-                try:
-                    f.write("PARAMETER: %s: %s\n" % (key, value))
-                except UnicodeEncodeError as e:
-                    f.write("PARAMETER: %s: <UnicodeEncodeError: %s>\n" % (key, e))
-            if self._sis_aliases:
-                for alias in self._sis_aliases:
-                    f.write("ALIAS: %s\n" % alias)
-            for stacktrace in self._sis_stacktrace:
-                f.write("STACKTRACE:\n")
-                f.writelines(traceback.format_list(stacktrace))
+            f.writelines(job_info_content)
+
         self._sis_setup_since_restart = True
 
     def __getstate__(self):
@@ -371,6 +378,7 @@ class Job(metaclass=JobSingleton):
             return previous != self._sis_inputs
 
     # Helper functions
+    @lru_cache(maxsize=None)
     def _sis_path(self, path_type=None, task_id=None, abspath=False):
         """
         Adjust path according to the job path.
