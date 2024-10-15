@@ -44,6 +44,16 @@ def get_object_state(obj):
     Comment: Maybe obj.__reduce__() is a better idea? is it stable for hashing?
     """
 
+    # Note: sis_hash_helper does not call get_object_state in these cases.
+    # However, other code might (e.g. extract_paths),
+    # so we keep consistent to the behavior of sis_hash_helper.
+    if obj is None:
+        return None
+    if isinstance(obj, (bool, int, float, complex, str)):
+        return obj
+    if isfunction(obj) or isclass(obj):
+        return obj.__module__, obj.__qualname__
+
     if isinstance(obj, pathlib.PurePath):
         # pathlib paths have a somewhat technical internal state
         # ('_drv', '_root', '_parts', '_str', '_hash', '_pparts', '_cached_cparts'),
