@@ -178,6 +178,14 @@ class OutputReport(OutputTarget):
         if write_output:
             self.write_report()
 
+    def format_report(self) -> str:
+        if self._report_template:
+            return self._report_template.format(**self._report_values)
+        elif callable(self._report_values):
+            return str(self._report_values())
+        else:
+            return pprint.pformat(self._report_values, width=140) + "\n"
+
     def write_report(self):
         # Allow for anonymous reports
         if self._output_path is None:
@@ -194,12 +202,7 @@ class OutputReport(OutputTarget):
 
             # Actually write report
             with open(outfile_name, "w") as f:
-                if self._report_template:
-                    f.write(self._report_template.format(**self._report_values))
-                elif callable(self._report_values):
-                    f.write(str(self._report_values()))
-                else:
-                    f.write(pprint.pformat(self._report_values, width=140) + "\n")
+                f.write(self.format_report())
         except IOError as e:
             logging.warning("Error while updating %s:  %s" % (outfile_name, str(e)))
 
