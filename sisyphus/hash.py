@@ -137,7 +137,7 @@ def sis_hash_helper(obj):
         byte_list += map(sis_hash_helper, obj)
     elif type(obj) in _BasicSetTypes:
         byte_list += sorted(map(sis_hash_helper, obj))
-    elif type(obj) in _BasicDictTypes:
+    elif isinstance(obj, _BasicDictTypes):
         # sort items to ensure they are always in the same order
         byte_list += sorted(map(sis_hash_helper, obj.items()))
     elif isfunction(obj):
