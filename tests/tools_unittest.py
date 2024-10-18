@@ -126,5 +126,14 @@ class HardCopy(unittest.TestCase):
         shutil.rmtree(dst)
 
 
+def test_extract_paths_functools_partial():
+    from sisyphus.tools import extract_paths
+    from functools import partial
+
+    path = job_path.Path("foo/bar")
+    obj = partial(job_path.Path.join_right, path)
+    assert extract_paths(obj) == {path}
+
+
 if __name__ == "__main__":
     unittest.main()
