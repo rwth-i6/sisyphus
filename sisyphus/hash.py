@@ -60,13 +60,18 @@ def get_object_state(obj):
     if isinstance(obj, _BasicTypesCombined):
         for type_ in _BasicTypesCombined:
             if isinstance(obj, type_):
+                # Note: For compatibility with old behavior, first only allow if the type is not derived
+                # (thus type(obj) is type_ check).
+                # For derived cases, we need to be more careful.
                 if type(obj) is type_:
                     return obj
-                else:
-                    # This is a derived type. E.g. consider a namedtuple or np.float.
-                    # We want to return the basic type, to break any potential recursion.
-                    return type(obj)
-        assert False, f"should not get here, obj {obj!r} type {type(obj)!r}"
+                if hasattr(obj, "__getnewargs_ex__") or hasattr(obj, "__getnewargs__"):
+                    # E.g. a namedtuple. This is sometimes used, and we must keep the behavior for compatibility.
+                    break  # Use the original behavior.
+                # For now, let's fail, and extend this logic maybe later, to make sure we don't miss anything.
+                # E.g. a dict/tuple/list would contain the elements itself (which should be part of the state),
+                # and maybe *additionally* some other things in __dict__.
+                raise TypeError(f"derived type {obj!r} {type(obj)!r} not handled yet")
     if isfunction(obj) or isclass(obj):
         return obj.__module__, obj.__qualname__
 
