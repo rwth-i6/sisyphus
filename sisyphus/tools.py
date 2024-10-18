@@ -16,6 +16,8 @@ import subprocess
 import linecache
 from typing import Set, Any
 
+from sisyphus.job_path import AbstractPath
+
 try:
     import tracemalloc
 except ModuleNotFoundError:
@@ -97,7 +99,11 @@ def extract_paths(args: Any) -> Set:
         elif hasattr(obj, "__sis_state__") and not inspect.isclass(obj):
             queue.append(obj.__sis_state__())
         elif hasattr(obj, "__getstate__") and not inspect.isclass(obj):
-            queue.append(obj.__getstate__())
+            if isinstance(obj, AbstractPath):
+                state = obj._get_state_with_creator()
+            else:
+                state = obj.__getstate__()
+            queue.append(state)
         elif hasattr(obj, "__dict__"):
             for k, v in obj.__dict__.items():
                 if not type(k) == str or not k.startswith("_sis_"):
