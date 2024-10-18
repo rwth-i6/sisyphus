@@ -122,9 +122,9 @@ def sis_hash_helper(obj):
         byte_list.append(repr(obj).encode())
     elif isinstance(obj, _BasicSeqTypes):
         byte_list += map(sis_hash_helper, obj)
-    elif isinstance(obj, _BasicDictTypes):
+    elif isinstance(obj, _BasicSetTypes):
         byte_list += sorted(map(sis_hash_helper, obj))
-    elif isinstance(obj, dict):
+    elif isinstance(obj, _BasicDictTypes):
         # sort items to ensure they are always in the same order
         byte_list += sorted(map(sis_hash_helper, obj.items()))
     elif isfunction(obj):
