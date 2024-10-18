@@ -1,3 +1,4 @@
+from typing import Tuple
 import enum
 import hashlib
 import pathlib
@@ -37,6 +38,12 @@ def short_hash(obj, length=12, chars="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef
     return "".join(ls)
 
 
+_BasicTypes: Tuple[type, ...] = (int, float, bool, str, complex)
+_BasicSeqTypes: Tuple[type, ...] = (list, tuple)
+_BasicSetTypes: Tuple[type, ...] = (set, frozenset)
+_BasicDictTypes: Tuple[type, ...] = (dict,)
+
+
 def get_object_state(obj):
     """
     Export current object status
@@ -49,7 +56,7 @@ def get_object_state(obj):
     # so we keep consistent to the behavior of sis_hash_helper.
     if obj is None:
         return None
-    if isinstance(obj, (bool, int, float, complex, str)):
+    if isinstance(obj, _BasicTypes + _BasicSeqTypes + _BasicSetTypes + _BasicDictTypes):
         return obj
     if isfunction(obj) or isclass(obj):
         return obj.__module__, obj.__qualname__
@@ -111,11 +118,11 @@ def sis_hash_helper(obj):
         byte_list.append(obj)
     elif obj is None:
         pass
-    elif type(obj) in (int, float, bool, str, complex):
+    elif isinstance(obj, _BasicTypes):
         byte_list.append(repr(obj).encode())
-    elif type(obj) in (list, tuple):
+    elif isinstance(obj, _BasicSeqTypes):
         byte_list += map(sis_hash_helper, obj)
-    elif type(obj) in (set, frozenset):
+    elif isinstance(obj, _BasicDictTypes):
         byte_list += sorted(map(sis_hash_helper, obj))
     elif isinstance(obj, dict):
         # sort items to ensure they are always in the same order
