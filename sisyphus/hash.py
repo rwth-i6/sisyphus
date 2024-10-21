@@ -1,3 +1,4 @@
+from typing import Tuple
 import enum
 import hashlib
 import pathlib
@@ -37,12 +38,42 @@ def short_hash(obj, length=12, chars="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef
     return "".join(ls)
 
 
+_BasicTypes: Tuple[type, ...] = (int, float, bool, str, complex)
+_BasicSeqTypes: Tuple[type, ...] = (list, tuple)
+_BasicSetTypes: Tuple[type, ...] = (set, frozenset)
+_BasicDictTypes: Tuple[type, ...] = (dict,)
+_BasicTypesCombined: Tuple[type, ...] = _BasicTypes + _BasicSeqTypes + _BasicSetTypes + _BasicDictTypes
+
+
 def get_object_state(obj):
     """
     Export current object status
 
     Comment: Maybe obj.__reduce__() is a better idea? is it stable for hashing?
     """
+
+    # Note: sis_hash_helper does not call get_object_state in these cases.
+    # However, other code might (e.g. extract_paths),
+    # so we keep consistent to the behavior of sis_hash_helper.
+    if obj is None:
+        return None
+    if isinstance(obj, _BasicTypesCombined):
+        for type_ in _BasicTypesCombined:
+            if isinstance(obj, type_):
+                # Note: For compatibility with old behavior, first only allow if the type is not derived
+                # (thus type(obj) is type_ check).
+                # For derived cases, we need to be more careful.
+                if type(obj) is type_:
+                    return obj
+                if hasattr(obj, "__getnewargs_ex__") or hasattr(obj, "__getnewargs__"):
+                    # E.g. a namedtuple. This is sometimes used, and we must keep the behavior for compatibility.
+                    break  # Use the original behavior.
+                # For now, let's fail, and extend this logic maybe later, to make sure we don't miss anything.
+                # E.g. a dict/tuple/list would contain the elements itself (which should be part of the state),
+                # and maybe *additionally* some other things in __dict__.
+                raise TypeError(f"derived type {obj!r} {type(obj)!r} not handled yet")
+    if isfunction(obj) or isclass(obj):
+        return obj.__module__, obj.__qualname__
 
     if isinstance(obj, pathlib.PurePath):
         # pathlib paths have a somewhat technical internal state
@@ -101,13 +132,17 @@ def sis_hash_helper(obj):
         byte_list.append(obj)
     elif obj is None:
         pass
-    elif type(obj) in (int, float, bool, str, complex):
+    # Note: Using type(obj) in _Types instead of isinstance(obj, _Types)
+    # because of historical reasons (and we cannot change this now).
+    # For derived types (e.g. namedtuple, np.float), it is then handled by get_object_state.
+    # That's why the handling of get_object_state for those types is important.
+    elif type(obj) in _BasicTypes:
         byte_list.append(repr(obj).encode())
-    elif type(obj) in (list, tuple):
+    elif type(obj) in _BasicSeqTypes:
         byte_list += map(sis_hash_helper, obj)
-    elif type(obj) in (set, frozenset):
+    elif type(obj) in _BasicSetTypes:
         byte_list += sorted(map(sis_hash_helper, obj))
-    elif isinstance(obj, dict):
+    elif isinstance(obj, _BasicDictTypes):
         # sort items to ensure they are always in the same order
         byte_list += sorted(map(sis_hash_helper, obj.items()))
     elif isfunction(obj):
