@@ -16,7 +16,6 @@ import subprocess
 import linecache
 from typing import Set, Any
 
-from sisyphus.job_path import AbstractPath
 
 try:
     import tracemalloc
