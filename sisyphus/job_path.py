@@ -239,7 +239,7 @@ class AbstractPath(DelayedBase):
         # TODO Check how uninitialized object should behave here
         return hash((self.__dict__.get("creator"), self.__dict__.get("path")))
 
-    def _get_state_with_creator(self):
+    def _get_state_with_creator(self):  # used by sisyphus.hash.get_object_state
         d = self.__dict__.copy()
         del d["users"]
         return d
