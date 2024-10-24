@@ -236,11 +236,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         out_log_file = logpath + "/%x.%A.%t.%a"
         sbatch_call = ["sbatch", "-J", name, "--mail-type=None"]
         sbatch_call += self.options(rqmt)
-        sbatch_call += [
-            "-a",
-            f"{start_id}-{end_id}:{step_size}",
-            f"--wrap=srun -o {out_log_file} {' '.join(call)}",
-        ]
+        sbatch_call += ["-a", f"{start_id}-{end_id}:{step_size}"]
+        sbatch_call += [f"--wrap=srun -o {out_log_file} {' '.join(call)}"]
 
         while True:
             try:
