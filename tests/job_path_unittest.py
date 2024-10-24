@@ -89,7 +89,7 @@ class PathTest(unittest.TestCase):
                     path_unpickled = pickle.load(f)
 
             # Compare absolute paths
-            self.assertEqual(path.get_path().__dict__, path_unpickled.get_path().__dict__)
+            self.assertEqual(path.get_path(), path_unpickled.get_path())
 
             if gs.INCLUDE_CREATOR_STATE:
                 self.assertEqual(path.creator, path_unpickled.creator)
