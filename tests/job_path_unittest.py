@@ -95,12 +95,10 @@ class PathTest(unittest.TestCase):
             else:
                 self.assertIsNone(path_unpickled.creator)
 
-            excluded_keys = {'creator', 'path'}
+            excluded_keys = {"creator", "path"}
             original_attrs = {k: v for k, v in path.__dict__.items() if k not in excluded_keys}
             unpickled_attrs = {k: v for k, v in path_unpickled.__dict__.items() if k not in excluded_keys}
             self.assertEqual(original_attrs, unpickled_attrs)
-
-
 
         pickle_and_check(Path("out"))
 
