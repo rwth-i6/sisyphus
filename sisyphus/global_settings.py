@@ -205,6 +205,9 @@ ALIAS_AND_OUTPUT_SUBDIR = ""
 #: Show job targets on status screen, can significantly slow down startup time if many outputs are used
 SHOW_JOB_TARGETS = True
 
+# Controls whether to include 'creator' in serialized state of an abstract path
+INCLUDE_CREATOR_STATE = False
+
 #: How many seconds should be waited before assuming a job is finished after the finished file is written
 #: to allow network file system to sync up
 WAIT_PERIOD_JOB_FS_SYNC = 30
