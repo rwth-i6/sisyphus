@@ -173,8 +173,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         out.append("--time=%s" % task_time)
         out.append("--export=all")
 
-        if rqmt.get("multi_node_slots", None):
+        if rqmt.get("multi_node_slots", 1) > 1:
             out.append("--ntasks=%s" % rqmt["multi_node_slots"])
+            out.append("--nodes=%s" % rqmt["multi_node_slots"])
 
         sbatch_args = rqmt.get("sbatch_args", [])
         if isinstance(sbatch_args, str):
@@ -232,11 +233,15 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :param int step_size:
         """
         name = self.process_task_name(name)
-        sbatch_call = ["sbatch", "-J", name, "-o", logpath + "/%x.%A.%a", "--mail-type=None"]
+        out_log_file = logpath + "/%x.%A.%t.%a"
+        sbatch_call = ["sbatch", "-J", name, "--mail-type=None"]
         sbatch_call += self.options(rqmt)
+        sbatch_call += [
+            "-a",
+            f"{start_id}-{end_id}:{step_size}"
+            f"--wrap=srun -o {out_log_file} {' '.join(call)}",
+        ]
 
-        sbatch_call += ["-a", "%i-%i:%i" % (start_id, end_id, step_size)]
-        sbatch_call += ["--wrap=%s" % " ".join(call)]
         while True:
             try:
                 out, err, retval = self.system_call(sbatch_call)
@@ -393,19 +398,34 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
 
     def init_worker(self, task):
         # setup log file by linking to engine logfile
-        task_id = self.get_task_id(None)
-        logpath = os.path.relpath(task.path(gs.JOB_LOG, task_id))
+
+        # Naming ambiguity: sis "tasks" are what SLURM calls array jobs.
+        #
+        # SLURM tasks represent jobs that span multiple nodes at the same time
+        # (e.g. multi-node multi-GPU trainings consist of one SLURM task per node).
+        slurm_num_tasks = int(
+            next(filter(None, (os.getenv(var, None) for var in ["SLURM_NTASKS", "SLURM_NPROCS"])), "1")
+        )
+        slurm_task_id = int(os.getenv("SLURM_PROCID", "0"))
+
+        array_task_id = self.get_task_id(None)
+        # keep backwards compatibility: only change output file name for multi-SLURM-task jobs
+        log_suffix = array_task_id if slurm_num_tasks <= 1 else f"{array_task_id}.{slurm_task_id}"
+        logpath = os.path.relpath(task.path(gs.JOB_LOG, log_suffix))
         if os.path.isfile(logpath):
             os.unlink(logpath)
 
+        job_ids = (os.getenv(name, None) for name in ["SLURM_JOB_ID", "SLURM_JOBID", "SLURM_ARRAY_JOB_ID"])
         engine_logpath = (
             os.path.dirname(logpath)
             + "/engine/"
             + os.getenv("SLURM_JOB_NAME")
             + "."
-            + os.getenv("SLURM_ARRAY_JOB_ID")
+            + next(filter(None, job_ids), "0")
             + "."
-            + os.getenv("SLURM_ARRAY_TASK_ID")
+            + str(slurm_task_id)
+            + "."
+            + os.getenv("SLURM_ARRAY_TASK_ID", "1")
         )
         try:
             if os.path.isfile(engine_logpath):
