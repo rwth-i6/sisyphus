@@ -398,7 +398,7 @@ class Job(metaclass=JobSingleton):
 
         # Add task id as suffix
         if task_id is not None:
-            path += ".%i" % task_id
+            path += f".{task_id}"
 
         if abspath and not os.path.isabs(path):
             path = os.path.join(gs.BASE_DIR, path)
