@@ -239,7 +239,7 @@ class AbstractPath(DelayedBase):
         # TODO Check how uninitialized object should behave here
         return hash((self.__dict__.get("creator"), self.__dict__.get("path")))
 
-    def _get_state_with_creator(self):
+    def __sis_state__(self):
         d = self.__dict__.copy()
         del d["users"]
         return d
@@ -248,9 +248,9 @@ class AbstractPath(DelayedBase):
         """Skips exporting users
         :return:
         """
-        d = self._get_state_with_creator()
-        if hasattr(self, "creator"):
-            d['path'] = self.get_path()
+        d = self.__sis_state__()
+        if not gs.INCLUDE_CREATOR_STATE and hasattr(self, "creator"):
+            d["path"] = self.get_path()
             d["creator"] = None
         return d
 
@@ -284,7 +284,7 @@ class Path(AbstractPath):
     def copy(self):
         """Creates a copy of this Path"""
         new = Path("")
-        new.__setstate__(self._get_state_with_creator())
+        new.__setstate__(self.__sis_state__())
         return new
 
     def copy_append(self, suffix):

@@ -4,8 +4,6 @@ import hashlib
 import pathlib
 from inspect import isclass, isfunction, ismemberdescriptor
 
-from sisyphus.job_path import AbstractPath
-
 
 def md5(obj):
     """
@@ -99,10 +97,7 @@ def get_object_state(obj):
     # https://github.com/python/cpython/issues/125094
     # Thus, only use __getstate__ if it is not the default object.__getstate__.
     elif hasattr(obj, "__getstate__") and obj.__class__.__getstate__ is not getattr(object, "__getstate__", None):
-        if isinstance(obj, AbstractPath):
-            state = obj._get_state_with_creator()
-        else:
-            state = obj.__getstate__()
+        state = obj.__getstate__()
     else:
         state = _getmembers(obj)
         if not state and not hasattr(obj, "__dict__") and not hasattr(obj, "__slots__"):
