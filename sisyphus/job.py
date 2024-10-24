@@ -117,7 +117,7 @@ class JobSingleton(type):
             # store _sis_id
             job._sis_id_cache = sis_id
 
-            job._sis_init(*copy.deepcopy((args, kwargs, parsed_args)))
+            job._sis_init(*(args, kwargs, parsed_args))
             created_jobs[sis_id] = job
 
         # Add block
