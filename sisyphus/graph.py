@@ -291,7 +291,7 @@ class SISGraph(object):
         # check if output path is already used
         try:
             path = target._output_path
-            creator = target._sis_path.creator
+            creator = self._sis_path.creator
             if creator is None or len(creator._sis_alias_prefixes) == 0:
                 prefixes = [""]
             else:
