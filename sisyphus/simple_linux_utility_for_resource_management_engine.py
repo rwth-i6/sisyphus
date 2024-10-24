@@ -238,7 +238,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         sbatch_call += self.options(rqmt)
         sbatch_call += [
             "-a",
-            f"{start_id}-{end_id}:{step_size}"
+            f"{start_id}-{end_id}:{step_size}",
             f"--wrap=srun -o {out_log_file} {' '.join(call)}",
         ]
 
