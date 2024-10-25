@@ -413,26 +413,49 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         if os.path.isfile(logpath):
             os.unlink(logpath)
 
-        job_ids = (os.getenv(name, None) for name in ["SLURM_JOB_ID", "SLURM_JOBID", "SLURM_ARRAY_JOB_ID"])
-        engine_logpath = (
-            os.path.dirname(logpath)
-            + "/engine/"
-            + os.getenv("SLURM_JOB_NAME")
-            + "."
-            + next(filter(None, job_ids), "0")
-            + "."
-            + str(slurm_task_id)
-            + "."
-            + os.getenv("SLURM_ARRAY_TASK_ID", "1")
+        job_id = next(
+            filter(None, (os.getenv(name, None) for name in ["SLURM_JOB_ID", "SLURM_JOBID", "SLURM_ARRAY_JOB_ID"])), "0"
         )
-        try:
-            if os.path.isfile(engine_logpath):
+        has_linked_logfile = False
+        engine_logpath_candidates = [
+            (
+                os.path.dirname(logpath)
+                + "/engine/"
+                + os.getenv("SLURM_JOB_NAME")
+                + "."
+                + job_id
+                + "."
+                + str(slurm_task_id)
+                + "."
+                + os.getenv("SLURM_ARRAY_TASK_ID", "1")
+            ),
+            (
+                os.path.dirname(logpath)
+                + "/engine/"
+                + os.getenv("SLURM_JOB_NAME")
+                + "."
+                + job_id
+                + "."
+                + os.getenv("SLURM_ARRAY_TASK_ID", "1")
+            ),
+        ]
+        for engine_logpath in engine_logpath_candidates:
+            if not os.path.isfile(engine_logpath):
+                continue
+            try:
                 os.link(engine_logpath, logpath)
-            else:
-                logging.warning("Could not find engine logfile: %s Create soft link anyway." % engine_logpath)
+                has_linked_logfile = True
+                break
+            except FileExistsError:
+                pass
+
+        if not has_linked_logfile:
+            engine_logpath = engine_logpath_candidates[0]
+            logging.warning("Could not find engine logfile: %s Create soft link anyway." % engine_logpath)
+            try:
                 os.symlink(os.path.relpath(engine_logpath, os.path.dirname(logpath)), logpath)
-        except FileExistsError:
-            pass
+            except FileExistsError:
+                pass
 
     def get_logpath(self, logpath_base, task_name, task_id):
         """Returns log file for the currently running task"""
