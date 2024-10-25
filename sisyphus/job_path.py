@@ -1,5 +1,6 @@
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
+import copy
 import os
 import logging
 import gzip
@@ -245,11 +246,15 @@ class AbstractPath(DelayedBase):
         return d
 
     def __deepcopy__(self, memo):
-        state = self.__sis_state__()
-        del state["_hash_overwrite"]
-        del state["_tags"]
-        del state["_available"]
-        return self.__class__(**state)
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k != 'users':
+                setattr(result, k, copy.deepcopy(v, memo))
+        result.users = set()
+        return result
+
 
     def __getstate__(self):
         """Skips exporting users
