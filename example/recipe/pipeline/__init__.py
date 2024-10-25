@@ -7,6 +7,7 @@ Path = setup_path(__package__)
 
 
 class Simple(Job):
+
     """Simple example with an input and an output file"""
 
     def __init__(self, text):
@@ -22,6 +23,7 @@ class Simple(Job):
 
 
 class Arguments(Job):
+
     """Parallel execution of multiple arguments"""
 
     def __init__(self, text):

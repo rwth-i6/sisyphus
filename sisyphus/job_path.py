@@ -244,6 +244,13 @@ class AbstractPath(DelayedBase):
         del d["users"]
         return d
 
+    def __deepcopy__(self, memo):
+        state = self.__sis_state__()
+        del state["_hash_overwrite"]
+        del state["_tags"]
+        del state["_available"]
+        return self.__class__(**state)
+
     def __getstate__(self):
         """Skips exporting users
         :return:
