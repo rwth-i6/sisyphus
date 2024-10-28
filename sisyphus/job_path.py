@@ -1,5 +1,6 @@
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
+import copy
 import os
 import logging
 import gzip
@@ -239,12 +240,29 @@ class AbstractPath(DelayedBase):
         # TODO Check how uninitialized object should behave here
         return hash((self.__dict__.get("creator"), self.__dict__.get("path")))
 
+    def __sis_state__(self):
+        d = self.__dict__.copy()
+        del d["users"]
+        return d
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k != "users":
+                setattr(result, k, copy.deepcopy(v, memo))
+        result.users = set()
+        return result
+
     def __getstate__(self):
         """Skips exporting users
         :return:
         """
-        d = self.__dict__.copy()
-        del d["users"]
+        d = self.__sis_state__()
+        if not gs.INCLUDE_CREATOR_STATE and hasattr(self, "creator"):
+            d["path"] = self.get_path()
+            d["creator"] = None
         return d
 
     def __setstate__(self, state):
@@ -277,7 +295,7 @@ class Path(AbstractPath):
     def copy(self):
         """Creates a copy of this Path"""
         new = Path("")
-        new.__setstate__(self.__getstate__())
+        new.__setstate__(self.__sis_state__())
         return new
 
     def copy_append(self, suffix):

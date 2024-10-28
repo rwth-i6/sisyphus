@@ -2,6 +2,7 @@ import unittest
 import os
 import pickle
 
+from sisyphus import gs
 import sisyphus.toolkit as tk
 from sisyphus.job_path import Path, Variable
 from sisyphus.tools import finished_results_cache
@@ -86,7 +87,19 @@ class PathTest(unittest.TestCase):
                     pickle.dump(path, f)
                 with open(pickle_path, "rb") as f:
                     path_unpickled = pickle.load(f)
-            self.assertEqual(path.__dict__, path_unpickled.__dict__)
+
+            # Compare absolute paths
+            self.assertEqual(path.get_path(), path_unpickled.get_path())
+
+            if gs.INCLUDE_CREATOR_STATE:
+                self.assertEqual(path.creator, path_unpickled.creator)
+            else:
+                self.assertIsNone(path_unpickled.creator)
+
+            excluded_keys = {"creator", "path"}
+            original_attrs = {k: v for k, v in path.__dict__.items() if k not in excluded_keys}
+            unpickled_attrs = {k: v for k, v in path_unpickled.__dict__.items() if k not in excluded_keys}
+            self.assertEqual(original_attrs, unpickled_attrs)
 
         pickle_and_check(Path("out"))
 
