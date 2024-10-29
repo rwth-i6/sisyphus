@@ -548,8 +548,11 @@ class Manager(threading.Thread):
                 self.print_state_overview(verbose=True)
             elif answer.lower() == "y":
                 self.link_outputs = True
-                create_aliases(self.sis_graph.jobs())
-                self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
+                threading.Thread(target=create_aliases, args=(self.sis_graph.jobs(),)).start()
+                threading.Thread(
+                    target=self.check_output,
+                    kwargs={"write_output": self.link_outputs, "update_all_outputs": True, "force_update": True},
+                ).start()
                 break
             elif answer.lower() == "u":
                 self.link_outputs = True
