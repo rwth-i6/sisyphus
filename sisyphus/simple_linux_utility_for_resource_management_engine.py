@@ -233,7 +233,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :param int step_size:
         """
         name = self.process_task_name(name)
-        out_log_file = logpath + "/%x.%A.%t.%a"
+        out_log_file = logpath + "/%x.%A.%a"
+        if rqmt.get("multi_node_slots", 1) > 1:
+            out_log_file += ".%t"
         sbatch_call = ["sbatch", "-J", name, "--mail-type=None"]
         sbatch_call += self.options(rqmt)
         sbatch_call += ["-o", f"{out_log_file}.batch"]
@@ -405,8 +407,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             next(filter(None, (os.getenv(var, None) for var in ["SLURM_NTASKS", "SLURM_NPROCS"])), "1")
         )
         slurm_task_id = int(os.getenv("SLURM_PROCID", "0"))
-
         array_task_id = self.get_task_id(None)
+
         # keep backwards compatibility: only change output file name for multi-SLURM-task jobs
         log_suffix = array_task_id if slurm_num_tasks <= 1 else f"{array_task_id}.{slurm_task_id}"
         logpath = os.path.relpath(task.path(gs.JOB_LOG, log_suffix))
@@ -416,46 +418,26 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         job_id = next(
             filter(None, (os.getenv(name, None) for name in ["SLURM_JOB_ID", "SLURM_JOBID", "SLURM_ARRAY_JOB_ID"])), "0"
         )
-        has_linked_logfile = False
-        engine_logpath_candidates = [
-            (
-                os.path.dirname(logpath)
-                + "/engine/"
-                + os.getenv("SLURM_JOB_NAME")
-                + "."
-                + job_id
-                + "."
-                + str(slurm_task_id)
-                + "."
-                + os.getenv("SLURM_ARRAY_TASK_ID", "1")
-            ),
-            (
-                os.path.dirname(logpath)
-                + "/engine/"
-                + os.getenv("SLURM_JOB_NAME")
-                + "."
-                + job_id
-                + "."
-                + os.getenv("SLURM_ARRAY_TASK_ID", "1")
-            ),
-        ]
-        for engine_logpath in engine_logpath_candidates:
-            if not os.path.isfile(engine_logpath):
-                continue
-            try:
-                os.link(engine_logpath, logpath)
-                has_linked_logfile = True
-                break
-            except FileExistsError:
-                pass
+        engine_logpath = (
+            os.path.dirname(logpath)
+            + "/engine/"
+            + os.getenv("SLURM_JOB_NAME")
+            + "."
+            + job_id
+            + "."
+            + os.getenv("SLURM_ARRAY_TASK_ID", "1")
+        )
+        if slurm_num_tasks > 1:
+            engine_logpath += f".{slurm_task_id}"
 
-        if not has_linked_logfile:
-            engine_logpath = engine_logpath_candidates[0]
-            logging.warning("Could not find engine logfile: %s Create soft link anyway." % engine_logpath)
-            try:
+        try:
+            if os.path.isfile(engine_logpath):
+                os.link(engine_logpath, logpath)
+            else:
+                logging.warning("Could not find engine logfile: %s Create soft link anyway." % engine_logpath)
                 os.symlink(os.path.relpath(engine_logpath, os.path.dirname(logpath)), logpath)
-            except FileExistsError:
-                pass
+        except FileExistsError:
+            pass
 
     def get_logpath(self, logpath_base, task_name, task_id):
         """Returns log file for the currently running task"""
