@@ -410,7 +410,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         array_task_id = self.get_task_id(None)
 
         # keep backwards compatibility: only change output file name for multi-SLURM-task jobs
-        log_suffix = array_task_id if slurm_num_tasks <= 1 else f"{array_task_id}.{slurm_task_id}"
+        log_suffix = str(array_task_id) + (f".{slurm_task_id}" if slurm_num_tasks > 1 else "")
         logpath = os.path.relpath(task.path(gs.JOB_LOG, log_suffix))
         if os.path.isfile(logpath):
             os.unlink(logpath)
