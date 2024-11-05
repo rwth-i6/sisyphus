@@ -83,9 +83,9 @@ def get_object_state(obj):
         return str(obj)
 
     if hasattr(obj, "__getnewargs_ex__"):
-        return obj.__getnewargs_ex__()
+        return obj.__getnewargs_ex__(), None
     elif hasattr(obj, "__getnewargs__"):
-        return obj.__getnewargs__()
+        return obj.__getnewargs__(), None
 
     if hasattr(obj, "__sis_state__"):
         state = obj.__sis_state__()
