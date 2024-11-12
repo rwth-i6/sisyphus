@@ -1114,6 +1114,8 @@ class Job(metaclass=JobSingleton):
     def set_rqmt(self, task_name, rqmt):
         """Overwrites the given requirements for this job
 
+        If this function is called more than once, only the effects of the last call are applied.
+
         :param str task_name: Which task will be affected
         :param rqmt: the new requirements
         :return:
@@ -1124,6 +1126,8 @@ class Job(metaclass=JobSingleton):
 
     def update_rqmt(self, task_name, rqmt):
         """Updates the given requirements for this job, values not set in rqmt will not be affected.
+
+        If this function is called more than once, only the effects of the last call are applied.
 
         :param str task_name: Which task will be affected
         :param rqmt: the new requirements
