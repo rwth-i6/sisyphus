@@ -1,0 +1,47 @@
+name: AppTek hashes
+env:
+  api_url: "https://api.bitbucket.org/2.0/repositories/omnifluent/apptek_asr/pipelines/"
+  auth_token: "-H 'Authorization: Bearer ${{ secrets.APPTEK_BITBUCKET_AUTHENTICATION }}'"
+  get_header: "-X GET -s -H 'Accept: application/json'"
+  post_header: "-X POST -s -H 'Content-Type: application/json'"
+  post_content: '{"target": {"ref_type": "branch", "ref_name": "main", "type": "pipeline_ref_target", "selector": {"type": "custom", "pattern": "hashes+tests_sis"}}, "variables": [{"key": "sisyphus_branch", "value": "'
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  test-hashes:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-python@v4
+      with:
+        python-version: 3.8
+    - name: Start Bitbucket Pipeline
+      run: |
+        curl ${{ env.post_header }} ${{ env.auth_token}} ${{ env.api_url }} -d '${{ env.post_content }}'${GITHUB_HEAD_REF:-main}'"}]}' |\
+        jq -r '.uuid' | sed 's/{/%7B/' | sed 's/}/%7D/' > pipeline_uuid.txt
+    - name: Verify Start
+      run: |
+        [ $(cat pipeline_uuid.txt) != "null" ]
+    - name: Wait for Results
+      run: |
+        sleep 300
+        while [ COMPLETED != $(\
+            curl ${{ env.get_header }} ${{ env.auth_token}} ${{ env.api_url }}$(cat pipeline_uuid.txt) |\
+            jq -r '.state.name') \
+            ]; do sleep 30 ; done
+        [ SUCCESSFUL == $(\
+            curl ${{ env.get_header }} ${{ env.auth_token}} ${{ env.api_url }}$(cat pipeline_uuid.txt) |\
+            jq -r '.state.result.name') \
+        ] 
+    - name: Report Error
+      if: failure()
+      run: |
+        echo "::error ::The AppTek hashtest pipeline #"$(\
+            curl ${{ env.get_header }} ${{ env.auth_token}} ${{ env.api_url }}$(cat pipeline_uuid.txt) |\
+            jq -r '.build_number') \
+            "failed. Please contact {wmichel,ebeck}@apptek.com to find out why."
+        exit 1
