@@ -161,6 +161,9 @@ JOB_CLEANUP_KEEP_WORK = False
 JOB_CLEANUP_KEEP_INPUT = True
 #: Default value for job used by tk.cleaner to determine if a job should be removed or not
 JOB_DEFAULT_KEEP_VALUE = 50
+#:
+CLEANER_PRINT_ALIAS = True
+
 #: How many threads should update the graph in parallel, useful if the filesystem has a high latency
 GRAPH_WORKER = 16
 

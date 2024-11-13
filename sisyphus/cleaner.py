@@ -20,6 +20,8 @@ import shutil
 import sys
 import tempfile
 
+from typing import List, Optional
+
 from sisyphus import graph
 import sisyphus.global_settings as gs
 
@@ -206,7 +208,7 @@ def search_for_unused(job_dirs, current=gs.WORK_DIR, verbose=True):
     return unused
 
 
-def remove_directories(dirs, message, move_postfix=".cleanup", mode="remove", force=False):
+def remove_directories(dirs, message, move_postfix=".cleanup", mode="remove", force=False, filter_affected=None):
     """list all directories that will be deleted and add a security check"""
     if isinstance(dirs, str):
         dirs = load_remove_list(dirs)
@@ -228,7 +230,19 @@ def remove_directories(dirs, message, move_postfix=".cleanup", mode="remove", fo
         if input_var.lower() != "n":
             logging.info("Affected directories:")
             for i in tmp:
-                logging.info(i)
+                if os.path.exists(i + "/info") and gs.CLEANER_PRINT_ALIAS:
+                    with open(i + "/info") as f:
+                        lines = f.readlines()
+                        if lines[-1].strip().startswith("ALIAS"):
+                            s = lines[-1].strip()
+                            s.replace("ALIAS:", "ALIAS AT CREATION:")
+                        else:
+                            s = ""
+                else:
+                    s = ""
+                if filter_affected is None or any(x in i for x in filter_affected):
+                    logging.info(i + "  " + s)
+
     else:
         with tempfile.NamedTemporaryFile(mode="w") as tmp_file:
             for directory in dirs:
@@ -280,8 +294,17 @@ def cleanup_jobs():
             job._sis_cleanup()
 
 
-def cleanup_keep_value(min_keep_value, load_from: str = "", mode: str = "remove"):
-    """Go through all jobs in the current graph to remove all jobs with a lower keep value that the given minimum"""
+def cleanup_keep_value(
+    min_keep_value, load_from: str = "", mode: str = "remove", filter_affected: Optional[List[str]] = None
+):
+    """Go through all jobs in the current graph to remove all jobs with a lower keep value that the given minimum
+
+    :param min_keep_value: Remove jobs with lower keep value than this
+    :param load_from: File name to load list with used directories
+    :param mode: Cleanup mode ('remove', 'move', or 'dryrun')
+    :param filter_affected: Defines what substrings should be printed when listing affected directories
+
+    """
     if min_keep_value <= 0:
         logging.error("Keep value must be larger than 0")
     if load_from:
@@ -291,17 +314,25 @@ def cleanup_keep_value(min_keep_value, load_from: str = "", mode: str = "remove"
 
     to_remove = find_too_low_keep_value(job_dirs, min_keep_value)
     remove_directories(
-        to_remove, "Remove jobs with lower keep value than min", move_postfix=".cleanup", mode=mode, force=False
+        to_remove,
+        "Remove jobs with lower keep value than min",
+        move_postfix=".cleanup",
+        mode=mode,
+        force=False,
+        filter_affected=filter_affected,
     )
 
 
-def cleanup_unused(load_from: str = "", job_dirs=None, mode="remove"):
+def cleanup_unused(
+    load_from: str = "", job_dirs: List = None, mode: str = "remove", filter_affected: Optional[List[str]] = None
+):
     """Check work directory and remove all subdirectories which do not belong to the given list of directories.
     If no input is given it removes everything that is not in the current graph
 
     :param load_from: File name to load list with used directories
     :param job_dirs: Already loaded list of used directories
     :param mode: Cleanup mode ('remove', 'move', or 'dryrun')
+    :param filter_affected: Defines what substrings should be printed when listing affected directories
     :return:
     """
     if job_dirs:
@@ -311,4 +342,4 @@ def cleanup_unused(load_from: str = "", job_dirs=None, mode="remove"):
     else:
         job_dirs = list_all_graph_directories()
     to_remove = search_for_unused(job_dirs, verbose=True)
-    remove_directories(to_remove, "Not used in graph", mode=mode, force=False)
+    remove_directories(to_remove, "Not used in graph", mode=mode, force=False, filter_affected=filter_affected)
