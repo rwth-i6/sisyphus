@@ -23,6 +23,7 @@ import tempfile
 from typing import List, Optional
 
 from sisyphus import graph
+from sisyphus.job import Job
 import sisyphus.global_settings as gs
 
 
@@ -324,7 +325,7 @@ def cleanup_keep_value(
 
 
 def cleanup_unused(
-    load_from: str = "", job_dirs: List = None, mode: str = "remove", filter_affected: Optional[List[str]] = None
+    load_from: str = "", job_dirs: List[Job] = None, mode: str = "remove", filter_affected: Optional[List[str]] = None
 ):
     """Check work directory and remove all subdirectories which do not belong to the given list of directories.
     If no input is given it removes everything that is not in the current graph
