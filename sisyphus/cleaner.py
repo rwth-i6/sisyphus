@@ -296,7 +296,7 @@ def cleanup_jobs():
 
 
 def cleanup_keep_value(
-    min_keep_value, load_from: str = "", mode: str = "remove", filter_affected: Optional[List[str]] = None
+    min_keep_value: int, load_from: str = "", mode: str = "remove", filter_affected: Optional[List[str]] = None
 ):
     """Go through all jobs in the current graph to remove all jobs with a lower keep value that the given minimum
 
