@@ -21,10 +21,11 @@ import sys
 import tempfile
 import time
 
-from typing import List, Optional
+from typing import Dict, List, Optional, Set, Union
 
 from sisyphus import graph
 from sisyphus.job import Job
+from sisyphus.job_path import Path
 import sisyphus.global_settings as gs
 
 
@@ -84,11 +85,17 @@ def extract_keep_values_from_graph():
     return job_dirs
 
 
-def find_too_low_keep_value(job_dirs, min_keep_value):
+def find_too_low_keep_value(
+    job_dirs: Union[str, Dict[Union[str, Path], int]],
+    min_keep_value: int,
+    filter_removed_jobs: Optional[List[Union[str, Path]]] = None,
+):
     """Check all given job if they can be removed and have a keep value lower min_keep_value.
 
     :param job_dirs: dict with all keep values, can be created with extract_keep_values_from_graph
     :param min_keep_value: minimal keep value
+    :param filter_removed_jobs: Only Jobs matching the substring will be deleted
+
     :return:
     """
     if isinstance(job_dirs, str):
@@ -100,7 +107,7 @@ def find_too_low_keep_value(job_dirs, min_keep_value):
             continue
         if keep_value == JOB_WITHOUT_KEEP_VALUE:
             keep_value = gs.JOB_DEFAULT_KEEP_VALUE
-        if keep_value < min_keep_value:
+        if keep_value < min_keep_value and (filter_removed_jobs is None or any(x in path for x in filter_removed_jobs)):
             to_remove.add(path)
     return to_remove
 
@@ -121,7 +128,7 @@ def list_all_graph_directories():
     return job_dirs
 
 
-def save_used_paths(outfile=None, job_dirs=None):
+def save_used_paths(outfile: Union[str, Path] = None, job_dirs: Dict[Union[str, Path], int] = None):
     """Write dict of directories in the graph to file
 
     :param outfile: Filename of output file, if not given write to stdout
@@ -137,7 +144,7 @@ def save_used_paths(outfile=None, job_dirs=None):
         out.close()
 
 
-def load_used_paths(infile):
+def load_used_paths(infile: Union[str, Path]):
     """Load list save with save_used_paths
 
     :param infile: Filename to load from
@@ -151,7 +158,7 @@ def load_used_paths(infile):
     return job_dirs
 
 
-def save_remove_list(to_remove, outfile):
+def save_remove_list(to_remove: List[Union[str, Path]], outfile: Union[str, Path]):
     """Write list of files that should be removed to file
     :param to_remove: List of directories
     :param outfile: Filename of output file
@@ -162,7 +169,7 @@ def save_remove_list(to_remove, outfile):
             f.write(i + "\n")
 
 
-def load_remove_list(infile):
+def load_remove_list(infile: Union[str, Path]):
     """Load list save with save_remove_list
 
     :param infile: Filename to load from
@@ -175,12 +182,19 @@ def load_remove_list(infile):
     return out
 
 
-def search_for_unused(job_dirs, current=gs.WORK_DIR, verbose=True):
+def search_for_unused(
+    job_dirs: Union[str, Dict[Union[str, Path], int]],
+    current: str = gs.WORK_DIR,
+    verbose: bool = True,
+    filter_unused: Optional[List[str]] = None,
+):
     """Check work directory and list all subdirectories which do not belong to the given list of directories.
 
     :param job_dirs: dict with all used directories, can be created with list_all_graph_directories.
     :param current: current work directory
     :param verbose: make it verbose
+    :param filter_unused: Only Jobs matching the substring will be deleted
+
     :return: List with all unused directories
     """
 
@@ -196,11 +210,11 @@ def search_for_unused(job_dirs, current=gs.WORK_DIR, verbose=True):
         path = os.path.join(current, short_path)
         status = job_dirs.get(path)
 
-        if status is None:
+        if status is None and (filter_unused is None or any(x in path for x in filter_unused)):
             unused.add(path)
         elif status == DIR_IN_GRAPH:
             # directory has sub directories used by current graph
-            found = search_for_unused(job_dirs, path, verbose)
+            found = search_for_unused(job_dirs, path, verbose, filter_unused=filter_unused)
             unused.update(found)
             if verbose:
                 logging.info("found %s unused directories in %s (total so far: %s)" % (len(found), path, len(unused)))
@@ -210,7 +224,14 @@ def search_for_unused(job_dirs, current=gs.WORK_DIR, verbose=True):
     return unused
 
 
-def remove_directories(dirs, message, move_postfix=".cleanup", mode="remove", force=False, filter_affected=None, filter_printed=None):
+def remove_directories(
+    dirs: Union[str, Dict[Union[str, Path], int], Set],
+    message: str,
+    move_postfix: str = ".cleanup",
+    mode: str = "remove",
+    force: bool = False,
+    filter_printed: Optional[List[str]] = None,
+):
     """list all directories that will be deleted and add a security check"""
     if isinstance(dirs, str):
         dirs = load_remove_list(dirs)
@@ -242,15 +263,13 @@ def remove_directories(dirs, message, move_postfix=".cleanup", mode="remove", fo
                             s = ""
                 else:
                     s = ""
-                if filter_printed is None or any(x in i for x in filter_printed) and (filter_affected is None or any(x in i for x in filter_affected)):
+                if filter_printed is None or any(x in i for x in filter_printed):
                     logging.info(i + "  " + s)
 
     else:
         with tempfile.NamedTemporaryFile(mode="w") as tmp_file:
             for directory in dirs:
-                if filter_affected is None or any(x in directory for x in filter_affected):
-                    tmp_file.write(directory + "\x00")
-            time.sleep(1000)
+                tmp_file.write(directory + "\x00")
             tmp_file.flush()
             command = "du -sch --files0-from=%s" % tmp_file.name
             p = os.popen(command)
@@ -299,14 +318,19 @@ def cleanup_jobs():
 
 
 def cleanup_keep_value(
-    min_keep_value: int, load_from: str = "", mode: str = "remove", filter_affected: Optional[List[str]] = None
+    min_keep_value: int,
+    load_from: str = "",
+    mode: str = "remove",
+    filter_removed_jobs: Optional[List[str]] = None,
+    filter_printed: Optional[List[str]] = None,
 ):
     """Go through all jobs in the current graph to remove all jobs with a lower keep value that the given minimum
 
     :param min_keep_value: Remove jobs with lower keep value than this
     :param load_from: File name to load list with used directories
     :param mode: Cleanup mode ('remove', 'move', or 'dryrun')
-    :param filter_affected: Defines what substrings should be printed when listing affected directories
+    :param filter_removed_jobs: Only Jobs matching the substring will be deleted
+    :param filter_printed: Defines what substrings should be printed when listing affected directories
 
     """
     if min_keep_value <= 0:
@@ -316,19 +340,23 @@ def cleanup_keep_value(
     else:
         job_dirs = extract_keep_values_from_graph()
 
-    to_remove = find_too_low_keep_value(job_dirs, min_keep_value)
+    to_remove = find_too_low_keep_value(job_dirs, min_keep_value, filter_removed_jobs=filter_removed_jobs)
     remove_directories(
         to_remove,
         "Remove jobs with lower keep value than min",
         move_postfix=".cleanup",
         mode=mode,
         force=False,
-        filter_affected=filter_affected,
+        filter_printed=filter_printed,
     )
 
 
 def cleanup_unused(
-    load_from: str = "", job_dirs: List[Job] = None, mode: str = "remove", filter_affected: Optional[List[str]] = None, filter_printed: Optional[List[str]] = None,
+    load_from: str = "",
+    job_dirs: List[Job] = None,
+    mode: str = "remove",
+    filter_unused: Optional[List[str]] = None,
+    filter_printed: Optional[List[str]] = None,
 ):
     """Check work directory and remove all subdirectories which do not belong to the given list of directories.
     If no input is given it removes everything that is not in the current graph
@@ -336,7 +364,7 @@ def cleanup_unused(
     :param load_from: File name to load list with used directories
     :param job_dirs: Already loaded list of used directories
     :param mode: Cleanup mode ('remove', 'move', or 'dryrun')
-    :param filter_affected: Only Jobs matching the substring will be deleted
+    :param filter_unused: Only Jobs matching the substring will be deleted
     :param filter_printed: Defines what substrings should be printed when listing affected directories
     :return:
     """
@@ -346,5 +374,7 @@ def cleanup_unused(
         job_dirs = load_used_paths(load_from)
     else:
         job_dirs = list_all_graph_directories()
-    to_remove = search_for_unused(job_dirs, verbose=True)
-    remove_directories(to_remove, "Not used in graph", mode=mode, force=False, filter_affected=filter_affected, filter_printed=filter_printed)
+    to_remove = search_for_unused(job_dirs, verbose=True, filter_unused=filter_unused)
+    remove_directories(
+        to_remove, "Not used in graph", mode=mode, force=False, filter_printed=filter_printed,
+    )
