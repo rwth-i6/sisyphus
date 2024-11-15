@@ -242,7 +242,7 @@ def remove_directories(dirs, message, move_postfix=".cleanup", mode="remove", fo
                             s = ""
                 else:
                     s = ""
-                if filter_printed is None or any(x in i for x in filter_printed):
+                if filter_printed is None or any(x in i for x in filter_printed) and (filter_affected is None or any(x in i for x in filter_affected)):
                     logging.info(i + "  " + s)
 
     else:
