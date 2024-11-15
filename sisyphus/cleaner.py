@@ -376,5 +376,9 @@ def cleanup_unused(
         job_dirs = list_all_graph_directories()
     to_remove = search_for_unused(job_dirs, verbose=True, filter_unused=filter_unused)
     remove_directories(
-        to_remove, "Not used in graph", mode=mode, force=False, filter_printed=filter_printed,
+        to_remove,
+        "Not used in graph",
+        mode=mode,
+        force=False,
+        filter_printed=filter_printed,
     )
