@@ -19,6 +19,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 
 from typing import List, Optional
 
@@ -209,7 +210,7 @@ def search_for_unused(job_dirs, current=gs.WORK_DIR, verbose=True):
     return unused
 
 
-def remove_directories(dirs, message, move_postfix=".cleanup", mode="remove", force=False, filter_affected=None):
+def remove_directories(dirs, message, move_postfix=".cleanup", mode="remove", force=False, filter_affected=None, filter_printed=None):
     """list all directories that will be deleted and add a security check"""
     if isinstance(dirs, str):
         dirs = load_remove_list(dirs)
@@ -241,13 +242,15 @@ def remove_directories(dirs, message, move_postfix=".cleanup", mode="remove", fo
                             s = ""
                 else:
                     s = ""
-                if filter_affected is None or any(x in i for x in filter_affected):
+                if filter_printed is None or any(x in i for x in filter_printed):
                     logging.info(i + "  " + s)
 
     else:
         with tempfile.NamedTemporaryFile(mode="w") as tmp_file:
             for directory in dirs:
-                tmp_file.write(directory + "\x00")
+                if filter_affected is None or any(x in directory for x in filter_affected):
+                    tmp_file.write(directory + "\x00")
+            time.sleep(1000)
             tmp_file.flush()
             command = "du -sch --files0-from=%s" % tmp_file.name
             p = os.popen(command)
@@ -325,7 +328,7 @@ def cleanup_keep_value(
 
 
 def cleanup_unused(
-    load_from: str = "", job_dirs: List[Job] = None, mode: str = "remove", filter_affected: Optional[List[str]] = None
+    load_from: str = "", job_dirs: List[Job] = None, mode: str = "remove", filter_affected: Optional[List[str]] = None, filter_printed: Optional[List[str]] = None,
 ):
     """Check work directory and remove all subdirectories which do not belong to the given list of directories.
     If no input is given it removes everything that is not in the current graph
@@ -333,7 +336,8 @@ def cleanup_unused(
     :param load_from: File name to load list with used directories
     :param job_dirs: Already loaded list of used directories
     :param mode: Cleanup mode ('remove', 'move', or 'dryrun')
-    :param filter_affected: Defines what substrings should be printed when listing affected directories
+    :param filter_affected: Only Jobs matching the substring will be deleted
+    :param filter_printed: Defines what substrings should be printed when listing affected directories
     :return:
     """
     if job_dirs:
@@ -343,4 +347,4 @@ def cleanup_unused(
     else:
         job_dirs = list_all_graph_directories()
     to_remove = search_for_unused(job_dirs, verbose=True)
-    remove_directories(to_remove, "Not used in graph", mode=mode, force=False, filter_affected=filter_affected)
+    remove_directories(to_remove, "Not used in graph", mode=mode, force=False, filter_affected=filter_affected, filter_printed=filter_printed)
