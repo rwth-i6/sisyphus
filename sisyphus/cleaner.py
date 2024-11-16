@@ -19,7 +19,6 @@ import os
 import shutil
 import sys
 import tempfile
-import time
 
 from typing import Dict, List, Optional, Set, Union
 
@@ -36,7 +35,7 @@ JOB_STILL_NEEDED = -2
 JOB_WITHOUT_KEEP_VALUE = -1
 
 
-def extract_keep_values_from_graph():
+def extract_keep_values_from_graph() -> Dict[str, int]:
     """Go through loaded graph and create dict with all jobs and keep values
 
     :return:
@@ -89,7 +88,7 @@ def find_too_low_keep_value(
     job_dirs: Union[str, Dict[Union[str, Path], int]],
     min_keep_value: int,
     filter_removed_jobs: Optional[List[Union[str, Path]]] = None,
-):
+) -> Set[Union[Path, str]]:
     """Check all given job if they can be removed and have a keep value lower min_keep_value.
 
     :param job_dirs: dict with all keep values, can be created with extract_keep_values_from_graph
@@ -112,7 +111,7 @@ def find_too_low_keep_value(
     return to_remove
 
 
-def list_all_graph_directories():
+def list_all_graph_directories() -> Dict[str, int]:
     """Create dict containing all filesystem directories used by jobs inside the loaded graph
 
     :return: dict
@@ -144,7 +143,7 @@ def save_used_paths(outfile: Union[str, Path] = None, job_dirs: Dict[Union[str, 
         out.close()
 
 
-def load_used_paths(infile: Union[str, Path]):
+def load_used_paths(infile: Union[str, Path]) -> Dict[str, int]:
     """Load list save with save_used_paths
 
     :param infile: Filename to load from
@@ -169,7 +168,7 @@ def save_remove_list(to_remove: List[Union[str, Path]], outfile: Union[str, Path
             f.write(i + "\n")
 
 
-def load_remove_list(infile: Union[str, Path]):
+def load_remove_list(infile: Union[str, Path]) -> List[str]:
     """Load list save with save_remove_list
 
     :param infile: Filename to load from
@@ -187,7 +186,7 @@ def search_for_unused(
     current: str = gs.WORK_DIR,
     verbose: bool = True,
     filter_unused: Optional[List[str]] = None,
-):
+) -> Set[str]:
     """Check work directory and list all subdirectories which do not belong to the given list of directories.
 
     :param job_dirs: dict with all used directories, can be created with list_all_graph_directories.
