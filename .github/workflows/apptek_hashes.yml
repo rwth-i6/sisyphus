@@ -8,10 +8,10 @@ env:
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
     branches:
-      - main
+      - master
 jobs:
   test-hashes:
     runs-on: ubuntu-latest
