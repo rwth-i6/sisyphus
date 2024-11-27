@@ -38,7 +38,7 @@ class JobCleaner(threading.Thread):
             return True
 
         while not self.stopped:
-            self.sis_graph.for_all_nodes(f)
+            self.sis_graph.for_all_nodes(f, pool=self.thread_pool)
             time.sleep(gs.JOB_CLEANER_INTERVAL)
 
     def close(self):
