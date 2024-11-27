@@ -211,7 +211,7 @@ class Manager(threading.Thread):
         self.ui = ui
         self.interactive = interative
         self.interactive_always_skip = set()
-        self.update_out_sem = threading.Semaphore()
+        self.update_out_lock = threading.Lock()
 
         self.stop_if_done = True
         self._stop_loop = False
@@ -437,7 +437,7 @@ class Manager(threading.Thread):
             self.thread_pool.map(f, self.jobs.get(gs.STATE_RUNNABLE, []))
 
     def check_output(self, write_output=False, update_all_outputs=False, force_update=False):
-        with self.update_out_sem:
+        with self.update_out_lock:
             targets = self.sis_graph.targets if update_all_outputs else self.sis_graph.active_targets
             for target in targets:
                 target.update_requirements(write_output=write_output, force=force_update)
