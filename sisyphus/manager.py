@@ -92,9 +92,6 @@ def manager(args):
     manager = None
 
     try:
-        if args.run:
-            create_aliases(sis_graph.jobs())
-
         # The actual work loop
         if args.http_port is not None:
             logging.debug("Start http server")
