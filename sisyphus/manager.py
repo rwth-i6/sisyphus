@@ -549,7 +549,7 @@ class Manager(threading.Thread):
                 self.print_state_overview(verbose=True)
             elif answer.lower() == "y":
                 self.link_outputs = True
-                self.thread_pool.apply_async(create_aliases, self.sis_graph.jobs())
+                self.thread_pool.apply_async(create_aliases, (self.sis_graph.jobs(),))
                 self.thread_pool.apply_async(
                     self.check_output,
                     kwds={"write_output": self.link_outputs, "update_all_outputs": True, "force_update": True},
