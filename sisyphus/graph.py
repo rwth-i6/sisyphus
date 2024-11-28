@@ -488,7 +488,7 @@ class SISGraph(object):
         self.for_all_nodes(get_unfinished_jobs, nodes=nodes)
         return states
 
-    def for_all_nodes(self, f, nodes=None, bottom_up=False):
+    def for_all_nodes(self, f, nodes=None, bottom_up=False, *, pool: Optional[ThreadPool] = None):
         """
         Run function f for each node and ancestor for `nodes` from top down,
         stop expanding tree branch if functions returns False. Does not stop on None to allow functions with no
@@ -497,6 +497,7 @@ class SISGraph(object):
         :param (Job)->bool f: function will be executed for all nodes
         :param nodes: all nodes that will be checked, defaults to all output nodes in graph
         :param bool bottom_up: start with deepest nodes first, ignore return value of f
+        :param pool: use custom thread pool
         :return: set with all visited nodes
         """
 
@@ -544,7 +545,8 @@ class SISGraph(object):
 
         pool_lock = threading.Lock()
         finished_lock = threading.Lock()
-        pool = self.pool
+        if not pool:
+            pool = self.pool
 
         # recursive function to run through tree
         def runner(job):
