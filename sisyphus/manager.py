@@ -579,6 +579,7 @@ class Manager(threading.Thread):
             return
 
         last_state_overview = self.state_overview
+        time_last_update = time.time()
         while self.continue_manager_loop():
             finished_results_cache.write_to_file()
             # Don't to anything while the manager is paused
@@ -602,11 +603,16 @@ class Manager(threading.Thread):
 
             if self.auto_print_stat_overview:
                 self.update_state_overview()
-                if last_state_overview != self.state_overview:
+                if last_state_overview != self.state_overview or (
+                    gs.PRINT_STALE_STATE_OVERVIEW_PERIOD is not None
+                    and time.time() - time_last_update > gs.PRINT_STALE_STATE_OVERVIEW_PERIOD
+                ):
                     if self.ui:
+                        time_last_update = time.time()
                         self.ui.update_job_view(self.get_job_states())
                         self.ui.update_state_overview(" ".join(sorted(self.state_overview)))
                     else:
+                        time_last_update = time.time()
                         self.print_state_overview()
                     last_state_overview = self.state_overview
 
