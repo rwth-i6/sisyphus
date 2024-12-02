@@ -245,6 +245,8 @@ PRINT_ERROR_TASKS = 1
 PRINT_ERROR_LINES = 40
 #: Print message for held jobs
 PRINT_HOLD = True
+#: Print State Overview even though no updates happened
+PRINT_STALE_STATE_OVERVIEW_PERIOD = None
 
 #: Log for finished outputs.
 FINISHED_LOG = "log/finished.log"
