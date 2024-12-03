@@ -176,6 +176,11 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         if rqmt.get("multi_node_slots", 1) > 1:
             out.append("--ntasks=%s" % rqmt["multi_node_slots"])
             out.append("--nodes=%s" % rqmt["multi_node_slots"])
+        else:
+            # With --cpus-per-task=1, it's sometimes possible that we end up with SLURM_NTASKS=2.
+            # This here prevents this.
+            # https://github.com/rwth-i6/sisyphus/issues/229
+            out.append("--ntasks-per-node=1")
 
         sbatch_args = rqmt.get("sbatch_args", [])
         if isinstance(sbatch_args, str):
