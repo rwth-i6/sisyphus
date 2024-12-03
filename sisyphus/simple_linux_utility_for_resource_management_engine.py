@@ -163,7 +163,14 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             gres += str(rqmt["gpu"])
             out.append(gres)
 
-        out.append("--cpus-per-task=%s" % rqmt.get("cpu", 1))
+        def _round_up_to_even(n):
+            return n if n % 2 == 0 else n + 1
+
+        # Use an even number of CPUs, because when we have SLURM_CPUS_PER_TASK=1 (or any uneven num),
+        # but Slurm rounds the NumCPUs up to account for hyper-threading (NumCPUs=2),
+        # this will lead to SLURM_NTASKS=2, i.e. then this job would be executed twice.
+        # https://github.com/rwth-i6/sisyphus/issues/229
+        out.append("--cpus-per-task=%s" % _round_up_to_even(rqmt.get("cpu", 1)))
 
         # Try to convert time to float, calculate minutes from it
         # and convert it back to an rounded string
