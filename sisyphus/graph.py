@@ -545,6 +545,7 @@ class SISGraph(object):
 
         pool_lock = threading.Lock()
         finished_lock = threading.Lock()
+        stopped_event = threading.Event()
         if not pool:
             pool = self.pool
 
@@ -555,6 +556,8 @@ class SISGraph(object):
             """
             sis_id = job._sis_id()
             with pool_lock:
+                if stopped_event.is_set():
+                    return
                 if sis_id not in visited:
                     visited[sis_id] = pool.apply_async(
                         tools.default_handle_exception_interrupt_main_thread(runner_helper), (job,)
@@ -564,6 +567,8 @@ class SISGraph(object):
             """
             :param Job job:
             """
+            if stopped_event.is_set():
+                return
             # make sure all inputs are updated
             job._sis_runnable()
             nonlocal finished
@@ -583,12 +588,17 @@ class SISGraph(object):
             with finished_lock:
                 finished += 1
 
-        for node in nodes:
-            runner(node)
+        try:
+            for node in nodes:
+                runner(node)
 
-        # Check if all jobs are finished
-        while len(visited) != finished:
-            time.sleep(0.1)
+            # Check if all jobs are finished
+            while len(visited) != finished:
+                time.sleep(0.1)
+        except BaseException:
+            with pool_lock:
+                stopped_event.set()
+            raise
 
         # Check again and create output set
         out = set()
