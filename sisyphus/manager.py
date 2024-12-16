@@ -45,7 +45,8 @@ class JobCleaner(threading.Thread):
 
     def close(self):
         self.stopped.set()
-        self.join()
+        if self.is_alive():
+            self.join()
         self.thread_pool.close()
 
 
