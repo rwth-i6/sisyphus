@@ -29,20 +29,23 @@ class JobCleaner(threading.Thread):
         self.sis_graph = sis_graph
         self.worker = worker
         self.thread_pool = ThreadPool(self.worker)
-        self.stopped = False
+        self.stopped = threading.Event()
 
     def run(self):
         def f(job):
+            if self.stopped.is_set():
+                return False
             if job._sis_cleanable():
                 self.thread_pool.apply_async(tools.default_handle_exception_interrupt_main_thread(job._sis_cleanup))
             return True
 
-        while not self.stopped:
+        while not self.stopped.is_set():
             self.sis_graph.for_all_nodes(f, pool=self.thread_pool)
-            time.sleep(gs.JOB_CLEANER_INTERVAL)
+            self.stopped.wait(gs.JOB_CLEANER_INTERVAL)
 
     def close(self):
-        self.stopped = True
+        self.stopped.set()
+        self.join()
         self.thread_pool.close()
 
 
