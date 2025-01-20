@@ -426,7 +426,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         engine_logpath = (
             os.path.dirname(logpath)
             + "/engine/"
-            + os.getenv("SLURM_JOB_NAME")
+            + os.getenv("SLURM_JOB_NAME", self.process_task_name(task.task_name()))
             + "."
             + job_id
             + "."
