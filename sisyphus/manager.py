@@ -384,7 +384,7 @@ class Manager(threading.Thread):
             ret = input(prompt)
         return ret
 
-    def setup_holded_jobs(self):
+    def setup_held_jobs(self):
         # Find all jobs in hold state and set them up.
         # _sis_setup_directory can be called multiple times, it will only create the directory once
         self.thread_pool.map(lambda job: job._sis_setup_directory(), self.jobs.get(gs.STATE_HOLD, []))
@@ -546,9 +546,8 @@ class Manager(threading.Thread):
         while True and not self.ui:
             if answer is None:
                 pass
-            elif answer.lower() == "v":
-                self.print_state_overview(verbose=True)
             elif answer.lower() == "y":
+                logging.info("Start manager")
                 self.link_outputs = True
                 self.thread_pool.apply_async(create_aliases, (self.sis_graph.jobs(),))
                 self.thread_pool.apply_async(
@@ -556,17 +555,27 @@ class Manager(threading.Thread):
                     kwds={"write_output": self.link_outputs, "update_all_outputs": True, "force_update": True},
                 )
                 break
+            elif answer.lower() == "v":
+                self.print_state_overview(verbose=True)
             elif answer.lower() == "u":
+                logging.info("Update outputs and aliases")
                 self.link_outputs = True
                 create_aliases(self.sis_graph.jobs())
                 self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
+            elif answer.lower() == "s":
+                logging.info("Setup runnable jobs")
+                for job in self.jobs.get(gs.STATE_RUNNABLE, []):
+                    logging.info(f"Setup: {job}")
+                    job._sis_setup_directory()
             elif answer.lower() == "n":
+                logging.info("Exit manager")
                 self.stop()
                 return False
             else:
                 logging.warning("Unknown command: %s" % answer)
             answer = self.input(
-                "Print verbose overview (v), update aliases and outputs (u), " "start manager (y), or exit (n)? "
+                "Start manager (y), print verbose overview (v), update aliases and outputs (u),"
+                " setup runnable jobs (s), or exit (n)? "
             )
 
         if (not self._stop_loop) and (gs.CLEAR_ERROR or self.clear_errors_once):
@@ -626,7 +635,7 @@ class Manager(threading.Thread):
                 logging.debug("Wait for %i seconds" % gs.WAIT_PERIOD_BETWEEN_CHECKS)
                 time.sleep(gs.WAIT_PERIOD_BETWEEN_CHECKS)
 
-            self.setup_holded_jobs()
+            self.setup_held_jobs()
             self.resume_jobs()
             self.run_jobs()
 
