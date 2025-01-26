@@ -161,6 +161,9 @@ class AbstractPath(DelayedBase):
                     logging.warning("Job marked as finished but requested output is not available: %s" % self)
             return job_path_available
 
+    def is_set(self):
+        return self.available()
+
     # TODO Move this to toolkit cleanup together with job method
     def get_needed_jobs(self, visited):
         """Return all jobs leading to this path"""
