@@ -18,7 +18,7 @@ import subprocess
 import sys
 import time
 import traceback
-from typing import List, Iterator, Type, TypeVar
+from typing import List, Iterator, Type, TypeVar, Optional
 
 from sisyphus import block, tools
 from sisyphus.task import Task
@@ -472,7 +472,7 @@ class Job(metaclass=JobSingleton):
             self._sis_is_finished = True
             return True
         else:
-            if self._sis_setup() and self._sis_runnable():
+            if self._sis_setup() and self._sis_runnable(return_when_finished=None):
                 # check all task if they are finished
                 for task in self._sis_tasks():
                     # job is only finished if all sub tasks are finished
@@ -684,8 +684,15 @@ class Job(metaclass=JobSingleton):
                 return False
         return True
 
-    def _sis_runnable(self):
+    def _sis_runnable(self, *, return_when_finished: Optional[bool] = True):
         """True if all inputs are available, also checks if new inputs are requested"""
+        if return_when_finished is not None:
+            # Avoid _sis_finished call due to potential recursive calls.
+            if not self._sis_is_finished and job_finished(self._sis_path()):
+                # Job is already marked as finished, skip check next time
+                self._sis_is_finished = True
+            if self._sis_is_finished:
+                return return_when_finished
 
         if not self._sis_update_possible():
             # Short cut used for most jobs
