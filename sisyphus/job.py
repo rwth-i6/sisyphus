@@ -281,7 +281,7 @@ class Job(metaclass=JobSingleton):
                 # I it would be possible to hit some cases where this could
                 # cause a collision sorry if you are really that unlucky...
                 link_name = os.path.join(self._sis_path(gs.JOB_INPUT), str(job_id).replace("/", "_"))
-                if not os.path.isdir(link_name):
+                if not os.path.exists(link_name) and not os.path.islink(link_name):
                     os.symlink(src=os.path.abspath(str(creator._sis_path())), dst=link_name, target_is_directory=True)
 
         # export the actual job
