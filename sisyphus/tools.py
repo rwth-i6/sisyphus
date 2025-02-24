@@ -87,17 +87,17 @@ def extract_paths(args: Any) -> Set:
         visited_obj_ids[id(obj)] = obj
         if obj is None:
             continue
-        if isinstance(obj, (bool, int, float, complex, str)):
+        if isinstance(obj, (bool, int, float, complex, str, bytes)):
             continue
         if isinstance(obj, Block) or isinstance(obj, enum.Enum):
             continue
-        if hasattr(obj, "_sis_path") and obj._sis_path is True and not type(obj) is type:
+        if hasattr(obj, "_sis_path") and obj._sis_path is True and type(obj) is not type:
             out.add(obj)
         elif isinstance(obj, (list, tuple, set, frozenset)):
             queue.extend(obj)
         elif isinstance(obj, dict):
             for k, v in obj.items():
-                if not type(k) == str or not k.startswith("_sis_"):
+                if not isinstance(k, str) or not k.startswith("_sis_"):
                     queue.append(v)
         else:
             queue.append(get_object_state(obj))
