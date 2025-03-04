@@ -675,7 +675,7 @@ def compare_graph(obj1, obj2, traceback=None, visited=None):
 
     if skip:
         pass
-    elif type(obj1) != type(obj2):
+    elif type(obj1) is not type(obj2):
         yield traceback + [(type(obj1), type(obj2))]
     elif isinstance(obj1, Job):
         if obj1._sis_id() != obj2._sis_id():
