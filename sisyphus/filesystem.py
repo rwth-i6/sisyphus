@@ -2,7 +2,6 @@
 
 import os
 import time
-import collections
 import types
 from sisyphus.tools import cache_result
 
@@ -10,10 +9,8 @@ from fuse import FUSE, Operations
 from sisyphus import toolkit
 from sisyphus.block import all_root_blocks
 
-Symlink = collections.namedtuple("Symlink", ["target"])
 
-
-class FilesystemObject(object):
+class FilesystemObject:
     pass
 
 

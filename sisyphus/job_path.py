@@ -228,7 +228,7 @@ class AbstractPath(DelayedBase):
         return s < o
 
     def __eq__(self, other):
-        if type(self) != type(other):
+        if type(self) is not type(other):
             return False
 
         # TODO Check how uninitialized object should behave here
