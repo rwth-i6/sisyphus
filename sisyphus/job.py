@@ -289,17 +289,17 @@ class Job(metaclass=JobSingleton):
             pickle.dump(self, f)
 
         with open(self._sis_path(gs.JOB_INFO), "w", encoding="utf-8") as f:
-            for tag in self.tags:
+            for tag in sorted(self.tags):
                 f.write("TAG: %s\n" % tag)
-            for i in self._sis_inputs:
+            for i in sorted(p.get_path() for p in self._sis_inputs):
                 f.write("INPUT: %s\n" % i)
-            for key, value in self._sis_kwargs.items():
+            for key, value in sorted(self._sis_kwargs.items()):
                 try:
                     f.write("PARAMETER: %s: %s\n" % (key, value))
                 except UnicodeEncodeError as e:
                     f.write("PARAMETER: %s: <UnicodeEncodeError: %s>\n" % (key, e))
             if self._sis_aliases:
-                for alias in self._sis_aliases:
+                for alias in sorted(self._sis_aliases):
                     f.write("ALIAS: %s\n" % alias)
             for stacktrace in self._sis_stacktrace:
                 f.write("STACKTRACE:\n")
