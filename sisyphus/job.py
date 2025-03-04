@@ -289,7 +289,7 @@ class Job(metaclass=JobSingleton):
             pickle.dump(self, f)
 
         with open(self._sis_path(gs.JOB_INFO), "w", encoding="utf-8") as f:
-            for tag in sorted(str(t) for t in self.tags):
+            for tag in sorted(self.tags):
                 f.write("TAG: %s\n" % tag)
             for i in sorted(str(p) for p in self._sis_inputs):
                 f.write("INPUT: %s\n" % i)
