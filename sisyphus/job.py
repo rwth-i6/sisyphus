@@ -293,14 +293,13 @@ class Job(metaclass=JobSingleton):
                 f.write("TAG: %s\n" % tag)
             for i in sorted(p.get_path() for p in self._sis_inputs):
                 f.write("INPUT: %s\n" % i)
-            for key in sorted(self._sis_kwargs.keys()):
-                value = self._sis_kwargs[key]
+            for key, value in sorted(self._sis_kwargs.items()):
                 try:
                     f.write("PARAMETER: %s: %s\n" % (key, value))
                 except UnicodeEncodeError as e:
                     f.write("PARAMETER: %s: <UnicodeEncodeError: %s>\n" % (key, e))
             if self._sis_aliases:
-                for alias in sorted(str(a) for a in self._sis_aliases):
+                for alias in sorted(self._sis_aliases):
                     f.write("ALIAS: %s\n" % alias)
             for stacktrace in self._sis_stacktrace:
                 f.write("STACKTRACE:\n")
