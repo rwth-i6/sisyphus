@@ -291,7 +291,7 @@ class Job(metaclass=JobSingleton):
         with open(self._sis_path(gs.JOB_INFO), "w", encoding="utf-8") as f:
             for tag in sorted(self.tags):
                 f.write("TAG: %s\n" % tag)
-            for i in sorted(p.get_path() if isinstance(p, AbstractPath) else str(p) for p in self._sis_inputs):
+            for i in sorted(p.get_path() for p in self._sis_inputs):
                 f.write("INPUT: %s\n" % i)
             for key in sorted(self._sis_kwargs.keys()):
                 value = self._sis_kwargs[key]
