@@ -58,7 +58,7 @@ def visualize_block(block, engine, vis_url_prefix):
 
     for i in inputs:
         creator = input_to_node[i] if i in input_to_node else ""
-        users = sorted(t[1] for t in filter(lambda l: l[0] == i, links))
+        users = sorted(t[1] for t in filter(lambda link: link[0] == i, links))
         hash = sis_hash((creator, users))
         merge_inputs_mapping[i] = hash
         if hash not in merged_labels:

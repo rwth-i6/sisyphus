@@ -768,7 +768,7 @@ class Job(metaclass=JobSingleton):
         return str(self)
 
     def __eq__(self, other):
-        if type(other) != type(self):
+        if type(other) is not type(self):
             return False
         else:
             # TODO Check how uninitialized object should behave here
