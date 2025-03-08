@@ -104,23 +104,32 @@ class OutputPath(OutputTarget):
                         pass
 
                     # Check if current link is correct
+                    prev_link = None
+                    new_link = os.path.realpath(self._sis_path.get_path())
                     if os.path.islink(outfile_name):
-                        if os.path.realpath(outfile_name) != os.path.realpath(self._sis_path.get_path()):
+                        prev_link = os.path.realpath(outfile_name)
+                        if prev_link != new_link:
                             os.unlink(outfile_name)
                         else:
                             return
 
                     # Set new link if needed
-                    os.symlink(os.path.realpath(self._sis_path.get_path()), outfile_name)
+                    os.symlink(new_link, outfile_name)
                     logging.info("Finished output: %s" % outfile_name)
 
                     if gs.FINISHED_LOG:
                         if "/" in gs.FINISHED_LOG and not os.path.exists(os.path.dirname(gs.FINISHED_LOG)):
                             os.makedirs(os.path.dirname(gs.FINISHED_LOG))
                         with open(gs.FINISHED_LOG, "a") as f:
-                            f.write(
-                                datetime.now().strftime("%Y-%m-%d %H:%M:%S: ") + f"Finished output: {outfile_name}\n"
-                            )
+                            now_s = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            if prev_link and prev_link != new_link:
+                                common_path = os.path.commonpath([prev_link, new_link])
+                                clen = (len(common_path) + 1) if common_path != "/" else 0
+                                f.write(
+                                    f"{now_s}: Updated output: {outfile_name}:"
+                                    f" {'.../' if clen else ''}{prev_link[clen:]} -> {new_link[clen:]}\n"
+                                )
+                            f.write(f"{now_s}: Finished output: {outfile_name} (-> {self._sis_path.rel_path()})\n")
 
                 except OSError as e:
                     logging.warning("Failed to updated output %s. Exception: %s" % (outfile_name, e))
