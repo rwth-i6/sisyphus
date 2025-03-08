@@ -129,7 +129,7 @@ class OutputPath(OutputTarget):
                                     f"{now_s}: Updated output: {outfile_name}:"
                                     f" {'.../' if clen else ''}{prev_link[clen:]} -> {new_link[clen:]}\n"
                                 )
-                            f.write(f"{now_s}: Finished output: {outfile_name} (-> {self._sis_path.get_path()})\n")
+                            f.write(f"{now_s}: Finished output: {outfile_name} (-> {self._sis_path.rel_path()})\n")
 
                 except OSError as e:
                     logging.warning("Failed to updated output %s. Exception: %s" % (outfile_name, e))
