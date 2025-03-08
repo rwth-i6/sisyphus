@@ -124,10 +124,10 @@ class OutputPath(OutputTarget):
                             now_s = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             if prev_link and prev_link != new_link:
                                 common_path = os.path.commonpath([prev_link, new_link])
-                                clen = len(common_path) if common_path != "/" else 0
+                                clen = (len(common_path) + 1) if common_path != "/" else 0
                                 f.write(
                                     f"{now_s}: Updated output: {outfile_name}:"
-                                    f" {'...' if clen else ''}{prev_link[clen:]} -> {new_link[clen:]}\n"
+                                    f" {'.../' if clen else ''}{prev_link[clen:]} -> {new_link[clen:]}\n"
                                 )
                             f.write(f"{now_s}: Finished output: {outfile_name} ({self._sis_path.get_path()})\n")
 
