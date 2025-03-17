@@ -459,3 +459,18 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             name = self.job_name_mapping(name)
         name = name.replace("/", ".")  # escape name
         return name
+
+    def get_job_node_hostnames(self):
+        env_vars = ["SLURM_JOB_NODELIST", "SLURM_NODELIST"]
+        env_var = next((v for v in env_vars if v in os.environ), None)
+        assert env_var is not None, (
+            f"neither of {'/'.join(env_vars)} is set, are we running in a worker context?"
+        )
+        partaking_nodes = os.environ[env_var]
+        nodes = sorted(
+            node_name.strip()
+            for node_name in subprocess.check_output(
+                ["scontrol", "show", "hostnames", partaking_nodes], text=True
+            )
+        )
+        return nodes

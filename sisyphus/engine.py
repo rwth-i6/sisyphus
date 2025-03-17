@@ -4,6 +4,7 @@ import collections
 import copy
 import logging
 import os
+from typing import List
 import psutil
 from ast import literal_eval
 
@@ -200,6 +201,14 @@ class EngineBase:
         :return:
         """
         pass
+
+    def get_job_node_hostnames(self) -> List[str]:
+        """
+        Returns the list of nodes the currently running job is executing on.
+
+        Can only be called in a worker context.
+        """
+        raise NotImplementedError
 
 
 class EngineSelector(EngineBase):
