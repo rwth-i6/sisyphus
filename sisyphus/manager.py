@@ -681,11 +681,11 @@ def create_aliases(jobs: Collection[Job]):
                     logging.warning("First use: %s" % aliases[alias].job_id())
                     if aliases[alias]._sis_stacktrace:
                         for line in traceback.format_list(aliases[alias]._sis_stacktrace[0]):
-                            logging.info(line)
+                            logging.info("%s", line.rstrip())
                     logging.warning("Additional use: %s" % job.job_id())
                     if job._sis_stacktrace:
                         for line in traceback.format_list(job._sis_stacktrace[0]):
-                            logging.info(line)
+                            logging.info("%s", line.rstrip())
                 else:
                     aliases[alias] = job
 
