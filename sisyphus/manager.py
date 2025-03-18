@@ -1,3 +1,8 @@
+"""
+Sisyphus manager
+"""
+
+from __future__ import annotations
 import asyncio
 import atexit
 import logging
@@ -6,6 +11,7 @@ import sys
 import threading
 import time
 import warnings
+from typing import TYPE_CHECKING, Dict, Collection
 
 from multiprocessing.pool import ThreadPool
 
@@ -14,6 +20,9 @@ from sisyphus.loader import config_manager
 from sisyphus.block import Block
 from sisyphus.tools import finished_results_cache
 import sisyphus.global_settings as gs
+
+if TYPE_CHECKING:
+    from sisyphus.job import Job
 
 
 class JobCleaner(threading.Thread):
@@ -653,7 +662,7 @@ class Manager(threading.Thread):
         self.check_output(write_output=self.link_outputs, update_all_outputs=True, force_update=True)
 
 
-def create_aliases(jobs):
+def create_aliases(jobs: Collection[Job]):
     # first scan jobs for aliases
     aliases = {}
     alias_dirs = set()
