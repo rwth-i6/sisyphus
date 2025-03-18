@@ -10,6 +10,7 @@ import os
 import sys
 import threading
 import time
+import traceback
 import warnings
 from typing import TYPE_CHECKING, Dict, Collection
 
@@ -664,7 +665,7 @@ class Manager(threading.Thread):
 
 def create_aliases(jobs: Collection[Job]):
     # first scan jobs for aliases
-    aliases = {}
+    aliases: Dict[str, Job] = {}  # alias -> job
     alias_dirs = set()
     for job in jobs:
         orig_aliases = job.get_aliases()
@@ -677,10 +678,16 @@ def create_aliases(jobs: Collection[Job]):
                 alias = os.path.join(prefix, alias)
                 if alias in aliases:
                     logging.warning("Alias %s is used multiple times:" % alias)
-                    logging.warning("First use: %s" % aliases[alias])
+                    logging.warning("First use: %s" % aliases[alias].job_id())
+                    if aliases[alias]._sis_stacktrace:
+                        for line in traceback.format_list(aliases[alias]._sis_stacktrace[0]):
+                            logging.info(line)
                     logging.warning("Additional use: %s" % job.job_id())
+                    if job._sis_stacktrace:
+                        for line in traceback.format_list(job._sis_stacktrace[0]):
+                            logging.info(line)
                 else:
-                    aliases[alias] = job.job_id()
+                    aliases[alias] = job
 
     # is there anything to do?
     if len(aliases) <= 0:
@@ -693,7 +700,8 @@ def create_aliases(jobs: Collection[Job]):
             os.makedirs(d)
 
     # create the symlinks
-    for alias, target in aliases.items():
+    for alias, target_job in aliases.items():
+        target = target_job.job_id()
         alias = os.path.join(gs.ALIAS_DIR, alias)
         target = os.path.join(gs.WORK_DIR, target)
 
