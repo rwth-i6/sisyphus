@@ -677,8 +677,8 @@ def create_aliases(jobs: Collection[Job]):
             for alias in orig_aliases:
                 alias = os.path.join(prefix, alias)
                 if alias in aliases:
-                    logging.warning("Alias %s is used multiple times:" % alias)
-                    logging.warning("First use: %s" % aliases[alias].job_id())
+                    logging.warning("Alias %s is used multiple times:", alias)
+                    logging.warning("First use: %s", aliases[alias].job_id())
                     if aliases[alias]._sis_stacktrace:
                         for line in traceback.format_list(aliases[alias]._sis_stacktrace[0]):
                             logging.info("%s", line.rstrip())
