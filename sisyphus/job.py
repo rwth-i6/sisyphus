@@ -218,6 +218,7 @@ class Job(metaclass=JobSingleton):
 
         self._sis_job_lock = Job.get_lock()
         self._sis_is_finished = False
+        self._sis_finished_recent_check_time = float("-inf")
         self._sis_setup_since_restart = False
 
         self._sis_environment = tools.EnvironmentModifier(cleanup_env=gs.CLEANUP_ENVIRONMENT)
@@ -467,6 +468,10 @@ class Job(metaclass=JobSingleton):
         """Return True if job or task is finished"""
         if self._sis_is_finished:
             return True
+
+        if (time.monotonic() - self._sis_finished_recent_check_time) < gs.WAIT_PERIOD_BETWEEN_CHECKS:
+            return False
+        self._sis_finished_recent_check_time = time.monotonic()
 
         if job_finished(self._sis_path()):
             # Job is already marked as finished, skip check next time
