@@ -469,6 +469,10 @@ class Job(metaclass=JobSingleton):
         if self._sis_is_finished:
             return True
 
+        # This might run again and again recursively:
+        # _sis_finished -> _sis_runnable -> _sis_all_path_available -> path_available -> _sis_finished
+        # https://github.com/rwth-i6/sisyphus/issues/249
+        # Don't check too often.
         if (time.monotonic() - self._sis_finished_recent_check_time) < gs.WAIT_PERIOD_BETWEEN_CHECKS:
             return False
         self._sis_finished_recent_check_time = time.monotonic()
