@@ -420,9 +420,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         if os.path.isfile(logpath):
             os.unlink(logpath)
 
-        job_id = next(
-            filter(None, (os.getenv(name, None) for name in ["SLURM_JOB_ID", "SLURM_JOBID", "SLURM_ARRAY_JOB_ID"])), "0"
-        )
+        job_id = next(filter(None, (os.getenv(name, None) for name in ["SLURM_JOB_ID", "SLURM_JOBID"])), "0")
         engine_logpath = (
             os.path.dirname(logpath)
             + "/engine/"
