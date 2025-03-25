@@ -238,7 +238,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :param int step_size:
         """
         name = self.process_task_name(name)
-        out_log_file = f"{logpath}/%x.%A.%a"
+        out_log_file = f"{logpath}/%x.%j.%a"
         if rqmt.get("multi_node_slots", 1) > 1:
             out_log_file += ".%t"
         sbatch_call = ["sbatch", "-J", name, "--mail-type=None"]
