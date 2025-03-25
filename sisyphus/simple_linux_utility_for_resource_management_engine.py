@@ -238,7 +238,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :param int step_size:
         """
         name = self.process_task_name(name)
-        out_log_file = f"{logpath}/%x.%j.%a"
+        out_log_file = f"{logpath}/%x.%A.%a"
         if rqmt.get("multi_node_slots", 1) > 1:
             out_log_file += ".%t"
         sbatch_call = ["sbatch", "-J", name, "--mail-type=None"]
@@ -420,13 +420,12 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         if os.path.isfile(logpath):
             os.unlink(logpath)
 
-        job_id = next(filter(None, (os.getenv(name, None) for name in ["SLURM_JOB_ID", "SLURM_JOBID"])), "0")
         engine_logpath = (
             os.path.dirname(logpath)
             + "/engine/"
             + os.getenv("SLURM_JOB_NAME", self.process_task_name(task.task_name()))
             + "."
-            + job_id
+            + os.getenv("SLURM_ARRAY_JOB_ID", "0")
             + "."
             + os.getenv("SLURM_ARRAY_TASK_ID", "1")
         )
