@@ -3,11 +3,11 @@ These settings can be overwritten via a ``settings.py`` file in the current dire
 """
 
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
-
+from __future__ import annotations
 import logging
 import sys
 from typing import Dict
-from future import __annotations__
+
 import sisyphus.hash
 from sisyphus.global_constants import *
 from typing import TYPE_CHECKING
