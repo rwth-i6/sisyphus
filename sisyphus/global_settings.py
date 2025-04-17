@@ -85,6 +85,19 @@ def on_job_failure(job):
     pass
 
 
+def on_job_finished(job):
+    """
+    Job finished hook.
+
+    Can be used to update permissions on job outputs after completion.
+
+    The callback needs to be stateless and indempotent, as it can be called multiple
+    times on the same job, especially if the job is from another user and sisyphus
+    can't add the job finished marker.
+    """
+    pass
+
+
 def update_engine_rqmt(last_rqmt: Dict, last_usage: Dict):
     """Update requirements after a job got interrupted, double limits if needed
 
