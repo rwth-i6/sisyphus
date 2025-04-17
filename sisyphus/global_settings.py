@@ -10,6 +10,10 @@ from typing import Dict
 
 import sisyphus.hash
 from sisyphus.global_constants import *
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sisyphus import Job
 
 
 def engine():
@@ -60,7 +64,7 @@ def worker_wrapper(job, task_name, call):
     return call
 
 
-def on_job_failure(job):
+def on_job_failure(job: Job):
     """
     Job failure hook.
 
@@ -85,7 +89,7 @@ def on_job_failure(job):
     pass
 
 
-def on_job_finished(job):
+def on_job_finished(job: Job):
     """
     Job finished hook.
 
