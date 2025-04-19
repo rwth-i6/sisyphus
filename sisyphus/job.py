@@ -6,6 +6,7 @@ Module to contain all job related code
 
 """
 
+from __future__ import annotations
 import copy
 import gzip
 import inspect
@@ -18,7 +19,7 @@ import subprocess
 import sys
 import time
 import traceback
-from typing import List, Iterator, Type, TypeVar
+from typing import Optional, Any, List, Iterator, Type, TypeVar, Set, Dict
 
 from sisyphus import block, tools
 from sisyphus.task import Task
@@ -202,7 +203,7 @@ class Job(metaclass=JobSingleton):
                     % (str(arg)[3:], key, self.__class__)
                 )
 
-        self._sis_aliases = None
+        self._sis_aliases: Optional[Set[str]] = None
         self._sis_alias_prefixes = set()
         self._sis_vis_name = None
         self._sis_output_dirs = set()
@@ -217,6 +218,7 @@ class Job(metaclass=JobSingleton):
 
         self._sis_job_lock = Job.get_lock()
         self._sis_is_finished = False
+        self._sis_finished_recent_check_time = float("-inf")
         self._sis_setup_since_restart = False
 
         self._sis_environment = tools.EnvironmentModifier(cleanup_env=gs.CLEANUP_ENVIRONMENT)
@@ -467,6 +469,14 @@ class Job(metaclass=JobSingleton):
         if self._sis_is_finished:
             return True
 
+        # This might run again and again recursively:
+        # _sis_finished -> _sis_runnable -> _sis_all_path_available -> path_available -> _sis_finished
+        # https://github.com/rwth-i6/sisyphus/issues/249
+        # Don't check too often.
+        if (time.monotonic() - self._sis_finished_recent_check_time) < gs.WAIT_PERIOD_BETWEEN_CHECKS:
+            return False
+        self._sis_finished_recent_check_time = time.monotonic()
+
         if job_finished(self._sis_path()):
             # Job is already marked as finished, skip check next time
             self._sis_is_finished = True
@@ -554,11 +564,10 @@ class Job(metaclass=JobSingleton):
         return self._sis_id_cache.encode()
 
     @classmethod
-    def _sis_hash_static(cls, parsed_args):
+    def _sis_hash_static(cls, parsed_args: Dict[str, Any]) -> str:
         """
-        :param dict[str] parsed_args:
+        :param parsed_args:
         :return: hash
-        :rtype: str
         """
         h = cls.hash(parsed_args)
         assert isinstance(h, str), "hash return value must be str"
@@ -1009,7 +1018,7 @@ class Job(metaclass=JobSingleton):
         """Returns a unique string to identify this job"""
         return self._sis_id()
 
-    def get_aliases(self):
+    def get_aliases(self) -> Optional[Set[str]]:
         return self._sis_aliases
 
     def get_one_alias(self):
@@ -1021,7 +1030,7 @@ class Job(metaclass=JobSingleton):
                 return None
         return None
 
-    def add_alias(self, alias):
+    def add_alias(self, alias: str):
         if self._sis_aliases is None:
             self._sis_aliases = set()
         self._sis_aliases.add(alias)

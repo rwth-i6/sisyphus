@@ -351,7 +351,7 @@ class SISGraph(object):
     def job_by_id(self, sis_id):
         return self.id_to_job_dict().get(sis_id)
 
-    def jobs(self):
+    def jobs(self) -> List[Job]:
         """
         :return ([Job, ...]): List with all jobs in grpah
         """
