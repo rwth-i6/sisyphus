@@ -63,7 +63,7 @@ class DelayedBase:
     def __rpow__(self, other):
         return DelayedPow(other, self)
 
-    def __round__(self, n: Union[int, DelayedBase] = None):
+    def __round__(self, n: Union[None, int, DelayedBase] = None):
         return DelayedRound(self, n)
 
     def __getitem__(self, key):
