@@ -1,4 +1,6 @@
-from typing import Any, Iterable
+from __future__ import annotations
+
+from typing import Union
 
 from sisyphus.hash import sis_hash_helper
 from sisyphus.tools import try_get
@@ -60,6 +62,9 @@ class DelayedBase:
 
     def __rpow__(self, other):
         return DelayedPow(other, self)
+
+    def __round__(self, n: Union[int, DelayedBase] = None):
+        return DelayedRound(self, n)
 
     def __getitem__(self, key):
         return DelayedGetItem(self, key)
@@ -125,6 +130,11 @@ class DelayedMod(DelayedBase):
 class DelayedPow(DelayedBase):
     def get(self):
         return try_get(self.a) ** try_get(self.b)
+
+
+class DelayedRound(DelayedBase):
+    def get(self):
+        return round(try_get(self.a), try_get(self.b))
 
 
 class DelayedGetItem(DelayedBase):
