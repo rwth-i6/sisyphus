@@ -243,7 +243,7 @@ class SISGraph(object):
 
     def __init__(self):
         self._targets = set()  # type: set[OutputTarget]
-        self._active_targets = []  # type: list[OutputTarget]
+        self._active_targets = {}  # type: dict[OutputTarget,None]  # dict to keep it sorted
         self._pool = None
         self.used_output_path = set()
 
@@ -260,10 +260,10 @@ class SISGraph(object):
 
     @property
     def active_targets(self):
-        return self._active_targets
+        return self._active_targets.keys()
 
     def remove_from_active_targets(self, target):
-        self._active_targets = [out for out in self._active_targets if out != target]
+        self._active_targets.pop(target, None)
 
     @property
     def targets_dict(self):
@@ -314,7 +314,7 @@ class SISGraph(object):
             pass
 
         if not target.is_done():
-            self._active_targets.append(target)
+            self._active_targets[target] = None
 
     def update_nodes(self):
         """Update all nodes to get the most current dependency graph"""
