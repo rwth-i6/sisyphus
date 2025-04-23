@@ -19,7 +19,7 @@ jobs:
       with:
         python-version: 3.13
         cache: 'pip'
-        cache-dependency-path: '.github/workflows/black.yml'        
+        cache-dependency-path: '.github/workflows/black.yml'
     - run: pip install black==22.3.0
     - run: black --diff .
     - run: black --check .
