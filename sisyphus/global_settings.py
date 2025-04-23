@@ -3,13 +3,17 @@ These settings can be overwritten via a ``settings.py`` file in the current dire
 """
 
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
-
+from __future__ import annotations
 import logging
 import sys
 from typing import Dict
 
 import sisyphus.hash
 from sisyphus.global_constants import *
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sisyphus import Job
 
 
 def engine():
@@ -60,7 +64,7 @@ def worker_wrapper(job, task_name, call):
     return call
 
 
-def on_job_failure(job):
+def on_job_failure(job: Job):
     """
     Job failure hook.
 
@@ -81,6 +85,19 @@ def on_job_failure(job):
         - use with caution
         - ensure you don't build infinite retry loops
         - limit to specific use cases (e.g. local disk full, GPU broken, etc.)
+    """
+    pass
+
+
+def on_job_finished(job: Job):
+    """
+    Job finished hook.
+
+    Can be used to update permissions on job outputs after completion.
+
+    The callback needs to be stateless and indempotent, as it can be called multiple
+    times on the same job, especially if the job is from another user and sisyphus
+    can't add the job finished marker.
     """
     pass
 

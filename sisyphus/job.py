@@ -498,6 +498,7 @@ class Job(metaclass=JobSingleton):
                     # finished marker
                     pass
                 self._sis_link_to_team_share_dir()
+                gs.on_job_finished(self)
                 return True
             else:
                 # Job is not even setup => can not be finished yet
