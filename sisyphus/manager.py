@@ -450,7 +450,7 @@ class Manager(threading.Thread):
     def check_output(self, write_output=False, update_all_outputs=False, force_update=False):
         with self.update_out_lock:
             targets = self.sis_graph.targets if update_all_outputs else self.sis_graph.active_targets
-            for target in targets:
+            for target in list(targets):
                 target.update_requirements(write_output=write_output, force=force_update)
                 if target.is_done():
                     target.run_when_done(write_output=write_output)
