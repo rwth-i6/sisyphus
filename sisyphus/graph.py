@@ -243,7 +243,8 @@ class SISGraph(object):
 
     def __init__(self):
         self._targets = set()  # type: set[OutputTarget]
-        self._active_targets = {}  # type: dict[OutputTarget,None]  # dict to keep it sorted
+        # dict instead of set to keep it sorted (not necessarily needed, but nicer)
+        self._active_targets = {}  # type: dict[OutputTarget,None]
         self._pool = None
         self.used_output_path = set()
 
