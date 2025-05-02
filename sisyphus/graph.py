@@ -69,7 +69,7 @@ class OutputTarget:
         )
 
     def __hash__(self):
-        return hash((type(self), self.name, self.required_full_list))
+        return hash((type(self), self.name, tuple(self.required_full_list)))
 
 
 class OutputPath(OutputTarget):
