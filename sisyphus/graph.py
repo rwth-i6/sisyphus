@@ -62,10 +62,14 @@ class OutputTarget:
             return self.required_full_list
 
     def __eq__(self, other):
-        return type(self) is type(other) and self.__dict__ == other.__dict__
+        return (
+            type(self) is type(other)
+            and self.name == other.name
+            and self.required_full_list == other.required_full_list
+        )
 
     def __hash__(self):
-        return sisyphus.hash.int_hash(self)
+        return hash((type(self), self.name, tuple(self.required_full_list)))
 
 
 class OutputPath(OutputTarget):
