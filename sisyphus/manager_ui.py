@@ -476,7 +476,7 @@ class SisyphusDisplay:
                 import tempfile
 
                 open_lf = tempfile.NamedTemporaryFile("w")
-                log_message = "Could not create default log file at %s, use fallback to " "temporary file at %s." % (
+                log_message = "Could not create default log file at %s, use fallback to temporary file at %s." % (
                     log_file,
                     open_lf.name,
                 )

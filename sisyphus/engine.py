@@ -218,9 +218,9 @@ class EngineSelector(EngineBase):
         """
         assert isinstance(default_engine, str), "default_engine must be a string: %r" % (default_engine,)
         for k, v in engines.items():
-            assert isinstance(k, str) and isinstance(
-                v, EngineBase
-            ), "engines must only contain strings as keys and Engines as value: (%r, %r)" % (k, v)
+            assert isinstance(k, str) and isinstance(v, EngineBase), (
+                "engines must only contain strings as keys and Engines as value: (%r, %r)" % (k, v)
+            )
         self.engines = engines
         self.default_engine = default_engine
 

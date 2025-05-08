@@ -24,9 +24,7 @@ def format_time(t):
 
 
 def format_bytes(b):
-    return format_number(
-        b, factor=1024, mapping=["B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB" "YB"], use_decimal_after=3
-    )
+    return format_number(b, factor=1024, mapping=["B", "kB", "MB", "GB", "TB", "PB", "EB", "ZBYB"], use_decimal_after=3)
 
 
 def format_number(number, factor=1000, mapping=[""] + ["e+%02i" % i for i in range(3, 31, 3)], use_decimal_after=1):
@@ -143,8 +141,7 @@ class LoggingThread(Thread):
 
         log_usage(resources)
         logging.info(
-            "Max resources: Run time: {time} CPU: {cpu}% RSS: {rss} VMS: {vms}"
-            "".format(
+            "Max resources: Run time: {time} CPU: {cpu}% RSS: {rss} VMS: {vms}".format(
                 time=format_time(time.time() - start_time),
                 cpu=max_resources["cpu"],
                 rss=format_bytes(max_resources["rss"] * 1024**3),

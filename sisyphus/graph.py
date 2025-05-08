@@ -641,7 +641,7 @@ class SISGraph(object):
                         visited[sis_id] = obj
                         if only_check:
                             logging.warning(
-                                "Could not export %s since it's only reachable " "via sets. %s" % (obj, only_check)
+                                "Could not export %s since it's only reachable via sets. %s" % (obj, only_check)
                             )
                         else:
                             yield path, obj
