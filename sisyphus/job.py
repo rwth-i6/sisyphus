@@ -42,7 +42,7 @@ def get_args(f, args, kwargs):
     parsed_args = inspect.getcallargs(f, self, *args, **kwargs)
     self = inspect.getfullargspec(f).args[0]
     if self != "self":
-        logging.warning("Deleted obj attribute not named self attribute " "name %s object" % self)
+        logging.warning("Deleted obj attribute not named self attribute name %s object" % self)
     del parsed_args[self]
     return parsed_args
 
@@ -1079,7 +1079,7 @@ class Job(metaclass=JobSingleton):
         global SET_DEFAULT_WARNING_COUNT
         if SET_DEFAULT_WARNING_COUNT < 10:
             logging.warning(
-                "set_default is deprecated, please set the variable manually " "(%s, %s, %s)" % (self, name, value)
+                "set_default is deprecated, please set the variable manually (%s, %s, %s)" % (self, name, value)
             )
             SET_DEFAULT_WARNING_COUNT += 1
         elif SET_DEFAULT_WARNING_COUNT == 10:
