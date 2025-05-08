@@ -250,8 +250,7 @@ class AWSBatchEngine(EngineBase):
             # task id passed via argument
             return task_id
         logging.warning(
-            "Job in local engine started without task_id, "
-            "worker is probably started manualy. Continue with task_id=1"
+            "Job in local engine started without task_id, worker is probably started manualy. Continue with task_id=1"
         )
         return 1
 
