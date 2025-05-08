@@ -168,13 +168,7 @@ def register_output(name, value, export_graph=False):
     :param bool export_graph:
     """
     assert isinstance(value, AbstractPath), (
-        "Can only register Path or Variable objects as output, "
-        "but %s is of type %s.\n%s"
-        % (
-            name,
-            type(value),
-            str(value),
-        )
+        f"Can only register Path or Variable objects as output, but {name} is of type {type(value)}.\n{str(value)}"
     )
     sis_graph.add_target(graph.OutputPath(name, value))
     if export_graph:
