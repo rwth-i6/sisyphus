@@ -14,7 +14,6 @@ class MyEnum(enum.Enum):
 
 class HashTest(unittest.TestCase):
     def test_get_object_state(self):
-
         c = lambda x: x  # noqa: E731
 
         def d():

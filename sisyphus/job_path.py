@@ -69,8 +69,7 @@ class AbstractPath(DelayedBase):
 
         if gs.WARNING_ABSPATH and path.startswith(gs.BASE_DIR) and not hash_overwrite:
             logging.warning(
-                "Creating absolute path inside current work directory: %s "
-                "(disable with WARNING_ABSPATH=False)" % path
+                "Creating absolute path inside current work directory: %s (disable with WARNING_ABSPATH=False)" % path
             )
         assert isinstance(path, str)
         self.creator = creator

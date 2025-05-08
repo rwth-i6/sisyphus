@@ -12,7 +12,7 @@ def add_subparsers(parsers):
     parser_clean_unused.add_argument(
         "--used_path",
         default=None,
-        help="File where the found paths are saved, paths will be appended if the " "file already exists",
+        help="File where the found paths are saved, paths will be appended if the file already exists",
     )
     parser_clean_unused.add_argument(
         "--load_used_path", default=None, help="Skip finding the used paths and load them from this file instead"
@@ -35,7 +35,7 @@ def add_subparsers(parsers):
     parser_clean_unused.add_argument(
         "--mode",
         default="remove",
-        help="'remove' or 'move' defines if unneeded directories should " "be moved or removed",
+        help="'remove' or 'move' defines if unneeded directories should be moved or removed",
     )
     parser_clean_unused.add_argument(
         "--move_postfix", default=".cleanup", help="Which postfix should be attached to moved directories"
@@ -46,7 +46,7 @@ def add_subparsers(parsers):
     parser_clean_unused.set_defaults(func=clean_unused)
 
     parser_clean_jobs = sc_subparsers.add_parser(
-        "clean_jobs", help="Remove work directories and compress job log files for all jobs " "inside the graph"
+        "clean_jobs", help="Remove work directories and compress job log files for all jobs inside the graph"
     )
     parser_clean_jobs.add_argument(
         "argv", metavar="ARGV", type=str, nargs="*", help="All config files that will be loaded"
@@ -59,7 +59,7 @@ def add_subparsers(parsers):
     parser_clean_by_keep_value.add_argument(
         "--used_path",
         default=None,
-        help="File where the found keep_values are saved, paths will be appended " "if the file already exists",
+        help="File where the found keep_values are saved, paths will be appended if the file already exists",
     )
     parser_clean_by_keep_value.add_argument(
         "--load_used_path", default=None, help="Skip finding the keep values and load them from this file instead"
@@ -67,7 +67,7 @@ def add_subparsers(parsers):
     parser_clean_by_keep_value.add_argument(
         "--to_remove",
         default=None,
-        help="File where the paths that should be removed are saved. " "File will be overwritten, if it already exists",
+        help="File where the paths that should be removed are saved. File will be overwritten, if it already exists",
     )
     parser_clean_by_keep_value.add_argument(
         "--only_find_used_paths", default=False, action="store_true", help="Stop after writing the used path file"
@@ -90,7 +90,7 @@ def add_subparsers(parsers):
     parser_clean_by_keep_value.add_argument(
         "--mode",
         default="remove",
-        help="'remove' or 'move' defines if unneeded directories should " "be moved or removed",
+        help="'remove' or 'move' defines if unneeded directories should be moved or removed",
     )
     parser_clean_by_keep_value.add_argument(
         "--move_postfix", default=".cleanup", help="Which postfix should be attached to moved directories"
