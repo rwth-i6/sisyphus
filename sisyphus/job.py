@@ -133,7 +133,9 @@ class JobSingleton(type):
 
         # add stacktrace information if not None. if set to -1 use full stack
         if gs.JOB_ADD_STACKTRACE_WITH_DEPTH is not None and gs.JOB_ADD_STACKTRACE_WITH_DEPTH != 0:
-            stacktrace = traceback.extract_stack(limit=gs.JOB_ADD_STACKTRACE_WITH_DEPTH if gs.JOB_ADD_STACKTRACE_WITH_DEPTH > 0 else None)
+            stacktrace = traceback.extract_stack(
+                limit=gs.JOB_ADD_STACKTRACE_WITH_DEPTH if gs.JOB_ADD_STACKTRACE_WITH_DEPTH > 0 else None
+            )
             job._sis_stacktrace.append(stacktrace)
 
         return job
