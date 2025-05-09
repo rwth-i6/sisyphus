@@ -131,11 +131,11 @@ class JobSingleton(type):
         # Update alias prefixes
         job._sis_alias_prefixes.add(gs.ALIAS_AND_OUTPUT_SUBDIR)
 
-        # add stacktrace information, if set to None or -1 use full stack
-        stack_depth = gs.JOB_ADD_STACKTRACE_WITH_DEPTH + 1 if gs.JOB_ADD_STACKTRACE_WITH_DEPTH >= 0 else None
-        if stack_depth > 1 or None:
-            # add +1 for the traceback command itself, and remove it later
-            stacktrace = traceback.extract_stack(limit=stack_depth)[:-1]
+        # add stacktrace information if not None. if set to -1 use full stack
+        if gs.JOB_ADD_STACKTRACE_WITH_DEPTH is not None and gs.JOB_ADD_STACKTRACE_WITH_DEPTH != 0:
+            stacktrace = traceback.extract_stack(
+                limit=gs.JOB_ADD_STACKTRACE_WITH_DEPTH if gs.JOB_ADD_STACKTRACE_WITH_DEPTH > 0 else None
+            )
             job._sis_stacktrace.append(stacktrace)
 
         return job
