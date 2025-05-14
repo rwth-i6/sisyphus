@@ -132,9 +132,13 @@ class JobSingleton(type):
         job._sis_alias_prefixes.add(gs.ALIAS_AND_OUTPUT_SUBDIR)
 
         # add stacktrace information.
-        stack_limit = max(gs.JOB_ADD_STACKTRACE_WITH_DEPTH, 0) if gs.JOB_ADD_STACKTRACE_WITH_DEPTH else 0
-        if stack_limit > 0:
-            stacktrace = traceback.extract_stack(limit=stack_limit)
+        assert (
+            isinstance(gs.JOB_ADD_STACKTRACE_WITH_DEPTH, int) or gs.JOB_ADD_STACKTRACE_WITH_DEPTH == float("inf")
+        ) and gs.JOB_ADD_STACKTRACE_WITH_DEPTH >= 0
+        if gs.JOB_ADD_STACKTRACE_WITH_DEPTH > 0:
+            stacktrace = traceback.extract_stack(
+                limit=gs.JOB_ADD_STACKTRACE_WITH_DEPTH if isinstance(gs.JOB_ADD_STACKTRACE_WITH_DEPTH, int) else None
+            )
             job._sis_stacktrace.append(stacktrace)
 
         return job
