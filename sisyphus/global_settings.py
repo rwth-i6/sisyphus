@@ -351,7 +351,7 @@ VIS_MAX_NODES_PER_VIEW = 500
 
 SHOW_VIS_NAME_IN_MANAGER = True
 
-# Add stacktrace information with specified depth, 0 for deactivation, None or -1 for full stack
+# Add stacktrace information with specified depth, 0 for deactivation, or float("inf") for full stack
 JOB_ADD_STACKTRACE_WITH_DEPTH = 0
 
 # Is enabled if tk.run is called
