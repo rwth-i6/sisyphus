@@ -1220,11 +1220,10 @@ class Job(metaclass=JobSingleton):
         pass
 
     @classmethod
-    def hash(cls, parsed_args):
+    def hash(cls, parsed_args: Dict[str, Any]) -> str:
         """
-        :param dict[str] parsed_args:
+        :param parsed_args:
         :return: hash for job given the arguments
-        :rtype: str
         """
         d = {}
         for k, v in parsed_args.items():
