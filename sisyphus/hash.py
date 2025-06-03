@@ -2,7 +2,7 @@ from typing import Tuple
 import enum
 import hashlib
 import pathlib
-from inspect import isclass, isfunction, ismemberdescriptor
+from inspect import isclass, isfunction, ismemberdescriptor, ismethod
 
 
 def md5(obj):
@@ -74,6 +74,9 @@ def get_object_state(obj):
                 raise TypeError(f"derived type {obj!r} {type(obj)!r} not handled yet")
     if isfunction(obj) or isclass(obj):
         return obj.__module__, obj.__qualname__
+
+    if ismethod(obj):
+        return obj.__module__, obj.__qualname__, get_object_state(obj.__self__)
 
     if isinstance(obj, pathlib.PurePath):
         # pathlib paths have a somewhat technical internal state
