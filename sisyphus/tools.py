@@ -15,6 +15,7 @@ import logging
 import subprocess
 import linecache
 from typing import Set, Any
+from inspect import ismethod
 
 try:
     import tracemalloc
@@ -99,6 +100,8 @@ def extract_paths(args: Any) -> Set:
             for k, v in obj.items():
                 if not isinstance(k, str) or not k.startswith("_sis_"):
                     queue.append(v)
+        elif ismethod(obj) and hasattr(obj, "__self__") and obj.__self__ is not None:
+            queue.append(obj.__self__)
         else:
             queue.append(get_object_state(obj))
     return out
