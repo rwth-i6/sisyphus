@@ -171,12 +171,12 @@ def register_output(name, value, export_graph=False):
         import pathlib
 
         if isinstance(value, pathlib.Path):
-            raise ValueError(
+            raise TypeError(
                 "pathlib.Path objects are not supported, use sisyphus.Path instead. "
                 "Did your editor's auto-import choose the right Path class? "
                 "You can convert it using `sisyphus.Path(pathlib_path)`."
             )
-        raise ValueError(
+        raise TypeError(
             "Only sisyphus.Path or sisyphus.Variable objects are supported as output, "
             f"but {name} is of type {type(value)}.\n"
             f"{value}"
