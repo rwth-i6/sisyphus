@@ -167,9 +167,20 @@ def register_output(name, value, export_graph=False):
     :param Path value:
     :param bool export_graph:
     """
-    assert isinstance(value, AbstractPath), (
-        f"Can only register Path or Variable objects as output, but {name} is of type {type(value)}.\n{str(value)}"
-    )
+    if not isinstance(value, AbstractPath):
+        import pathlib
+
+        if isinstance(value, pathlib.Path):
+            raise ValueError(
+                "pathlib.Path objects are not supported, use sisyphus.Path instead. "
+                "Did your editor's auto-import choose the right Path class? "
+                "You can convert it using `sisyphus.Path(pathlib_path)`."
+            )
+        raise ValueError(
+            "Only sisyphus.Path or sisyphus.Variable objects are supported as output, "
+            f"but {name} is of type {type(value)}.\n"
+            f"{value}"
+        )
     sis_graph.add_target(graph.OutputPath(name, value))
     if export_graph:
         dump(value, os.path.join(gs.OUTPUT_DIR, gs.ALIAS_AND_OUTPUT_SUBDIR, ".%s.sis" % name))
