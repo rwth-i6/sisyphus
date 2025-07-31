@@ -1,6 +1,6 @@
 # Author: Wilfried Michel <michel@cs.rwth-aachen.de>
 
-from typing import Any
+from typing import Any, Optional
 from collections import defaultdict, namedtuple
 from enum import Enum
 import getpass  # used to get username
@@ -77,10 +77,16 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             return f"SSH command timeout: {command!s}"
         return f"Command timeout: {command!s}"
 
-    def _system_call_error_warn_msg(self, command: Any) -> str:
+    def _system_call_error_warn_msg(self, command: Any, err: Optional[list[bytes]] = None) -> str:
+        string = ""
         if self.gateway:
-            return f"SSH command error: {command!s}"
-        return f"Command error: {command!s}"
+            string += f"SSH command error: {command!s}"
+        else:
+            string += f"Command error: {command!s}"
+        if err is not None:
+            for line in err:
+                string += f"\n{line.decode('utf-8')}"
+        return string
 
     def system_call(self, command, send_to_stdin=None):
         """
@@ -323,7 +329,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             try:
                 out, err, retval = self.system_call(system_command)
                 if retval != 0:
-                    logging.warning(self._system_call_error_warn_msg(system_command))
+                    logging.warning(self._system_call_error_warn_msg(system_command, err=err))
                     time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
                     continue
             except subprocess.TimeoutExpired:
