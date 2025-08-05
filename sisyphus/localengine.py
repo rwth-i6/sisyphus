@@ -344,4 +344,7 @@ class LocalEngine(threading.Thread, EngineBase):
         return 1
 
     def get_job_node_hostnames(self) -> List[str]:
+        """
+        :return: we are running on `["localhost"]` since this is a local engine.
+        """
         return ["localhost"]
