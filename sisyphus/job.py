@@ -42,7 +42,7 @@ def get_args(f, args, kwargs):
     parsed_args = inspect.getcallargs(f, self, *args, **kwargs)
     self = inspect.getfullargspec(f).args[0]
     if self != "self":
-        logging.warning("Deleted obj attribute not named self attribute " "name %s object" % self)
+        logging.warning("Deleted obj attribute not named self attribute name %s object" % self)
     del parsed_args[self]
     return parsed_args
 
@@ -131,11 +131,14 @@ class JobSingleton(type):
         # Update alias prefixes
         job._sis_alias_prefixes.add(gs.ALIAS_AND_OUTPUT_SUBDIR)
 
-        # add stacktrace information, if set to None or -1 use full stack
-        stack_depth = gs.JOB_ADD_STACKTRACE_WITH_DEPTH + 1 if gs.JOB_ADD_STACKTRACE_WITH_DEPTH >= 0 else None
-        if stack_depth > 1 or None:
-            # add +1 for the traceback command itself, and remove it later
-            stacktrace = traceback.extract_stack(limit=stack_depth)[:-1]
+        # add stacktrace information.
+        assert (
+            isinstance(gs.JOB_ADD_STACKTRACE_WITH_DEPTH, int) or gs.JOB_ADD_STACKTRACE_WITH_DEPTH == float("inf")
+        ) and gs.JOB_ADD_STACKTRACE_WITH_DEPTH >= 0
+        if gs.JOB_ADD_STACKTRACE_WITH_DEPTH > 0:
+            stacktrace = traceback.extract_stack(
+                limit=gs.JOB_ADD_STACKTRACE_WITH_DEPTH if isinstance(gs.JOB_ADD_STACKTRACE_WITH_DEPTH, int) else None
+            )
             job._sis_stacktrace.append(stacktrace)
 
         return job
@@ -498,6 +501,7 @@ class Job(metaclass=JobSingleton):
                     # finished marker
                     pass
                 self._sis_link_to_team_share_dir()
+                gs.on_job_finished(self)
                 return True
             else:
                 # Job is not even setup => can not be finished yet
@@ -1078,7 +1082,7 @@ class Job(metaclass=JobSingleton):
         global SET_DEFAULT_WARNING_COUNT
         if SET_DEFAULT_WARNING_COUNT < 10:
             logging.warning(
-                "set_default is deprecated, please set the variable manually " "(%s, %s, %s)" % (self, name, value)
+                "set_default is deprecated, please set the variable manually (%s, %s, %s)" % (self, name, value)
             )
             SET_DEFAULT_WARNING_COUNT += 1
         elif SET_DEFAULT_WARNING_COUNT == 10:
@@ -1216,11 +1220,10 @@ class Job(metaclass=JobSingleton):
         pass
 
     @classmethod
-    def hash(cls, parsed_args):
+    def hash(cls, parsed_args: Dict[str, Any]) -> str:
         """
-        :param dict[str] parsed_args:
+        :param parsed_args:
         :return: hash for job given the arguments
-        :rtype: str
         """
         d = {}
         for k, v in parsed_args.items():

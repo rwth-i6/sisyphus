@@ -1,6 +1,6 @@
 # Author: Jan-Thorsten Peter <jtpeter@apptek.com>
 
-""" This module contains helper functions to clean up the work directory to be used in the console.
+"""This module contains helper functions to clean up the work directory to be used in the console.
 Use tk.<name of function>? for more help.
 
 Useful examples::

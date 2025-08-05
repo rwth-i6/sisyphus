@@ -1,6 +1,6 @@
 # Author: Jan-Thorsten Peter <peter@cs.rwth-aachen.de>
 
-""" This module contains helper methods used in the console or in a Job. Use tk.<name of function>? for more help.
+"""This module contains helper methods used in the console or in a Job. Use tk.<name of function>? for more help.
 
 Useful examples::
 
@@ -167,13 +167,20 @@ def register_output(name, value, export_graph=False):
     :param Path value:
     :param bool export_graph:
     """
-    assert isinstance(
-        value, AbstractPath
-    ), "Can only register Path or Variable objects as output, " "but %s is of type %s.\n%s" % (
-        name,
-        type(value),
-        str(value),
-    )
+    if not isinstance(value, AbstractPath):
+        import pathlib
+
+        if isinstance(value, pathlib.Path):
+            raise TypeError(
+                "pathlib.Path objects are not supported, use sisyphus.Path instead. "
+                "Did your editor's auto-import choose the right Path class? "
+                "You can convert it using `sisyphus.Path(pathlib_path)`."
+            )
+        raise TypeError(
+            "Only sisyphus.Path or sisyphus.Variable objects are supported as output, "
+            f"but {name} is of type {type(value)}.\n"
+            f"{value}"
+        )
     sis_graph.add_target(graph.OutputPath(name, value))
     if export_graph:
         dump(value, os.path.join(gs.OUTPUT_DIR, gs.ALIAS_AND_OUTPUT_SUBDIR, ".%s.sis" % name))

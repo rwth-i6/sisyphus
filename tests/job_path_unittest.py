@@ -50,9 +50,7 @@ class PathTest(unittest.TestCase):
         path = Path("lm.gz", mjob)
         self.assertEqual(
             path._sis_hash(),
-            b"(Path, (tuple, (MockJob, (dict, (tuple, "
-            b"(str, 'path'), (str, 'test/me.1234')))), "
-            b"(str, 'lm.gz')))",
+            b"(Path, (tuple, (MockJob, (dict, (tuple, (str, 'path'), (str, 'test/me.1234')))), (str, 'lm.gz')))",
         )
 
     def test_overwrite_hash(self):

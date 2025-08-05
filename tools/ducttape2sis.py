@@ -471,7 +471,6 @@ def block_to_plan(block):
 
 
 def convert_file(in_file, out_file, imports=None):
-
     if imports:
         # tconf file
         out_file.write("from sisyphus import *\nfrom recipe.ducttape import *\n\n")
@@ -497,7 +496,6 @@ def convert_file(in_file, out_file, imports=None):
         elif sline[0].startswith("#"):
             out_file.write(line)
         elif sline[0] in ("task", "global", "summary", "submitter", "versioner", "package", "action", "plan"):
-
             block = parse_block(sline, in_file, comment)
             if block.name == "task":
                 job = block_to_job(block)
@@ -515,7 +513,6 @@ def convert_file(in_file, out_file, imports=None):
                 pass
 
             elif block.name == "global":
-
                 body = io.StringIO(block.body)
                 line = body.readline()
                 while line:

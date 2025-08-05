@@ -227,9 +227,9 @@ class Manager(threading.Thread):
         self.stop_if_done = True
         self._stop_loop = False
 
-        assert not (
-            self.clear_errors_once and self.ignore_once
-        ), "Jobs in error state cannot be both ignored and cleared"
+        assert not (self.clear_errors_once and self.ignore_once), (
+            "Jobs in error state cannot be both ignored and cleared"
+        )
 
         if gs.SHOW_JOB_TARGETS:
             self.sis_graph.set_job_targets(job_engine)
@@ -450,7 +450,7 @@ class Manager(threading.Thread):
     def check_output(self, write_output=False, update_all_outputs=False, force_update=False):
         with self.update_out_lock:
             targets = self.sis_graph.targets if update_all_outputs else self.sis_graph.active_targets
-            for target in targets:
+            for target in list(targets):
                 target.update_requirements(write_output=write_output, force=force_update)
                 if target.is_done():
                     target.run_when_done(write_output=write_output)
@@ -512,7 +512,7 @@ class Manager(threading.Thread):
         # Skip first part if there is nothing todo
         if not (config_manager.reader_running() or self.jobs or self.ui):
             answer = self.input(
-                "All calculations are done, print verbose overview (v), update outputs and alias (u), " "cancel (c)? "
+                "All calculations are done, print verbose overview (v), update outputs and alias (u), cancel (c)? "
             )
             if answer.lower() in ("y", "v"):
                 self.print_state_overview(verbose=True)
@@ -540,7 +540,6 @@ class Manager(threading.Thread):
                 if always_clear:
                     action()
                 elif not self.ignore_once:
-
                     answer = self.input(f"Clear jobs in {state} state? [y/N] ")
 
                     if answer.lower() == "y":

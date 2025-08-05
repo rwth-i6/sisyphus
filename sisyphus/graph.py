@@ -62,10 +62,14 @@ class OutputTarget:
             return self.required_full_list
 
     def __eq__(self, other):
-        return type(self) is type(other) and self.__dict__ == other.__dict__
+        return (
+            type(self) is type(other)
+            and self.name == other.name
+            and self.required_full_list == other.required_full_list
+        )
 
     def __hash__(self):
-        return sisyphus.hash.int_hash(self)
+        return hash((type(self), self.name, tuple(self.required_full_list)))
 
 
 class OutputPath(OutputTarget):
@@ -243,7 +247,8 @@ class SISGraph(object):
 
     def __init__(self):
         self._targets = set()  # type: set[OutputTarget]
-        self._active_targets = []  # type: list[OutputTarget]
+        # dict instead of set to keep it sorted (not necessarily needed, but nicer)
+        self._active_targets = {}  # type: dict[OutputTarget,None]
         self._pool = None
         self.used_output_path = set()
 
@@ -260,10 +265,10 @@ class SISGraph(object):
 
     @property
     def active_targets(self):
-        return self._active_targets
+        return self._active_targets.keys()
 
     def remove_from_active_targets(self, target):
-        self._active_targets = [out for out in self._active_targets if out != target]
+        self._active_targets.pop(target, None)
 
     @property
     def targets_dict(self):
@@ -314,7 +319,7 @@ class SISGraph(object):
             pass
 
         if not target.is_done():
-            self._active_targets.append(target)
+            self._active_targets[target] = None
 
     def update_nodes(self):
         """Update all nodes to get the most current dependency graph"""
@@ -636,7 +641,7 @@ class SISGraph(object):
                         visited[sis_id] = obj
                         if only_check:
                             logging.warning(
-                                "Could not export %s since it's only reachable " "via sets. %s" % (obj, only_check)
+                                "Could not export %s since it's only reachable via sets. %s" % (obj, only_check)
                             )
                         else:
                             yield path, obj

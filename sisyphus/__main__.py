@@ -35,7 +35,7 @@ def main():
         metavar="LOG_LEVEL",
         type=int,
         default=20,
-        help="log level, 10 for debug messages, 50 for only critical," " default: 20, ",
+        help="log level, 10 for debug messages, 50 for only critical, default: 20, ",
     )
 
     parser.add_argument(
@@ -64,24 +64,24 @@ def main():
         dest="clear_errors_once",
         action="store_true",
         default=False,
-        help="Move jobs aside that are in an error " "state when the manager runs the first time",
+        help="Move jobs aside that are in an error state when the manager runs the first time",
     )
     parser_manager.add_argument(
         "-cio",
         dest="clear_interrupts_once",
         action="store_true",
         default=False,
-        help="Move jobs aside that are in a not resumable interrupt " "state when the manager runs the first time",
+        help="Move jobs aside that are in a not resumable interrupt state when the manager runs the first time",
     )
     parser_manager.add_argument(
         "-io",
         dest="ignore_once",
         action="store_true",
         default=False,
-        help="Ignore jobs that are in an error " "state when the manager runs the first time",
+        help="Ignore jobs that are in an error state when the manager runs the first time",
     )
     parser_manager.add_argument(
-        "--http", dest="http_port", default=None, type=int, help="Enables http server, takes " "port as argument"
+        "--http", dest="http_port", default=None, type=int, help="Enables http server, takes port as argument"
     )
     parser_manager.add_argument(
         "--fs", "--filesystem", dest="filesystem", default=None, help="Start filesystem in given directory"
@@ -91,7 +91,7 @@ def main():
     )
     parser_manager.add_argument("--ui", dest="ui", default=False, action="store_true", help="Start user interface")
     parser_manager.add_argument(
-        "argv", metavar="ARGV", type=str, nargs="*", help="an additional way do " "define config files"
+        "argv", metavar="ARGV", type=str, nargs="*", help="an additional way do define config files"
     )
 
     parser_console = subparsers.add_parser(
@@ -137,7 +137,7 @@ def main():
         type=int,
         nargs="?",
         default=None,
-        help="Task id, if not set trying to " "read it from environment variables",
+        help="Task id, if not set trying to read it from environment variables",
     )
     parser_worker.add_argument(
         "--force_resume",

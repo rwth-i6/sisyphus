@@ -8,7 +8,6 @@ from sisyphus.global_settings import SIS_HASH as sis_hash
 
 
 class Block(object):
-
     sis_graph = None
 
     def __init__(self, name, parents=None):
