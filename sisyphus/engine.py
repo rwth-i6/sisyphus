@@ -206,6 +206,10 @@ class EngineBase:
         """
         Returns the list of nodes the currently running job is executing on.
 
+        Most of the time a job will only execute on a single node.
+        Certain scenaria like multi-node multi-GPU training, however, may also use multiple nodes
+        to execute a single job.
+
         Can only be called in a worker context.
         """
         raise NotImplementedError
