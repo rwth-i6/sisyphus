@@ -6,7 +6,7 @@ These settings can be overwritten via a ``settings.py`` file in the current dire
 from __future__ import annotations
 import logging
 import sys
-from typing import Dict, Optional
+from typing import Dict, Optional, TYPE_CHECKING
 
 import sisyphus.hash
 from sisyphus.global_constants import *
