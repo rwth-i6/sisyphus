@@ -482,3 +482,8 @@ class SonOfGridEngine(EngineBase):
     def get_logpath(self, logpath_base, task_name, task_id):
         """Returns log file for the currently running task"""
         return os.getenv("SGE_STDERR_PATH")
+
+    def get_job_node_hostnames(self):
+        with open(os.environ["PE_HOSTFILE"], "rt") as hostsfile:
+            hosts = [line.split(" ")[0].strip() for line in hostsfile]
+        return sorted(set(hosts))
