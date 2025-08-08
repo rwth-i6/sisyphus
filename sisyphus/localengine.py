@@ -347,4 +347,7 @@ class LocalEngine(threading.Thread, EngineBase):
         """
         :return: we are running on `["localhost"]` since this is a local engine.
         """
-        return ["localhost"]
+        try:
+            return [socket.gethostname()]
+        except socket.error:
+            return ["localhost"]
