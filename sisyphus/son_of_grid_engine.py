@@ -484,6 +484,9 @@ class SonOfGridEngine(EngineBase):
         return os.getenv("SGE_STDERR_PATH")
 
     def get_job_node_hostnames(self):
+        """
+        :return: the hostnames of the nodes that are partaking in the current job, e.g. `["gpu1", "gpu2", "gpu3"]`.
+        """
         with open(os.environ["PE_HOSTFILE"], "rt") as hostsfile:
             hosts = [line.split(" ")[0].strip() for line in hostsfile]
         return sorted(set(hosts))
