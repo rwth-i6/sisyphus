@@ -308,3 +308,9 @@ class EngineSelector(EngineBase):
 
     def get_default_rqmt(self, task):
         return self.get_used_engine_by_rqmt(task.rqmt()).get_default_rqmt(task)
+
+    def get_job_node_hostnames(self):
+        raise Exception(
+            f"{self.__class__.__name__} is never an active engine at job runtime, "
+            f"so it cannot provide job node hostnames."
+        )
