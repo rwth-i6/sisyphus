@@ -5,6 +5,7 @@ import queue
 import os
 import socket
 import subprocess
+from typing import List
 import psutil
 import time
 from sisyphus.engine import EngineBase
@@ -341,3 +342,12 @@ class LocalEngine(threading.Thread, EngineBase):
             "Job in local engine started without task_id, worker is probably started manualy. Continue with task_id=1"
         )
         return 1
+
+    def get_job_node_hostnames(self) -> List[str]:
+        """
+        :return: we are running on `[socket.gethostname()]` since this is a local engine.
+        """
+        try:
+            return [socket.gethostname()]
+        except socket.error:
+            return ["localhost"]

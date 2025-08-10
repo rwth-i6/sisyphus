@@ -1,6 +1,6 @@
 # Author: Wilfried Michel <michel@cs.rwth-aachen.de>
 
-from typing import Any
+from typing import Any, List
 from collections import defaultdict, namedtuple
 from enum import Enum
 import getpass  # used to get username
@@ -456,3 +456,13 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             name = self.job_name_mapping(name)
         name = name.replace("/", ".")  # escape name
         return name
+
+    def get_job_node_hostnames(self) -> List[str]:
+        """
+        :return: the hostnames of the nodes that are partaking in the current job, e.g. `["gpu1", "gpu2", "gpu3"]`.
+        """
+        env_vars = ["SLURM_JOB_NODELIST", "SLURM_NODELIST"]
+        env_var = next((v for v in env_vars if v in os.environ), None)
+        assert env_var is not None, f"neither of {'/'.join(env_vars)} is set, are we running in a worker context?"
+        partaking_nodes = subprocess.check_output(["scontrol", "show", "hostnames", os.environ[env_var]], text=True)
+        return sorted(set(node.strip() for node in partaking_nodes.splitlines()))

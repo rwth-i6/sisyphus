@@ -336,3 +336,10 @@ class LoadSharingFacilityEngine(EngineBase):
     def get_logpath(logpath_base, task_name, task_id, engine_selector=None):
         """Returns log file for the currently running task"""
         return os.path.join(logpath_base, "%s.%s.%i" % (task_name, os.getenv("LSB_JOBID"), task_id))
+
+    def get_job_node_hostnames(self):
+        """
+        :return: the hostnames of the nodes that are partaking in the current job, e.g. `["gpu1", "gpu2", "gpu3"]`.
+        """
+        nodes = os.environ["LSB_HOSTS"].split(" ")
+        return sorted(set(node.strip() for node in nodes))
