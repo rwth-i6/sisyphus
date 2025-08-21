@@ -158,10 +158,9 @@ class LoggingThread(Thread):
 
 def worker(args):
     # Change job into error state in case of any exception
-    gs.active_engine = gs.engine().get_used_engine(args.engine)
     sisyphus.toolkit._sis_running_in_worker = True
-
     try:
+        gs.active_engine = gs.engine().get_used_engine(args.engine)
         worker_helper(args)
     except Exception:
         task_id = gs.active_engine.get_task_id(args.task_id)
