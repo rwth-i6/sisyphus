@@ -83,11 +83,9 @@ def get_object_state(obj):
         return str(obj)
 
     if hasattr(obj, "__getnewargs_ex__"):
-        args = obj.__getnewargs_ex__()
+        return obj.__getnewargs_ex__(), None
     elif hasattr(obj, "__getnewargs__"):
-        args = obj.__getnewargs__()
-    else:
-        args = None
+        return obj.__getnewargs__(), None
 
     if hasattr(obj, "__sis_state__"):
         state = obj.__sis_state__()
@@ -102,18 +100,14 @@ def get_object_state(obj):
         state = _getmembers(obj)
         if not state and not hasattr(obj, "__dict__") and not hasattr(obj, "__slots__"):
             # Keep compatibility with old behavior.
-            assert args is not None, "Failed to get object state of: %s" % repr(obj)
-            state = None
+            raise ValueError("Failed to get object state of: %s" % repr(obj))
 
     if isinstance(obj, enum.Enum):
         assert isinstance(state, dict)
         # In Python >=3.11, keep hash same as in Python <=3.10, https://github.com/rwth-i6/sisyphus/issues/188
         state.pop("_sort_order_", None)
 
-    if args is None:
-        return state
-    else:
-        return args, state
+    return state
 
 
 def sis_hash_helper(obj):
