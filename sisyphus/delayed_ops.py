@@ -139,7 +139,7 @@ class DelayedRound(DelayedBase):
 
 class DelayedGetItem(DelayedBase):
     def get(self):
-        return try_get(self.a)[self.b]
+        return try_get(self.a)[try_get(self.b)]
 
 
 class Delayed(DelayedBase):
