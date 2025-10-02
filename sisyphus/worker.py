@@ -1,3 +1,4 @@
+from typing import Optional
 import gzip
 import logging
 import os
@@ -12,6 +13,7 @@ import subprocess
 import time
 from threading import Thread, Condition
 
+import sisyphus
 import sisyphus.global_settings as gs
 import sisyphus.job_path
 import sisyphus.toolkit
@@ -55,7 +57,7 @@ class LoggingThread(Thread):
         self.task = task
         self.task_id = task_id
         self.start_time = None
-        super().__init__(daemon=True)
+        super().__init__(daemon=True, name="LoggingThread")
         self.out_of_memory = False
         self._cond = Condition()
         self.__stop = False
@@ -219,7 +221,7 @@ def worker_helper(args):
         path.cached = False
 
     # find task
-    task = None
+    task: Optional[sisyphus.Task] = None
     for task_check in job._sis_tasks():
         if task_check.name() == args.task_name:
             task = task_check
@@ -235,6 +237,10 @@ def worker_helper(args):
     logging.debug("Task id: %s" % str(task_id))
     logging_thread = LoggingThread(job, task, task_id)
     logging_thread.start()
+
+    # TODO init hang detection thread here...
+    # based on task.running(task_id), which causes
+    # "Job marked as running but logging file has not been updated" warnings when False
 
     sisyphus.job_path.Path.cacheing_enabled = True
     resume_job = False
