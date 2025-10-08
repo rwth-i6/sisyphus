@@ -263,3 +263,9 @@ class AWSBatchEngine(EngineBase):
         path = os.path.join(logpath_base, gs.ENGINE_LOG)
         path = "%s.%s.%i" % (path, task_name, task_id)
         return path
+
+    def get_job_node_hostnames(self):
+        raise NotImplementedError(
+            "There is no standardized way of getting the job node hostnames on AWS Batch Engine. "
+            "Please fall back to a manual implementation via e.g. MPI."
+        )

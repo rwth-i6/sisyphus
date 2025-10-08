@@ -119,10 +119,11 @@ def try_get(v):
     Useful to convert a sisyphus path or variable into the stored object
     """
 
-    try:
+    from sisyphus.delayed_ops import DelayedBase  # here to avoid circular import
+
+    if isinstance(v, DelayedBase):
         return v.get()
-    except AttributeError:
-        return v
+    return v
 
 
 class execute_in_dir(object):

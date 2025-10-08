@@ -4,6 +4,7 @@ import collections
 import copy
 import logging
 import os
+from typing import List
 import psutil
 from ast import literal_eval
 
@@ -201,6 +202,18 @@ class EngineBase:
         """
         pass
 
+    def get_job_node_hostnames(self) -> List[str]:
+        """
+        Returns the list of nodes the currently running job is executing on.
+
+        Most of the time a job will only execute on a single node.
+        Certain scenaria like multi-node multi-GPU training, however, may also use multiple nodes
+        to execute a single job.
+
+        Can only be called in a worker context.
+        """
+        raise NotImplementedError
+
 
 class EngineSelector(EngineBase):
     """
@@ -295,3 +308,9 @@ class EngineSelector(EngineBase):
 
     def get_default_rqmt(self, task):
         return self.get_used_engine_by_rqmt(task.rqmt()).get_default_rqmt(task)
+
+    def get_job_node_hostnames(self):
+        raise Exception(
+            f"{self.__class__.__name__} is never an active engine at job runtime, "
+            f"so it cannot provide job node hostnames."
+        )

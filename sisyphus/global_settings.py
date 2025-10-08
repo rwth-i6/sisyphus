@@ -6,14 +6,22 @@ These settings can be overwritten via a ``settings.py`` file in the current dire
 from __future__ import annotations
 import logging
 import sys
-from typing import Dict
+from typing import Dict, Optional, TYPE_CHECKING
 
 import sisyphus.hash
 from sisyphus.global_constants import *
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sisyphus import Job
+    from sisyphus.engine import EngineBase
+
+
+"""
+In a worker context, exposes the engine the current job is executing on.
+
+In the manager context, this value is `None`.
+"""
+active_engine: Optional[EngineBase] = None
 
 
 def engine():
