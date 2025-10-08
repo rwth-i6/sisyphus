@@ -77,7 +77,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             return f"SSH command timeout: {command!s}"
         return f"Command timeout: {command!s}"
 
-    def _system_call_error_warn_msg(self, command: Any, err: Optional[list[bytes]] = None) -> str:
+    def _system_call_error_warn_msg(self, command: Any, *, err: Optional[list[bytes]] = None) -> str:
         string = ""
         if self.gateway:
             string += f"SSH command error: {command!s}"
