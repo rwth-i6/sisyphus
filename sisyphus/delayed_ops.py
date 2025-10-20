@@ -139,7 +139,8 @@ class DelayedRound(DelayedBase):
 
 class DelayedGetItem(DelayedBase):
     def get(self):
-        return try_get(self.a)[try_get(self.b)]
+        wrapped_dict = self.a if isinstance(self.a, dict) else try_get(self.a)
+        return wrapped_dict[try_get(self.b)]
 
 
 class Delayed(DelayedBase):
