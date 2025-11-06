@@ -1,4 +1,5 @@
 # Author: Wilfried Michel <michel@cs.rwth-aachen.de>
+import tempfile
 from typing import Any, List, Optional
 from collections import defaultdict, namedtuple
 from enum import Enum
@@ -70,6 +71,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self.ignore_jobs = ignore_jobs
         self.memory_allocation_type = memory_allocation_type
         self.job_name_mapping = job_name_mapping
+        self.ctrl_sock = os.path.join(tempfile.gettempdir(), f"ssh_mux_{gateway}") if gateway else None
 
     def _system_call_timeout_warn_msg(self, command: Any) -> str:
         if self.gateway:
@@ -87,6 +89,40 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 string += f"\n{line.decode('utf-8')}"
         return string
 
+    def _ensure_connection(self):
+        if not self.gateway:
+            return
+        # Check if a master is already listening (-O check returns 0 if alive)
+        check = ["ssh", "-o", "BatchMode=yes", "-S", self.ctrl_sock, self.gateway, "-O", "check"]
+        ok = subprocess.run(check, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if ok.returncode == 0:
+            return
+
+        # Stale socket? Remove and start a new master
+        try:
+            if os.path.exists(self.ctrl_sock):
+                os.unlink(self.ctrl_sock)
+        except OSError:
+            pass
+
+        # Start master in the background
+        cmd = [
+            "ssh",
+            "-MNf",
+            "-o",
+            "ControlMaster=auto",
+            "-o",
+            "ControlPersist=600",
+            "-o",
+            "ServerAliveInterval=30",
+            "-o",
+            "ServerAliveCountMax=3",
+            "-S",
+            self.ctrl_sock,
+            self.gateway,
+        ]
+        subprocess.run(cmd, check=True)
+
     def system_call(self, command, send_to_stdin=None):
         """
         :param list[str] command: qsub command
@@ -95,8 +131,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         :rtype: list[bytes], list[bytes], int
         """
         if self.gateway:
+            self._ensure_connection()
             escaped_command = [shlex.quote(s) for s in command]  # parameters need to be shell safe when sending via ssh
-            system_command = ["ssh", "-x", self.gateway, "-o", "BatchMode=yes"] + [
+            system_command = ["ssh", "-x", "-S", self.ctrl_sock, "-o", "BatchMode=yes", self.gateway] + [
                 " ".join(["cd", os.getcwd(), "&&"] + escaped_command)
             ]
         else:
@@ -133,7 +170,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             line = raw_line.decode("utf8").strip()
             if line.startswith(lstart) and line.endswith(lend):
                 # found ssh connection problem
-                ssh_file = line[len(lstart) : len(lend)].strip()
+                ssh_file = line[len(lstart) : -len(lend)].strip()
                 logging.warning("SSH Error %s" % line.strip())
                 try:
                     os.unlink(ssh_file)
