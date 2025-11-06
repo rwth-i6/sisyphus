@@ -71,7 +71,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self.ignore_jobs = ignore_jobs
         self.memory_allocation_type = memory_allocation_type
         self.job_name_mapping = job_name_mapping
-        self.ctrl_sock = os.path.join(tempfile.gettempdir(), f"ssh_mux_{gateway}") if gateway else None
+        self.ctrl_sock = (
+            os.path.join(tempfile.gettempdir(), f"ssh_mux_{getpass.getuser()}_{gateway}") if gateway else None
+        )
 
     def _system_call_timeout_warn_msg(self, command: Any) -> str:
         if self.gateway:
