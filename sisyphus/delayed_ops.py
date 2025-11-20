@@ -159,7 +159,10 @@ class DelayedCall(DelayedBase):
     Delays a function call until the get method is called.
 
     See also :class:`DelayedFunction`, which is very similar,
-    but this class also allows the arguments and the function itself to be delayed.
+    but this class also allows the arguments and the function itself to be delayed
+    and application conceptually is in the flipped order.
+    I.e. in this class you delay a function and then call it with (potentially delayed) arguments,
+    whereas in :class:`DelayedFunction` you delay an argument and then call a function on the delayed argument.
 
     See https://github.com/rwth-i6/sisyphus/pull/279 for discussion.
     """
