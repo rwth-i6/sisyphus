@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Union
+from typing import Any, Callable, Dict, Tuple, Union
 
 from sisyphus.hash import sis_hash_helper
 from sisyphus.tools import try_get
@@ -68,6 +68,9 @@ class DelayedBase:
 
     def __getitem__(self, key):
         return DelayedGetItem(self, key)
+
+    def __call__(self, *args, **kwargs):
+        return DelayedCall(self, args, kwargs)
 
     def format(self, *args, **kwargs):
         return DelayedFormat(self, *args, **kwargs)
@@ -140,6 +143,24 @@ class DelayedRound(DelayedBase):
 class DelayedGetItem(DelayedBase):
     def get(self):
         return try_get(self.a)[try_get(self.b)]
+
+
+class DelayedCall(DelayedBase):
+    def __init__(
+        self,
+        func: Union[DelayedBase, Callable],
+        args: Tuple[Union[DelayedBase, Any], ...],
+        kwargs: Dict[str, Union[DelayedBase, Any]],
+    ):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def get(self):
+        func = try_get(self.func)
+        args = [try_get(arg) for arg in self.args]
+        kwargs = {key: try_get(value) for key, value in self.kwargs.items()}
+        return func(*args, **kwargs)
 
 
 class Delayed(DelayedBase):
