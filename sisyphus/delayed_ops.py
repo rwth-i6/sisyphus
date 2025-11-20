@@ -158,8 +158,8 @@ class DelayedCall(DelayedBase):
 
     def get(self):
         func = try_get(self.func)
-        args = [try_get(arg) for arg in self.args]
-        kwargs = {key: try_get(value) for key, value in self.kwargs.items()}
+        args = [try_get(arg) for arg in try_get(self.args)]
+        kwargs = {key: try_get(value) for key, value in try_get(self.kwargs).items()}
         return func(*args, **kwargs)
 
 
