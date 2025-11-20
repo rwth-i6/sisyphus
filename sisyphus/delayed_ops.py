@@ -84,6 +84,15 @@ class DelayedBase:
         return DelayedReplace(self, *args, **kwargs)
 
     def function(self, func, *args, **kwargs):
+        """
+        Call a function with this variable as first argument.
+
+        Basically the reverse operation of :class:`DelayedCall`.
+
+        :param Callable func: Function to call on this variable delayed object.
+        :param args: Additional positional arguments to pass to the function.
+        :param kwargs: Additional keyword arguments to pass to the function.
+        """
         return DelayedFunction(self, func, *args, **kwargs)
 
     def fallback(self, fallback):
@@ -146,11 +155,18 @@ class DelayedGetItem(DelayedBase):
 
 
 class DelayedCall(DelayedBase):
+    """
+    Delays a function call until the get method is called.
+
+    See also :class:`DelayedFunction`, which is very similar,
+    but this class also allows the arguments and the function itself to be delayed.
+    """
+
     def __init__(
         self,
         func: Union[DelayedBase, Callable],
-        args: Tuple[Union[DelayedBase, Any], ...],
-        kwargs: Dict[str, Union[DelayedBase, Any]],
+        args: Union[DelayedBase, Tuple[Union[DelayedBase, Any], ...]],
+        kwargs: Union[DelayedBase, Dict[str, Union[DelayedBase, Any]]],
     ):
         self.func = func
         self.args = args
@@ -176,7 +192,11 @@ class Delayed(DelayedBase):
 
 
 class DelayedFunctionBase(DelayedBase):
-    """Base class to delays a function call until the get method is called"""
+    """
+    Base class to delay a function call until the get method is called.
+
+    See also :class:`DelayedCall`.
+    """
 
     def __init__(self, string, *args, **kwargs):
         self.string = string
