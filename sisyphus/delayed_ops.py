@@ -160,6 +160,8 @@ class DelayedCall(DelayedBase):
 
     See also :class:`DelayedFunction`, which is very similar,
     but this class also allows the arguments and the function itself to be delayed.
+
+    See https://github.com/rwth-i6/sisyphus/pull/279 for discussion.
     """
 
     def __init__(
