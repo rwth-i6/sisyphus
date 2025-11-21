@@ -125,8 +125,21 @@ class DelayedOpsTest(unittest.TestCase):
             self.assertEqual(var.is_set(), True)
             self.check_only_get_eq(fallback, "042.0")
 
+    def test_call(self):
+        func = Delayed(add)
+        self.assertEqual(func(2, 3).get(), 5)
+        self.assertEqual(func(Delayed(2), Delayed(3)).get(), 5)
+
+        func_kw = Delayed(add_with_kwargs)
+        self.assertEqual(func_kw(2, b=3).get(), 5)
+        self.assertEqual(func_kw(Delayed(2), b=Delayed(3)).get(), 5)
+
 
 def add(a, b):
+    return a + b
+
+
+def add_with_kwargs(a, b=0):
     return a + b
 
 
