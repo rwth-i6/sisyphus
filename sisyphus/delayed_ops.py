@@ -163,8 +163,6 @@ class DelayedCall(DelayedBase):
     and application conceptually is in the flipped order.
     I.e. in this class you delay a function and then call it with (potentially delayed) arguments,
     whereas in :class:`DelayedFunction` you delay an argument and then call a function on the delayed argument.
-
-    See https://github.com/rwth-i6/sisyphus/pull/279 for discussion.
     """
 
     def __init__(
