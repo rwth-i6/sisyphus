@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Union
+from typing import Any, Callable, Dict, Tuple, Union
 
 from sisyphus.hash import sis_hash_helper
 from sisyphus.tools import try_get
@@ -69,6 +69,9 @@ class DelayedBase:
     def __getitem__(self, key):
         return DelayedGetItem(self, key)
 
+    def __call__(self, *args, **kwargs):
+        return DelayedFunctionV2(self, args, kwargs)
+
     def format(self, *args, **kwargs):
         return DelayedFormat(self, *args, **kwargs)
 
@@ -81,6 +84,19 @@ class DelayedBase:
         return DelayedReplace(self, *args, **kwargs)
 
     def function(self, func, *args, **kwargs):
+        """
+        Call a function with this variable as first argument.
+        This is behaving like::
+
+            func(try_get(self), *args, **kwargs)
+
+        Prefer :class:`DelayedFunctionV2` or :func:`DelayedBase.__call__` method over this method
+        for a more flexible implementation.
+
+        :param Callable func: Function to call on this variable delayed object.
+        :param args: Additional positional arguments to pass to the function.
+        :param kwargs: Additional keyword arguments to pass to the function.
+        """
         return DelayedFunction(self, func, *args, **kwargs)
 
     def fallback(self, fallback):
@@ -155,7 +171,17 @@ class Delayed(DelayedBase):
 
 
 class DelayedFunctionBase(DelayedBase):
-    """Base class to delays a function call until the get method is called"""
+    """
+    Base class to delay a function call until the get method is called.
+
+    Runs:
+    ```
+    self.func(try_get(self.string), *self.args, **self.kwargs)
+    ```
+
+    Prefer :class:`DelayedFunctionV2` over this class for a more flexible delayed op
+    that can also be used with convenient syntax via :func:`DelayedBase.__call__`.
+    """
 
     def __init__(self, string, *args, **kwargs):
         self.string = string
@@ -184,6 +210,39 @@ class DelayedFormat(DelayedFunctionBase):
 class DelayedReplace(DelayedFunctionBase):
     def get(self):
         return try_get(self.string).replace(*self.args, **self.kwargs)
+
+
+class DelayedFunctionV2(DelayedBase):
+    """
+    Delays a function call until the get method is called.
+    This delays the call::
+
+        d(func)(*d(args), **d(kwargs))
+
+    Where ``d`` resolves any delayed objects.
+
+    See also :class:`DelayedFunction`, which is very similar but less flexible.
+
+    In this class you delay a function and then call it with (potentially delayed) arguments,
+    whereas in :class:`DelayedFunction` you delay (at most) *one* argument
+    and then call a function on the delayed argument.
+    """
+
+    def __init__(
+        self,
+        func: Union[DelayedBase, Callable],
+        args: Union[DelayedBase, Tuple[Union[DelayedBase, Any], ...]],
+        kwargs: Union[DelayedBase, Dict[str, Union[DelayedBase, Any]]],
+    ):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def get(self):
+        func = try_get(self.func)
+        args = [try_get(arg) for arg in try_get(self.args)]
+        kwargs = {key: try_get(value) for key, value in try_get(self.kwargs).items()}
+        return func(*args, **kwargs)
 
 
 class DelayedFallback(DelayedBase):
