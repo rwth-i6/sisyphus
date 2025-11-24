@@ -86,6 +86,9 @@ class DelayedBase:
     def function(self, func, *args, **kwargs):
         """
         Call a function with this variable as first argument.
+        This is behaving like::
+
+            func(try_get(self), *args, **kwargs)
 
         Prefer :class:`DelayedFunctionV2` or :func:`DelayedBase.__call__` method over this method
         for a more flexible implementation.
