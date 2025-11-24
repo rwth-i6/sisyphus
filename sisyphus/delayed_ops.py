@@ -216,9 +216,9 @@ class DelayedFunctionV2(DelayedBase):
     """
     Delays a function call until the get method is called.
     This delays the call::
-    
+
         d(func)(*d(args), **d(kwargs))
-        
+
     Where ``d`` resolves any delayed objects.
 
     See also :class:`DelayedFunction`, which is very similar but less flexible.
