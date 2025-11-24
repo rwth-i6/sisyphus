@@ -87,7 +87,8 @@ class DelayedBase:
         """
         Call a function with this variable as first argument.
 
-        Basically the reverse operation of :class:`DelayedCall`.
+        Prefer :class:`DelayedFunctionV2` or :func:`DelayedBase.__call__` method over this method
+        for a more flexible implementation.
 
         :param Callable func: Function to call on this variable delayed object.
         :param args: Additional positional arguments to pass to the function.
