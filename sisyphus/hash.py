@@ -199,7 +199,8 @@ def _getmembers(obj):
         if getattr(cls, "__dict__", None):
             cls_dict.update(cls.__dict__)
     for key in dir(obj):
-        if key.startswith("__"):
+        # for bound methods, need to keep __self__ and __func__.
+        if key.startswith("__") and key not in ["__self__", "__func__"]:
             continue
         if key in res:
             continue
