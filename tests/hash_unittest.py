@@ -12,6 +12,14 @@ class MyEnum(enum.Enum):
     Entry1 = 1
 
 
+class MyFoo:
+    def __init__(self, some_data: str):
+        self.some_data = some_data
+
+    def get_data(self):
+        return self.some_data
+
+
 class HashTest(unittest.TestCase):
     def test_get_object_state(self):
         c = lambda x: x  # noqa: E731
@@ -61,6 +69,11 @@ class HashTest(unittest.TestCase):
                 b" (tuple, (str, 'keywords'), (dict))))"
             ),
         )
+
+    def test_bound_method(self):
+        first_obj = MyFoo("First")
+        second_obj = MyFoo("Second")
+        self.assertNotEqual(sis_hash_helper(first_obj.get_data), sis_hash_helper(second_obj.get_data))
 
     def test_pathlib_Path(self):
         from pathlib import Path
