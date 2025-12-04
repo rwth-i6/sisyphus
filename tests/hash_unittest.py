@@ -73,7 +73,21 @@ class HashTest(unittest.TestCase):
     def test_bound_method(self):
         first_obj = MyFoo("First")
         second_obj = MyFoo("Second")
-        self.assertNotEqual(sis_hash_helper(first_obj.get_data), sis_hash_helper(second_obj.get_data))
+        func_hash = sis_hash_helper(MyFoo.get_data)
+        bound_to_first_obj_hash = sis_hash_helper(first_obj.get_data)
+        bound_to_second_obj_hash = sis_hash_helper(second_obj.get_data)
+
+        self.assertEqual(func_hash, b"(function, (tuple, (str, 'tests.hash_unittest'), (str, 'MyFoo.get_data')))")
+        self.assertEqual(
+            bound_to_first_obj_hash,
+            (
+                b"(method, (dict, "
+                b"(tuple, (str, '__func__'), " + func_hash + b"), "
+                b"(tuple, (str, '__self__'), (MyFoo, (dict, (tuple, (str, 'some_data'), (str, 'First')))))"
+                b"))"
+            ),
+        )
+        self.assertNotEqual(bound_to_first_obj_hash, bound_to_second_obj_hash)
 
     def test_pathlib_Path(self):
         from pathlib import Path
