@@ -74,6 +74,8 @@ def get_object_state(obj):
                 raise TypeError(f"derived type {obj!r} {type(obj)!r} not handled yet")
     if isfunction(obj) or isclass(obj):
         return obj.__module__, obj.__qualname__
+    if ismethod(obj):
+        return get_object_state(obj.__self__), get_object_state(obj.__func__)
 
     if isinstance(obj, pathlib.PurePath):
         # pathlib paths have a somewhat technical internal state
@@ -152,9 +154,6 @@ def sis_hash_helper(obj):
         assert obj.__name__ != "<lambda>", "Hashing of lambda functions is not supported"
         assert obj.__module__ != "__main__", "Hashing of functions defined in __main__ is not supported"
         byte_list.append(sis_hash_helper((obj.__module__, obj.__qualname__)))
-    elif ismethod(obj):
-        # Handle bound methods
-        byte_list.append(sis_hash_helper((obj.__self__, obj.__func__)))
     elif isclass(obj):
         assert obj.__module__ != "__main__", "Hashing of classes defined in __main__ is not supported"
         byte_list.append(sis_hash_helper((obj.__module__, obj.__qualname__)))
