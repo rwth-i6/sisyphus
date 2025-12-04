@@ -2,7 +2,7 @@ from typing import Tuple
 import enum
 import hashlib
 import pathlib
-from inspect import isclass, isfunction, ismemberdescriptor
+from inspect import isclass, isfunction, ismemberdescriptor, ismethod
 
 
 def md5(obj):
@@ -152,6 +152,9 @@ def sis_hash_helper(obj):
         assert obj.__name__ != "<lambda>", "Hashing of lambda functions is not supported"
         assert obj.__module__ != "__main__", "Hashing of functions defined in __main__ is not supported"
         byte_list.append(sis_hash_helper((obj.__module__, obj.__qualname__)))
+    elif ismethod(obj):
+        # Handle bound methods
+        byte_list.append(sis_hash_helper((obj.__self__, obj.__func__)))
     elif isclass(obj):
         assert obj.__module__ != "__main__", "Hashing of classes defined in __main__ is not supported"
         byte_list.append(sis_hash_helper((obj.__module__, obj.__qualname__)))
