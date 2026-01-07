@@ -107,7 +107,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         if send_to_stdin:
             send_to_stdin = send_to_stdin.encode()
 
-        p = subprocess.run(system_command, input=send_to_stdin, capture_output=True, timeout=30)
+        p = subprocess.run(system_command, input=send_to_stdin, capture_output=True, timeout=200)
 
         def fix_output(o):
             """
