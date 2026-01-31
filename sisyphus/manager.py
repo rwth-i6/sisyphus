@@ -296,7 +296,16 @@ class Manager(threading.Thread):
         if hasattr(job, "info") and state == gs.STATE_RUNNING:
             job_manager_info_string = job.info()
             if job_manager_info_string is not None:
-                info_string += " {%s} " % job_manager_info_string
+                info_string += " {%s}" % job_manager_info_string
+
+        if state == gs.STATE_RUNNING and gs.PRINT_OLD_LOG_FILE_RUNNING is not None:
+            task = job._sis_next_task()
+            if task:
+                log_file = job._sis_path(gs.JOB_LOG + "." + task.name(), 1)
+                if os.path.isfile(log_file):
+                    age = time.time() - os.path.getmtime(log_file)
+                    if age > gs.PRINT_OLD_LOG_FILE_RUNNING:
+                        info_string += " (log file age: %.1f min)" % (age / 60)
 
         if state in [gs.STATE_INPUT_MISSING, gs.STATE_RETRY_ERROR, gs.STATE_INTERRUPTED_NOT_RESUMABLE, gs.STATE_ERROR]:
             logging.error(info_string)
