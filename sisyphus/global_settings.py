@@ -273,7 +273,7 @@ PRINT_HOLD = True
 #: Print State Overview even though no updates happened
 PRINT_STALE_STATE_OVERVIEW_PERIOD = None
 #: Print log file age of running job when older than this in seconds
-PRINT_OLD_LOG_FILE_RUNNING: Optional[Union[int, float]] = None
+PRINT_OLD_LOG_FILE_RUNNING: Optional[float] = None
 
 #: Log for finished outputs.
 FINISHED_LOG = "log/finished.log"
