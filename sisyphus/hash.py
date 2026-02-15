@@ -1,4 +1,5 @@
 from typing import Tuple
+import types
 import enum
 import hashlib
 import pathlib
@@ -72,6 +73,11 @@ def get_object_state(obj):
                 # E.g. a dict/tuple/list would contain the elements itself (which should be part of the state),
                 # and maybe *additionally* some other things in __dict__.
                 raise TypeError(f"derived type {obj!r} {type(obj)!r} not handled yet")
+    if isinstance(obj, (types.MethodDescriptorType, types.WrapperDescriptorType)):
+        # unbound builtin methods, e.g. str.lower, object.__init__
+        return obj.__qualname__
+    if isinstance(obj, types.ModuleType):
+        return obj.__name__
     if isfunction(obj) or isclass(obj):
         return obj.__module__, obj.__qualname__
 
@@ -179,6 +185,12 @@ def _obj_type_qualname(obj) -> bytes:
 
 
 def _getmembers(obj):
+    if isinstance(obj, (types.MethodWrapperType, types.BuiltinMethodType)):
+        # Note: This code is intended mostly for bound methods.
+        # However, builtin functions like `len` also apply here, as BuiltinFunctionType is the same.
+        # Those builtin functions have __self__ pointing to the builtin module.
+        # So this is also fine.
+        return {"__self__": obj.__self__, "__name__": obj.__name__}
     res = {}
     if hasattr(obj, "__dict__"):
         res.update(obj.__dict__)
