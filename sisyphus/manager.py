@@ -264,6 +264,7 @@ class Manager(threading.Thread):
                 t.reset_cache()
             job_cleared = True
         self.update_jobs()
+        self.update_state_overview()
         return job_cleared
 
     def update_state_overview(self):
