@@ -4,7 +4,6 @@ from sisyphus.job import Job
 from sisyphus.job_path import AbstractPath
 from sisyphus.block import Block
 import sisyphus.tools as tools
-import sisyphus.hash
 
 import atexit
 from inspect import isclass
@@ -502,7 +501,9 @@ class SISGraph(object):
         self.for_all_nodes(get_unfinished_jobs, nodes=nodes)
         return states
 
-    def for_all_nodes(self, f, nodes=None, bottom_up=False, *, pool: Optional[ThreadPool] = None):
+    def for_all_nodes(
+        self, f, nodes=None, bottom_up=False, *, update_graph: bool = True, pool: Optional[ThreadPool] = None
+    ):
         """
         Run function f for each node and ancestor for `nodes` from top down,
         stop expanding tree branch if functions returns False. Does not stop on None to allow functions with no
@@ -511,6 +512,8 @@ class SISGraph(object):
         :param (Job)->bool f: function will be executed for all nodes
         :param nodes: all nodes that will be checked, defaults to all output nodes in graph
         :param bool bottom_up: start with deepest nodes first, ignore return value of f
+        :param update_graph: if True, update all nodes/jobs (calling :func:`Job._sis_runnable`)
+            while running through the graph to get the most current dependency graph.
         :param pool: use custom thread pool
         :return: set with all visited nodes
         """
@@ -523,7 +526,8 @@ class SISGraph(object):
                     if path.creator:
                         nodes.append(path.creator)
 
-        if gs.GRAPH_WORKER == 1:
+        # with update_graph=False, it should be much faster to not use threading
+        if gs.GRAPH_WORKER == 1 or not update_graph:
             visited_set = set()
             visited_list = []
             queue = list(reversed(nodes))
@@ -532,7 +536,8 @@ class SISGraph(object):
                 if id(job) in visited_set:
                     continue
                 visited_set.add(id(job))
-                job._sis_runnable()
+                if update_graph:
+                    job._sis_runnable()
 
                 if bottom_up:
                     # execute in reverse order at the end
@@ -583,8 +588,9 @@ class SISGraph(object):
             """
             if stopped_event.is_set():
                 return
-            # make sure all inputs are updated
-            job._sis_runnable()
+            if update_graph:
+                # make sure all inputs are updated
+                job._sis_runnable()
             nonlocal finished
 
             if bottom_up:
@@ -731,7 +737,7 @@ class SISGraph(object):
             except AttributeError:
                 pass
 
-        self.for_all_nodes(f)
+        self.for_all_nodes(f, update_graph=False)
 
         for target in self.targets:
             if isinstance(target, OutputPath):
@@ -750,7 +756,7 @@ class SISGraph(object):
                             return True
                         return False
 
-                    self.for_all_nodes(f=f, nodes=[out.creator])
+                    self.for_all_nodes(f=f, nodes=[out.creator], update_graph=False)
 
 
 def is_literal(obj, visited=None):
