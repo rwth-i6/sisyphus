@@ -50,19 +50,11 @@ from typing import Union, Any, List, Optional
 import subprocess
 import importlib
 
-from sisyphus.tools import sh, extract_paths
-import sisyphus.block
-from sisyphus.block import block, sub_block, set_root_block
-from sisyphus.async_workflow import async_run, async_gather, async_context
-from sisyphus.delayed_ops import Delayed
-from sisyphus import cleaner
 
-from sisyphus.job_path import AbstractPath, Path, Variable
+from sisyphus.job_path import AbstractPath, Path
 from sisyphus.job import Job
 from sisyphus import graph
 import sisyphus.global_settings as gs
-
-from sisyphus.loader import config_manager
 
 
 class BlockedWorkflow(Exception):
@@ -478,8 +470,8 @@ def import_work_directory(directories: Union[str, List[str]], mode="dryrun", use
     # run once before to unsure inputs are updated at least once
     sis_graph.for_all_nodes(import_directory, bottom_up=True)
     # run until no new jobs are added. This could be solved more efficient, but this is works...
-    while number_of_jobs != len(sis_graph.jobs()):
-        number_of_jobs = len(sis_graph.jobs())
+    while number_of_jobs != len(sis_graph.jobs(update_graph=False)):
+        number_of_jobs = len(sis_graph.jobs(update_graph=False))
         sis_graph.for_all_nodes(import_directory, bottom_up=True)
 
 
