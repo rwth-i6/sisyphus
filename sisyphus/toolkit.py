@@ -50,11 +50,19 @@ from typing import Union, Any, List, Optional
 import subprocess
 import importlib
 
+from sisyphus.tools import sh, extract_paths  # noqa: F401
+import sisyphus.block  # noqa: F401
+from sisyphus.block import block, sub_block, set_root_block  # noqa: F401
+from sisyphus.async_workflow import async_run, async_gather, async_context  # noqa: F401
+from sisyphus.delayed_ops import Delayed  # noqa: F401
+from sisyphus import cleaner  # noqa: F401
 
-from sisyphus.job_path import AbstractPath, Path
+from sisyphus.job_path import AbstractPath, Path, Variable  # noqa: F401
 from sisyphus.job import Job
 from sisyphus import graph
 import sisyphus.global_settings as gs
+
+from sisyphus.loader import config_manager  # noqa: F401
 
 
 class BlockedWorkflow(Exception):
