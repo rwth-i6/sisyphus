@@ -355,9 +355,11 @@ class SISGraph(object):
     def job_by_id(self, sis_id):
         return self.id_to_job_dict().get(sis_id)
 
-    def jobs(self) -> List[Job]:
+    def jobs(self, *, update_graph: bool = True) -> List[Job]:
         """
-        :return ([Job, ...]): List with all jobs in grpah
+        :param update_graph: if True, update all nodes/jobs (calling :func:`Job._sis_runnable`)
+             while running through the graph to get the most current dependency graph.
+        :return ([Job, ...]): List with all jobs in graph
         """
         job_list = []
 
@@ -365,18 +367,20 @@ class SISGraph(object):
             job_list.append(job)
             return True
 
-        self.for_all_nodes(f)
+        self.for_all_nodes(f, update_graph=update_graph)
         return job_list
 
-    def find(self, pattern, mode="all"):
+    def find(self, pattern: str, mode: str = "all", *, update_graph: bool = True):
         """Returns a list with all jobs and paths that partly match the pattern
 
-        :param pattern(str): Pattern to match
-        :param mode(str): Select if jobs, paths or both should be returned. Possible values: all, path, job
+        :param pattern: Pattern to match
+        :param mode: Select if jobs, paths or both should be returned. Possible values: all, path, job
+        :param update_graph: if True, update all nodes/jobs (calling :func:`Job._sis_runnable`)
+             while running through the graph to get the most current dependency graph.
         :return ([Job/Path, ...]): List with all matching jobs/paths
         """
         out = set()
-        for j in self.jobs():
+        for j in self.jobs(update_graph=update_graph):
             if mode in ("all", "job"):
                 vis_name = j.get_vis_name()
                 aliases = j._sis_aliases if j._sis_aliases is not None else set()
@@ -392,10 +396,12 @@ class SISGraph(object):
                         out.add(p)
         return list(out)
 
-    def jobs_sorted(self):
+    def jobs_sorted(self, *, update_graph: bool = True):
         """Yields jobs in a order so that for each jop all jobs
         it depends on are already finished
 
+        :param update_graph: if True, update all nodes/jobs (calling :func:`Job._sis_runnable`)
+             while running through the graph to get the most current dependency graph.
         :return (generator Node): jobs sorted by dependency
         """
         id_to_job = {}
@@ -406,7 +412,7 @@ class SISGraph(object):
             return id_to_job[sis_id]
 
         stack = []
-        for job in self.jobs():
+        for job in self.jobs(update_graph=update_graph):
             node = get_job(job._sis_id())
             node.job = job
             for i in job._sis_inputs:
