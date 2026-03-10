@@ -161,11 +161,11 @@ def find_path(pattern):
     return sis_graph.find(pattern, mode="path")
 
 
-def register_output(name, value, export_graph=False):
+def register_output(name: str, value: AbstractPath, export_graph: bool = False):
     """
-    :param str name:
-    :param Path value:
-    :param bool export_graph:
+    :param name:
+    :param value:
+    :param export_graph:
     """
     if not isinstance(value, AbstractPath):
         import pathlib
