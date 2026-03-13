@@ -187,6 +187,7 @@ class EngineBase:
             submit_info = rqmt.copy()
             submit_info["engine_info"] = engine_info
             submit_info["engine_name"] = engine_name
+            submit_info["completed_fraction"] = task._job.completed_fraction()
             with open(submit_log, "a") as submit_file:
                 submit_file.write("%s\n" % str((task_ids, submit_info)))
 
