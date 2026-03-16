@@ -66,6 +66,7 @@ class EngineBase:
             current_mtime = os.path.getmtime(submit_log)
             if not last_update or last_update != current_mtime:
                 with open(submit_log) as submit_file:
+                    id_to_rqmt.clear()
                     for line in submit_file:
                         ids, r = literal_eval(line)  # list of ids, submitted requirement for this id
                         for i in ids:
