@@ -1219,6 +1219,12 @@ class Job(metaclass=JobSingleton):
         """
         pass
 
+    def completed_fraction(self) -> Optional[float]:
+        """
+        :return: fraction between 0 and 1 or None if not available
+        """
+        return None
+
     @classmethod
     def hash(cls, parsed_args: Dict[str, Any]) -> str:
         """
