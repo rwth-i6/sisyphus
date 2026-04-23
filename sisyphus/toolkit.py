@@ -193,7 +193,7 @@ def register_callback(f, *args, **kwargs):
 
 def register_report(name, values, template=None, required=None, update_frequency=300):
     report = graph.OutputReport(
-        output_path=name,
+        output_path=gs.ALIAS_AND_OUTPUT_SUBDIR + name,
         report_values=values,
         report_template=template,
         required=required,
