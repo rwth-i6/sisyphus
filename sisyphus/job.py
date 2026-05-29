@@ -136,10 +136,18 @@ class JobSingleton(type):
             isinstance(gs.JOB_ADD_STACKTRACE_WITH_DEPTH, int) or gs.JOB_ADD_STACKTRACE_WITH_DEPTH == float("inf")
         ) and gs.JOB_ADD_STACKTRACE_WITH_DEPTH >= 0
         if gs.JOB_ADD_STACKTRACE_WITH_DEPTH > 0:
-            stacktrace = traceback.extract_stack(
-                limit=gs.JOB_ADD_STACKTRACE_WITH_DEPTH if isinstance(gs.JOB_ADD_STACKTRACE_WITH_DEPTH, int) else None
-            )
-            job._sis_stacktrace.append(stacktrace)
+            max_count = gs.JOB_ADD_STACKTRACE_MAX_COUNT
+            if max_count is None or len(job._sis_stacktrace) < max_count:
+                stacktrace = traceback.extract_stack(
+                    limit=gs.JOB_ADD_STACKTRACE_WITH_DEPTH
+                    if isinstance(gs.JOB_ADD_STACKTRACE_WITH_DEPTH, int)
+                    else None
+                )
+                job._sis_stacktrace.append(stacktrace)
+            elif job._sis_stacktrace and isinstance(job._sis_stacktrace[-1], _SuppressedStacktraces):
+                job._sis_stacktrace[-1].count += 1
+            else:
+                job._sis_stacktrace.append(_SuppressedStacktraces())
 
         return job
 
@@ -307,6 +315,9 @@ class Job(metaclass=JobSingleton):
                 for alias in sorted(self._sis_aliases):
                     f.write("ALIAS: %s\n" % alias)
             for stacktrace in self._sis_stacktrace:
+                if isinstance(stacktrace, _SuppressedStacktraces):
+                    f.write("STACKTRACE: ... (%d more invocations are suppressed)\n" % stacktrace.count)
+                    continue
                 f.write("STACKTRACE:\n")
                 f.writelines(traceback.format_list(stacktrace))
         self._sis_setup_since_restart = True
@@ -1253,3 +1264,14 @@ class Job(metaclass=JobSingleton):
     def _sis_is_set_to_hold(self):
         """Return True if job is set to hold"""
         return self._sis_hold_job or os.path.exists(self._sis_path(gs.STATE_HOLD))
+
+
+class _SuppressedStacktraces:
+    """
+    Placeholder in :attr:`Job._sis_stacktrace` for stacktraces dropped by JOB_ADD_STACKTRACE_MAX_COUNT.
+    Counts how many further stacktraces were suppressed,
+    so the job info file can note the count instead of storing each one.
+    """
+
+    def __init__(self):
+        self.count = 1
