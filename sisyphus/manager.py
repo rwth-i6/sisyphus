@@ -7,16 +7,20 @@ import asyncio
 import atexit
 import logging
 import os
+import re
 import sys
 import threading
 import time
 import traceback
 import warnings
+from ast import literal_eval
+from datetime import datetime
 from typing import TYPE_CHECKING, Dict, Collection
 
 from multiprocessing.pool import ThreadPool
 
 from sisyphus import toolkit, tools
+from sisyphus.logging_format import color_mapping as _log_level_color
 from sisyphus.loader import config_manager
 from sisyphus.block import Block
 from sisyphus.tools import finished_results_cache
@@ -24,6 +28,8 @@ import sisyphus.global_settings as gs
 
 if TYPE_CHECKING:
     from sisyphus.job import Job
+
+_LOG_TIMESTAMP_RE = re.compile(r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
 
 
 class JobCleaner(threading.Thread):
@@ -302,7 +308,48 @@ class Manager(threading.Thread):
             if hasattr(job, "completed_fraction"):
                 frac = job.completed_fraction()
                 if frac is not None:
-                    info_string += " [%.1f%%]" % (frac * 100)
+                    eta = None
+                    if 0.01 < frac < 0.99:
+                        task = job._sis_next_task()
+                        if task:
+                            rqmt_secs = None
+                            try:
+                                line = None
+                                with open(task.path(gs.ENGINE_SUBMIT)) as f:
+                                    for line in f:
+                                        pass
+                                if line:
+                                    _, rqmt = literal_eval(line)
+                                    t = rqmt.get("time")
+                                    if t:
+                                        rqmt_secs = float(t) * 3600
+                            except Exception:
+                                pass
+                            log_file = job._sis_path(gs.JOB_LOG + "." + task.name(), task.task_ids()[0])
+                            if os.path.isfile(log_file):
+                                try:
+                                    with open(log_file, "rb") as f:
+                                        first_line = f.readline().decode("ascii", errors="ignore")
+                                    m = _LOG_TIMESTAMP_RE.match(first_line)
+                                    if m:
+                                        start_ts = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").timestamp()
+                                        elapsed = time.time() - start_ts
+                                        if elapsed > 120:
+                                            remaining = int(elapsed * (1 - frac) / frac)
+                                            if remaining > 99 * 3600:
+                                                eta = ">99h"
+                                            else:
+                                                h, rem = divmod(remaining, 3600)
+                                                mn = rem // 60
+                                                eta = f"~{h}h{mn:02d}m" if h else f"~{mn}m"
+                                            if rqmt_secs and remaining > rqmt_secs:
+                                                eta = f"\x1b[31m{eta}{_log_level_color(logging.INFO)}"
+                                except Exception:
+                                    pass
+                    if eta is not None:
+                        info_string += f" [{frac * 100:.1f}% done, ETA {eta}]"
+                    else:
+                        info_string += " [%.1f%%]" % (frac * 100)
 
         if state == gs.STATE_RUNNING and gs.PRINT_OLD_LOG_FILE_RUNNING is not None:
             task = job._sis_next_task()
