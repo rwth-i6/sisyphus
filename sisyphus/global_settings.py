@@ -364,6 +364,13 @@ SHOW_VIS_NAME_IN_MANAGER = True
 # Add stacktrace information with specified depth, 0 for deactivation, or float("inf") for full stack
 JOB_ADD_STACKTRACE_WITH_DEPTH = 0
 
+# Maximum number of stacktraces to keep per job in job._sis_stacktrace,
+# see JOB_ADD_STACKTRACE_WITH_DEPTH.
+# Further stacktraces beyond this count are not stored;
+# a counter of how many were suppressed is written to the job info file instead.
+# None for no limit.
+JOB_ADD_STACKTRACE_MAX_COUNT = 5
+
 # Is enabled if tk.run is called
 SKIP_IS_FINISHED_TIMEOUT = False
 
