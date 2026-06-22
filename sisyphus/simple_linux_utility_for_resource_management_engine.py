@@ -11,7 +11,7 @@ import subprocess
 import time
 
 import sisyphus.global_settings as gs
-from sisyphus.engine import EngineBase
+from sisyphus.engine import DeferSubmission, EngineBase
 from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE, STATE_QUEUE_ERROR
 
 ENGINE_NAME = "slurm"
@@ -70,6 +70,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self.ignore_jobs = ignore_jobs
         self.memory_allocation_type = memory_allocation_type
         self.job_name_mapping = job_name_mapping
+        # Backoff when sbatch rejects with AssocMaxSubmitJobLimit (association MaxSubmitJobs reached):
+        # pause new submissions on this engine until this wall-clock time, then retry.
+        self._submit_blocked_until = 0.0  # monotonic-clock deadline; 0.0 = in the past = not blocked
+        self._submit_limit_retry_wait = 60.0  # seconds to back off before retrying after a quota rejection
 
     def _system_call_timeout_warn_msg(self, command: Any) -> str:
         if self.gateway:
@@ -208,6 +212,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             # skip empty list
             return
 
+        if time.monotonic() < self._submit_blocked_until:
+            # Still backing off after a previous AssocMaxSubmitJobLimit -> defer to a later cycle.
+            raise DeferSubmission("Slurm submit quota reached (AssocMaxSubmitJobLimit)")
+
         submitted = []
         start_id, end_id, step_size = (None, None, None)
         for task_id in task_ids:
@@ -260,6 +268,16 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 time.sleep(gs.WAIT_PERIOD_SSH_TIMEOUT)
                 continue
             break
+
+        if any(b"AssocMaxSubmitJobLimit" in line for line in err + out):
+            # Association MaxSubmitJobs reached -- not a job failure. Back off and retry later via
+            # DeferSubmission (EngineBase.submit skips the submit log, so no MAX_SUBMIT_RETRIES count).
+            self._submit_blocked_until = time.monotonic() + self._submit_limit_retry_wait
+            logging.warning(
+                "Slurm submit quota reached (AssocMaxSubmitJobLimit); pausing new submissions for %.0fs."
+                % self._submit_limit_retry_wait
+            )
+            raise DeferSubmission("Slurm submit quota reached (AssocMaxSubmitJobLimit)")
 
         ref_output = ["Submitted", "batch", "job"]
         ref_output = [i.encode() for i in ref_output]
