@@ -181,7 +181,16 @@ class EngineBase:
         for rqmt_key, (rqmt, task_ids) in rqmt_to_ids.items():
             task_ids = sorted(task_ids)
             logging.info("Submit to queue: %s %s %s" % (str(task.path()), task.name(), str(task_ids)))
-            engine_name, engine_info = self.submit_call(call, logpath, rqmt, task.task_name(), task.name(), task_ids)
+            try:
+                engine_name, engine_info = self.submit_call(
+                    call, logpath, rqmt, task.task_name(), task.name(), task_ids
+                )
+            except DeferSubmission as exc:
+                # The engine deferred this submission (e.g. Slurm AssocMaxSubmitJobLimit reached).
+                # Retry it next cycle WITHOUT writing the submit log, so the deferral does not count
+                # toward MAX_SUBMIT_RETRIES; the task stays runnable.
+                logging.info("Submission deferred (%s): %s %s" % (exc, task.name(), task_ids))
+                continue
             logging.debug("Command: (%s) Tasks ids: (%s)" % (" ".join(call), " ".join([str(i) for i in task_ids])))
             logging.debug("Requirements: %s" % (str(rqmt)))
 
@@ -318,3 +327,11 @@ class EngineSelector(EngineBase):
             f"{self.__class__.__name__} is never an active engine at job runtime, "
             f"so it cannot provide job node hostnames."
         )
+
+
+class DeferSubmission(Exception):
+    """
+    Raised by an engine's ``submit_call`` to defer this submission to a later manager cycle
+    without recording a submit attempt (so it does NOT count toward ``MAX_SUBMIT_RETRIES``).
+    E.g. the Slurm engine raises this when sbatch reports ``AssocMaxSubmitJobLimit``.
+    """
