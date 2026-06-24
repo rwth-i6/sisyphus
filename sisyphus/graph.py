@@ -16,6 +16,7 @@ import threading
 from typing import DefaultDict, Optional, List
 from multiprocessing.pool import ThreadPool
 from datetime import datetime
+import tempfile
 
 
 class Node(object):
@@ -196,24 +197,32 @@ class OutputReport(OutputTarget):
             return
         outfile_name = os.path.join(gs.OUTPUT_DIR, self._output_path)
         outfile_dir = os.path.dirname(outfile_name)
+        tmp_name = None
         try:
             if not os.path.isdir(outfile_dir):
                 os.makedirs(outfile_dir)
 
-            # Remove link to avoid overwriting other files
-            if os.path.islink(outfile_name):
-                os.unlink(outfile_name)
-
-            # Actually write report
-            with open(outfile_name, "w") as f:
+            # Write report to temp file first
+            fd, tmp_name = tempfile.mkstemp(dir=outfile_dir)
+            with os.fdopen(fd, "w") as f:
                 if self._report_template:
                     f.write(self._report_template.format(**self._report_values))
                 elif callable(self._report_values):
                     f.write(str(self._report_values()))
                 else:
                     f.write(pprint.pformat(self._report_values, width=140) + "\n")
+
+            # Atomically replace target after temp file is complete to avoid incomplete reports
+            os.replace(tmp_name, outfile_name)
+            tmp_name = None
         except IOError as e:
             logging.warning("Error while updating %s:  %s" % (outfile_name, str(e)))
+        finally:
+            if tmp_name is not None:
+                try:
+                    os.unlink(tmp_name)
+                except FileNotFoundError:
+                    pass
 
     def run_when_done(self, write_output=None):
         if write_output:
