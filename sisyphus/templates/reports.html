@@ -36,20 +36,12 @@ padding:5px;
 
 <table><thead>
 <tr>
-<th align="left"><strong><em>output</em></strong></th>
-<th align="left"><strong><em>path</em></strong></th>
-<th align="left"><strong><em>state</em></strong></th>
+<th align="left"><strong><em>report</em></strong></th>
 </tr>
 </thead><tbody>
-    {% for out in outputs %}
-    <tr id="name_{{ out.name }}">
-    <td align="left">{{ out.name }} </td>
-    <td align="left"><a href="/info/{{ out.sis_id }}">{{ out.sis_id }}</a></td>
-    <td align="left">
-        <div class="box" style="background-color:{{ out.state_bg_color }}">
-            {{ out.state }}
-        </div>
-    </td>
+    {% for rep in reports %}
+    <tr id="name_{{ rep }}">
+    <td align="left"><a href="/report/{{ rep }}">{{ rep }}</a></td>
     </tr>
     {% endfor %}
 </tbody></table>
