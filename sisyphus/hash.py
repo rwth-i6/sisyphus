@@ -168,7 +168,7 @@ def sis_hash_helper(obj):
         byte_list.append(sis_hash_helper(get_object_state(obj)))
 
     byte_str = b"(" + b", ".join(byte_list) + b")"
-    if len(byte_str) > 4096:
+    if len(byte_str) > 100000: # disable for debugging
         # hash long outputs to avoid arbitrary long return values. 4096 is just
         # picked because it looked good and not optimized,
         # it's most likely not that important.
