@@ -92,9 +92,16 @@ class EngineBase:
         # find last requirements
         rqmt = self.add_defaults_to_rqmt(task, rqmt)
         rqmt_hist = self.get_submit_history(task)[task_id]
-        if rqmt_hist and rqmt_hist[0] == rqmt:
-            # job has been submitted before and the rqmt given by the recipe did not change
-            rqmt.update(rqmt_hist[-1])
+        if rqmt_hist:
+            # Keep previously submitted values for requirements that did not change in the recipe. Build the result
+            # from the currently known requirement keys so that submit metadata and removed requirements are ignored.
+            missing = object()
+            initial_rqmt = rqmt_hist[0]
+            last_rqmt = rqmt_hist[-1]
+            rqmt = {
+                key: last_rqmt.get(key, value) if initial_rqmt.get(key, missing) == value else value
+                for key, value in rqmt.items()
+            }
             if update:
                 rqmt = task.update_rqmt(rqmt, task_id)
 
