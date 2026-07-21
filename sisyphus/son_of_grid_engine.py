@@ -66,6 +66,7 @@ class SonOfGridEngine(EngineBase):
                             The default "mpi" is somewhat arbitrarily chosen as we have it in our environment.
         """
         self._task_info_cache_last_update = 0
+        self._task_info_cache = defaultdict(list)
         self.gateway = gateway
         self.default_rqmt = default_rqmt
         self.auto_clean_eqw = auto_clean_eqw
@@ -225,14 +226,14 @@ class SonOfGridEngine(EngineBase):
             else:
                 # this id doesn't fit pattern, this should only happen if only parts of the jobs are restarted
                 job_id = self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
-                submitted.append((list(range(start_id, end_id, step_size)), job_id))
+                submitted.append((list(range(start_id, end_id + 1, step_size)), job_id))
                 start_id, end_id, step_size = (task_id, None, None)
         assert start_id is not None
         if end_id is None:
             end_id = start_id
             step_size = 1
         job_id = self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
-        submitted.append((list(range(start_id, end_id, step_size)), job_id))
+        submitted.append((list(range(start_id, end_id + 1, step_size)), job_id))
         return ENGINE_NAME, submitted
 
     def submit_helper(self, call, logpath, rqmt, name, task_name, start_id, end_id, step_size):
@@ -289,7 +290,7 @@ class SonOfGridEngine(EngineBase):
                 job_id = sjob_id[0]
 
                 logging.info("Submitted with job_id: %s %s" % (job_id, name))
-                for task_id in range(start_id, end_id, step_size):
+                for task_id in range(start_id, end_id + 1, step_size):
                     self._task_info_cache[(name, task_id)].append((job_id, "qw"))
 
                 if False:  # for debugging

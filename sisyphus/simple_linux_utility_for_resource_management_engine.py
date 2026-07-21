@@ -63,6 +63,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                                           running jobs anymore.
         """
         self._task_info_cache_last_update = 0
+        self._task_info_cache = defaultdict(list)
         self.gateway = gateway
         self.default_rqmt = default_rqmt
         self.has_memory_resource = has_memory_resource
@@ -229,14 +230,14 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             else:
                 # this id doesn't fit pattern, this should only happen if only parts of the jobs are restarted
                 job_id = self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
-                submitted.append((list(range(start_id, end_id, step_size)), job_id))
+                submitted.append((list(range(start_id, end_id + 1, step_size)), job_id))
                 start_id, end_id, step_size = (task_id, None, None)
         assert start_id is not None
         if end_id is None:
             end_id = start_id
             step_size = 1
         job_id = self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
-        submitted.append((list(range(start_id, end_id, step_size)), job_id))
+        submitted.append((list(range(start_id, end_id + 1, step_size)), job_id))
         return ENGINE_NAME, submitted
 
     def submit_helper(self, call, logpath, rqmt, name, task_name, start_id, end_id, step_size):
@@ -296,10 +297,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 # reset cache, after error
                 self.reset_cache()
             else:
-                job_id = sout[3].decode().split(".")
+                job_id = sout[3].decode().split(".")[0]
 
                 logging.info("Submitted with job_id: %s %s" % (job_id, name))
-                for task_id in range(start_id, end_id, step_size):
+                for task_id in range(start_id, end_id + 1, step_size):
                     self._task_info_cache[(name, task_id)].append((job_id, "PENDING"))
 
                 if err:
