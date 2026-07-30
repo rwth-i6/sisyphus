@@ -1,5 +1,5 @@
 # Author: Wilfried Michel <michel@cs.rwth-aachen.de>
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 from collections import defaultdict, namedtuple
 from enum import Enum
 import getpass  # used to get username
@@ -325,6 +325,38 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
 
     def reset_cache(self):
         self._task_info_cache_last_update = -10
+
+    def get_task_termination_info(self, task, task_id, submit_info) -> Dict[str, bool]:
+        job_id = next(
+            (job_id for task_ids, job_id in submit_info.get("engine_info", []) if task_id in task_ids),
+            None,
+        )
+        if job_id is None:
+            return {}
+
+        slurm_task_id = f"{job_id}_{task_id}"
+        command = ["sacct", "-n", "-P", "-j", slurm_task_id, "--format=State%30"]
+        try:
+            out, err, retval = self.system_call(command)
+        except (OSError, subprocess.TimeoutExpired):
+            logging.warning(self._system_call_error_warn_msg(command))
+            return {}
+        if retval != 0:
+            logging.warning(self._system_call_error_warn_msg(command, err=err))
+            return {}
+
+        termination_info = {}
+        for raw_line in out:
+            state = raw_line.decode("utf-8").strip()
+            if not state:
+                logging.warning("Failed to parse sacct output: %s" % raw_line.decode("utf-8", errors="replace"))
+                continue
+            if state == "OUT_OF_MEMORY":
+                termination_info["out_of_memory"] = True
+            elif state == "TIMEOUT":
+                termination_info["out_of_time"] = True
+
+        return termination_info
 
     def queue_state(self):
         """Returns list with all currently running tasks in this queue"""
