@@ -123,13 +123,15 @@ def update_engine_rqmt(last_rqmt: Dict, last_usage: Dict):
     # Did we run out of time?
     requested_time = last_rqmt.get("time")
     used_time = last_usage.get("used_time", 0)
-    if requested_time and requested_time - used_time < 0.1:
+    out_of_time = last_usage.get("out_of_time")
+    if requested_time and (out_of_time or requested_time - used_time < 0.1):
         out["time"] = requested_time * 2
 
     # Did it (nearly) break the memory limits?
     requested_memory = last_rqmt.get("mem")
     used_memory = last_usage.get("max", {}).get("rss", 0)
-    if requested_memory and last_usage.get("out_of_memory") or requested_memory - used_memory < 0.25:
+    out_of_memory = last_usage.get("out_of_memory")
+    if requested_memory and (out_of_memory or requested_memory - used_memory < 0.25):
         out["mem"] = requested_memory * 2
 
     return out

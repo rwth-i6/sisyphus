@@ -50,6 +50,10 @@ class EngineBase:
     def get_default_rqmt(self, task):
         raise NotImplementedError
 
+    def get_task_termination_info(self, task, task_id, submit_info):
+        """Return engine-provided usage information for a terminated task."""
+        return {}
+
     def get_used_engine(self, engine_selector):
         return self
 
@@ -103,7 +107,8 @@ class EngineBase:
                 for key, value in rqmt.items()
             }
             if update:
-                rqmt = task.update_rqmt(rqmt, task_id)
+                termination_info = self.get_task_termination_info(task, task_id, last_rqmt)
+                rqmt = task.update_rqmt(rqmt, task_id, additional_usage=termination_info)
 
         if "mem" in rqmt:
             rqmt["mem"] = tools.str_to_GB(rqmt["mem"])
@@ -328,6 +333,9 @@ class EngineSelector(EngineBase):
 
     def get_default_rqmt(self, task):
         return self.get_used_engine_by_rqmt(task.rqmt()).get_default_rqmt(task)
+
+    def get_task_termination_info(self, task, task_id, submit_info):
+        return self.get_used_engine_by_rqmt(submit_info).get_task_termination_info(task, task_id, submit_info)
 
     def get_job_node_hostnames(self):
         raise Exception(

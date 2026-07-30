@@ -452,7 +452,7 @@ class Task:
             start = (chunk_size + 1) * overflow + chunk_size * (task_id - 1 - overflow)
             return range(start, start + chunk_size)
 
-    def update_rqmt(self, last_rqmt, task_id):
+    def update_rqmt(self, last_rqmt, task_id, additional_usage=None):
         """Update task requirements of interrupted job"""
         last_rqmt = last_rqmt.copy()
         # Make sure mem and time are numbers and not str
@@ -461,9 +461,15 @@ class Task:
         usage_file = self._job._sis_path(gs.PLOGGING_FILE + "." + self.name(), task_id, abspath=True)
 
         try:
-            last_usage = literal_eval(open(usage_file).read())
+            with open(usage_file) as usage_file_handle:
+                last_usage = literal_eval(usage_file_handle.read())
         except (SyntaxError, IOError):
-            # we don't know anything if no usage file is writen or is invalid, just reuse last rqmts
+            last_usage = {}
+
+        if additional_usage:
+            last_usage.update(additional_usage)
+        if not last_usage:
+            # We don't know anything if no usage information is available, so just reuse the last requirements.
             return last_rqmt
         return self._update_rqmt(last_rqmt=last_rqmt, last_usage=last_usage)
 
