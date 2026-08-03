@@ -14,6 +14,7 @@ from sisyphus.manager import manager
 from sisyphus.helper import console
 from sisyphus import shortcuts
 import sisyphus.global_settings as gs
+import sisyphus.toolkit
 
 # Setup logging
 import logging
@@ -162,6 +163,7 @@ def main():
     # add argv to config_files if manager or console is called
     if args.func in [manager, console]:
         args.config_files += args.argv
+        sisyphus.toolkit._sis_running_in_manager = True
 
     # Setup logging colors
     sisyphus.logging_format.add_coloring_to_logging()
