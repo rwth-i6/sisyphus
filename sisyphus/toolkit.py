@@ -284,6 +284,14 @@ def running_in_worker():
     return _sis_running_in_worker
 
 
+_sis_running_in_manager = False
+
+
+def running_in_manager():
+    """Returns true if this code is run inside the manager or console"""
+    return _sis_running_in_manager
+
+
 # Helper functions mainly used in the console
 def load_job(path: str) -> Job:
     """Load job from job directory even if it is already cleaned up
