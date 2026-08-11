@@ -129,7 +129,11 @@ class JobSingleton(type):
                 job._sis_add_block(b)
 
         # Update alias prefixes
-        job._sis_alias_prefixes.add(gs.ALIAS_AND_OUTPUT_SUBDIR)
+        try:
+            job._sis_alias_prefixes.add(gs.ALIAS_AND_OUTPUT_SUBDIR)
+        except Exception as e:
+            assert False, ("An empty Job was loaded, this can happen if classes were passed as parameters that could"
+                           "not be pickled properly")
 
         # add stacktrace information.
         assert (
