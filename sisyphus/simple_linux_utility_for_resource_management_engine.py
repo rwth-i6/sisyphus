@@ -327,6 +327,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self._task_info_cache_last_update = -10
 
     def get_task_termination_info(self, task, task_id, submit_info) -> Dict[str, bool]:
+        if submit_info.get("engine_name") != ENGINE_NAME:
+            return {}
         job_id = next(
             (job_id for task_ids, job_id in submit_info.get("engine_info", []) if task_id in task_ids),
             None,
