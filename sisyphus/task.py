@@ -400,7 +400,12 @@ class Task:
                         history = [] if engine is None else engine.get_submit_history(self)[task_id]
                         # Filter entries with less progress than the most recent entry.
                         # https://github.com/rwth-i6/sisyphus/issues/295
-                        completed_fraction = (history[-1].get("completed_fraction") or 0) if history else 0
+                        # Count progress made since the last submit too.
+                        current_fraction = self._job.completed_fraction()
+                        completed_fraction = max(
+                            (history[-1].get("completed_fraction") or 0) if history else 0,
+                            current_fraction or 0,
+                        )
                         history = [d for d in history if (d.get("completed_fraction") or 0) >= completed_fraction]
                         if len(history) > gs.MAX_SUBMIT_RETRIES:
                             # More then three tries to run this task, something is wrong
