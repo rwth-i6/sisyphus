@@ -326,14 +326,14 @@ class Job(metaclass=JobSingleton):
             if self._sis_aliases:
                 for alias in sorted(self._sis_aliases):
                     f.write("ALIAS: %s\n" % alias)
-            for base_dir in used_by_base_dirs:
-                f.write(_JOB_INFO_USED_BY_BASE_DIR_PREFIX + "%s\n" % base_dir)
             for stacktrace in self._sis_stacktrace:
                 if isinstance(stacktrace, _SuppressedStacktraces):
                     f.write("STACKTRACE: ... (%d more invocations are suppressed)\n" % stacktrace.count)
                     continue
                 f.write("STACKTRACE:\n")
                 f.writelines(traceback.format_list(stacktrace))
+            for base_dir in used_by_base_dirs:
+                f.write(_JOB_INFO_USED_BY_BASE_DIR_PREFIX + "%s\n" % base_dir)
         self._sis_setup_since_restart = True
 
     def __getstate__(self):
