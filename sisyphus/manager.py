@@ -663,8 +663,9 @@ class Manager(threading.Thread):
             self.resume_jobs()
             self.run_jobs()
 
-            for job in self.jobs.get(gs.STATE_ERROR, []):
-                gs.on_job_failure(job)
+            for state in (gs.STATE_ERROR, gs.STATE_RETRY_ERROR):
+                for job in self.jobs.get(state, []):
+                    gs.on_job_failure(job)
 
             self.check_output(write_output=self.link_outputs)
 
