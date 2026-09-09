@@ -373,6 +373,13 @@ JOB_ADD_STACKTRACE_WITH_DEPTH = 0
 # None for no limit.
 JOB_ADD_STACKTRACE_MAX_COUNT = 5
 
+# Record in each job's info file which Sisyphus setups depend on it,
+# as one "USED_BY_BASE_DIR: <base dir>" line per setup, the base dir being gs.BASE_DIR.
+# Job directories are commonly shared between setups via symlinks,
+# so a job dir alone does not say which setups still need it.
+# Written when a job directory is set up, for that job and for the creators of its inputs.
+JOB_INFO_USED_BY_BASE_DIR = False
+
 # Is enabled if tk.run is called
 SKIP_IS_FINISHED_TIMEOUT = False
 
