@@ -15,9 +15,25 @@ class ConfigManager:
     def __init__(self):
         self._config_readers = []
         self._waiting_reader = {}
-        self.loop = asyncio.get_event_loop()
+        self._loop = None
         self._reader_threads = defaultdict(dict)
         self._current_config = None
+
+    @property
+    def loop(self):
+        """
+        The event loop for async config loading, created on first use.
+        Not in __init__, module-level instance created at import time, where no event loop may exist
+        (IPython, non-main threads, Python >= 3.14 in general).
+        https://github.com/rwth-i6/sisyphus/issues/275
+        """
+        if self._loop is None:
+            try:
+                self._loop = asyncio.get_event_loop()
+            except RuntimeError:
+                self._loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self._loop)
+        return self._loop
 
     @property
     def current_config(self):
