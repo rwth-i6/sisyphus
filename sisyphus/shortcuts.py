@@ -126,6 +126,15 @@ def add_subparsers(parsers):
     )
     parser_remove_job_and_descendants.set_defaults(func=remove_job_and_descendants)
 
+    parser_setup_job_directory = sc_subparsers.add_parser(
+        "setup_job_directory",
+        help="setup a job that is marked as runnable manually"
+    )
+    parser_setup_job_directory.add_argument("--job", help="job path")
+    parser_setup_job_directory.add_argument('argv', metavar='ARGV', type=str, nargs='*',
+                                                   help='All config files that will be loaded')
+    parser_setup_job_directory.set_defaults(func=setup_job_directory)
+
     parser_show_jobs_in_webserver = sc_subparsers.add_parser(
         "show_jobs_in_webserver", help="Start webserver which shows all given jobs"
     )
@@ -255,6 +264,13 @@ def remove_job_and_descendants(args):
     call_sis(call)
 
 
+def setup_job_directory(args):
+    for conf_file in args.argv:
+        call = ['console', conf_file, '--script', '-c',
+                'tk.setup_job_directory(tk.sis_graph.find("%s")[0])' % (args.job)]
+        call_sis(call)
+
+        
 def show_job_in_webserver(args):
     call = ["console", "--script"]
     for job in args.job:
