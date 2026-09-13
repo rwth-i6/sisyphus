@@ -283,7 +283,13 @@ class EngineSelector(EngineBase):
 
     def task_state(self, task, task_id):
         """Return state of task"""
-        return self.get_used_engine_by_rqmt(task.rqmt()).task_state(task, task_id)
+        # Select the engine the way submit() does:
+        # get_rqmt applies the submit history and gs.check_engine_limits, which may set rqmt["engine"].
+        # With the raw task.rqmt(), a task routed by check_engine_limits was looked up in the default engine,
+        # reported unknown, and resubmitted every cycle,
+        # so the same task id ran several times at once as soon as the local engine had free slots.
+        rqmt = self.get_rqmt(task, task_id, update=False)
+        return self.get_used_engine_by_rqmt(rqmt).task_state(task, task_id)
 
     def for_all_engines(self, f):
         """Tell all engines to stop"""

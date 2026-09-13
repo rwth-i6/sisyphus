@@ -256,8 +256,17 @@ class LocalEngine(threading.Thread, EngineBase):
 
             task = TaskQueueInstance(call_with_id, logpath, rqmt, name, task_name, task_id)
             with self.waiting_tasks as waiting_tasks, self.runnable_tasks as runnable_tasks:
+                key = (name, task_id)
+                if key in waiting_tasks:
+                    # A second submission while still queued would start the task twice.
+                    logging.warning("Task %s is already queued, ignoring the new submission" % str(key))
+                    continue
+                with self.running_tasks as running_tasks:
+                    if key in running_tasks:
+                        logging.warning("Task %s is already running, ignoring the new submission" % str(key))
+                        continue
                 runnable_tasks.append(task)
-                waiting_tasks[(name, task_id)] = task
+                waiting_tasks[key] = task
         return ENGINE_NAME, socket.gethostname()
 
     def task_done(self, running_tasks, task):
