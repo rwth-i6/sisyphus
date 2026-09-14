@@ -8,6 +8,7 @@ Module to contain all job related code
 
 from __future__ import annotations
 import copy
+import functools
 import gzip
 import inspect
 import logging
@@ -17,6 +18,7 @@ import pickle
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 from typing import Optional, Any, List, Iterator, Type, TypeVar, Set, Dict
@@ -34,6 +36,8 @@ __email__ = "peter@cs.rwth-aachen.de"
 
 sis_global_lock = multiprocessing.Lock()
 SET_DEFAULT_WARNING_COUNT = 0  # Used to avoid spam in log
+
+_JOB_INFO_USED_BY_BASE_DIR_PREFIX = "USED_BY_BASE_DIR: "
 
 
 def get_args(f, args, kwargs):
@@ -296,10 +300,18 @@ class Job(metaclass=JobSingleton):
                 link_name = os.path.join(self._sis_path(gs.JOB_INPUT), str(job_id).replace("/", "_"))
                 if not os.path.exists(link_name) and not os.path.islink(link_name):
                     os.symlink(src=os.path.abspath(str(creator._sis_path())), dst=link_name, target_is_directory=True)
+                if gs.JOB_INFO_USED_BY_BASE_DIR:
+                    _job_info_add_used_by_base_dir(creator)
 
         # export the actual job
         with gzip.open(self._sis_path(gs.JOB_SAVE), "w") as f:
             pickle.dump(self, f)
+
+        used_by_base_dirs = []
+        if gs.JOB_INFO_USED_BY_BASE_DIR:
+            used_by_base_dirs = _job_info_read_used_by_base_dirs(self._sis_path(gs.JOB_INFO))
+            if gs.BASE_DIR not in used_by_base_dirs:
+                used_by_base_dirs.append(gs.BASE_DIR)
 
         with open(self._sis_path(gs.JOB_INFO), "w", encoding="utf-8") as f:
             for tag in sorted(self.tags):
@@ -320,6 +332,8 @@ class Job(metaclass=JobSingleton):
                     continue
                 f.write("STACKTRACE:\n")
                 f.writelines(traceback.format_list(stacktrace))
+            for base_dir in used_by_base_dirs:
+                f.write(_JOB_INFO_USED_BY_BASE_DIR_PREFIX + "%s\n" % base_dir)
         self._sis_setup_since_restart = True
 
     def __getstate__(self):
@@ -1275,3 +1289,47 @@ class _SuppressedStacktraces:
 
     def __init__(self):
         self.count = 1
+
+
+def _job_info_read_used_by_base_dirs(info_path: str) -> List[str]:
+    """Return setup base dirs recorded in a job info file, empty if none or not readable"""
+    base_dirs = []
+    try:
+        with open(info_path, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith(_JOB_INFO_USED_BY_BASE_DIR_PREFIX):
+                    base_dir = line[len(_JOB_INFO_USED_BY_BASE_DIR_PREFIX) :].strip()
+                    if base_dir not in base_dirs:
+                        base_dirs.append(base_dir)
+    except OSError:
+        pass
+    return base_dirs
+
+
+@functools.lru_cache(maxsize=None)
+def _job_info_add_used_by_base_dir(job: Job) -> None:
+    """Add a USED_BY_BASE_DIR entry for this setup to a job's info file, unless already there."""
+    info_path = os.path.abspath(job._sis_path(gs.JOB_INFO))
+    line = _JOB_INFO_USED_BY_BASE_DIR_PREFIX + gs.BASE_DIR + "\n"
+    tmp_path = None
+    try:
+        with open(info_path, encoding="utf-8") as f:
+            content = f.read()
+        if line in content:
+            return
+        fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(info_path), prefix=gs.JOB_INFO + ".")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+            f.write(line)
+        # mkstemp creates 0600, while job info files are group readable and writable
+        os.chmod(tmp_path, os.stat(info_path).st_mode & 0o777)
+        os.rename(tmp_path, info_path)
+        tmp_path = None
+    except OSError as exc:
+        logging.debug("Could not record %s in %s: %s" % (gs.BASE_DIR, info_path, exc))
+    finally:
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
