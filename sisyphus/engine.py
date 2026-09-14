@@ -283,7 +283,9 @@ class EngineSelector(EngineBase):
 
     def task_state(self, task, task_id):
         """Return state of task"""
-        return self.get_used_engine_by_rqmt(task.rqmt()).task_state(task, task_id)
+        # Respect changed requirements from submit history and gs.check_engine_limits
+        rqmt = self.get_rqmt(task, task_id, update=False)
+        return self.get_used_engine_by_rqmt(rqmt).task_state(task, task_id)
 
     def for_all_engines(self, f):
         """Tell all engines to stop"""
