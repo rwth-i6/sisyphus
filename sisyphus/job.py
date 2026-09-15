@@ -147,6 +147,13 @@ class JobSingleton(type):
                     if isinstance(gs.JOB_ADD_STACKTRACE_WITH_DEPTH, int)
                     else None
                 )
+                # rebuild without the frame code objects:
+                # Python >= 3.13 FrameSummary keeps frame.f_code (for lazy source lookup),
+                # which cannot pickle, and the job (incl. this stack) gets pickled.
+                # Reading .line here resolves the source line, so nothing is lost for format_list.
+                stacktrace = traceback.StackSummary.from_list(
+                    [(f.filename, f.lineno, f.name, f.line) for f in stacktrace]
+                )
                 job._sis_stacktrace.append(stacktrace)
             elif job._sis_stacktrace and isinstance(job._sis_stacktrace[-1], _SuppressedStacktraces):
                 job._sis_stacktrace[-1].count += 1
