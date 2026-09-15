@@ -253,13 +253,17 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         """
         name = self.process_task_name(name)
         out_log_file = f"{logpath}/%x.%A.%a"
-        if rqmt.get("multi_node_slots", 1) > 1:
-            out_log_file += ".%t"
         sbatch_call = ["sbatch", "-J", name, "--mail-type=None"]
         sbatch_call += self.options(rqmt)
-        sbatch_call += ["-o", f"{out_log_file}.batch"]
         sbatch_call += ["-a", f"{start_id}-{end_id}:{step_size}"]
-        sbatch_call += [f"--wrap=srun -o {out_log_file} {' '.join(call)}"]
+        # The worker runs as the batch script body, which runs exactly once, on the first node:
+        # a multi-node rqmt gets one worker and the job does its own fan-out,
+        # as under SGE, where the -pe job script also runs once.
+        # Fan-out from the job: mpirun (scheduler-agnostic, one rank per process),
+        # mpirun/srun with one task per node + torchrun (rdzv endpoint = this host),
+        # or srun with one task per GPU.
+        sbatch_call += ["-o", out_log_file]
+        sbatch_call += [f"--wrap={shlex.join(call)}"]
 
         while True:
             try:
