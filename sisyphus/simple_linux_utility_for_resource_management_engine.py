@@ -256,12 +256,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         sbatch_call = ["sbatch", "-J", name, "--mail-type=None"]
         sbatch_call += self.options(rqmt)
         sbatch_call += ["-a", f"{start_id}-{end_id}:{step_size}"]
-        # The worker runs as the batch script body, which runs exactly once, on the first node:
-        # a multi-node rqmt gets one worker and the job does its own fan-out,
-        # as under SGE, where the -pe job script also runs once.
-        # Fan-out from the job: mpirun (scheduler-agnostic, one rank per process),
-        # mpirun/srun with one task per node + torchrun (rdzv endpoint = this host),
-        # or srun with one task per GPU.
+        # The worker runs once, as the batch script on the first node, also for multi-node.
+        # The job does its own fan-out (e.g. mpirun, or srun + torchrun).
         sbatch_call += ["-o", out_log_file]
         sbatch_call += [f"--wrap={shlex.join(call)}"]
 
@@ -464,9 +460,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         return self.default_rqmt
 
     def init_worker(self, task):
-        # setup log file by linking to engine logfile
-        # The worker runs once per array task (as the batch script body, also for multi-node),
-        # so there is one engine logfile per array task, no per-SLURM-task suffix.
+        # setup log file by linking to engine logfile (one per array task, also for multi-node)
         task_id = self.get_task_id(None)
         logpath = os.path.relpath(task.path(gs.JOB_LOG, task_id))
         if os.path.isfile(logpath):
