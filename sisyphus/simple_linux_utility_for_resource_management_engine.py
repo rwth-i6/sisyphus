@@ -510,3 +510,21 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         assert env_var is not None, f"neither of {'/'.join(env_vars)} is set, are we running in a worker context?"
         partaking_nodes = subprocess.check_output(["scontrol", "show", "hostnames", os.environ[env_var]], text=True)
         return sorted(set(node.strip() for node in partaking_nodes.splitlines()))
+
+    def is_job_being_preempted(self) -> bool:
+        """
+        :return: whether Slurm is preempting the current job.
+            During the preemption GraceTime, only the srun steps get SIGTERM, not the batch script (the worker).
+        """
+        command = ["squeue", "-h", "-j", os.environ["SLURM_JOB_ID"], "-O", "PreemptTime"]
+        for _ in range(3):
+            try:
+                proc = subprocess.run(command, capture_output=True, text=True, timeout=200)
+            except subprocess.TimeoutExpired:
+                logging.warning(self._system_call_timeout_warn_msg(command))
+                continue
+            if proc.returncode == 0:
+                return proc.stdout.strip() not in ("", "N/A")
+            logging.warning("%s\n%s" % (self._system_call_error_warn_msg(command), proc.stderr.strip()))
+            time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
+        return False

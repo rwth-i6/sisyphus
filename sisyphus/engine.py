@@ -227,6 +227,15 @@ class EngineBase:
         """
         pass
 
+    def is_job_being_preempted(self) -> bool:
+        """
+        Whether the engine is preempting the currently running job.
+        A task which fails then is not marked as error, as the engine ends or restarts the job anyway.
+
+        Can only be called in a worker context.
+        """
+        return False
+
     def get_job_node_hostnames(self) -> List[str]:
         """
         Returns the list of nodes the currently running job is executing on.
