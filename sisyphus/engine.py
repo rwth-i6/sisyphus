@@ -179,6 +179,8 @@ class EngineBase:
         rqmt_to_ids = {}
         for task_id in task_ids:
             rqmt = self.get_rqmt(task, task_id)
+            # not a resource, but engines can use it, e.g. Slurm --no-requeue
+            rqmt["sis_resumable"] = task.resumeable()
 
             key = tools.sis_hash(rqmt)
             if key not in rqmt_to_ids:

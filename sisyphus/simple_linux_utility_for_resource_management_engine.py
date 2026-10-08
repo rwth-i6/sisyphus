@@ -192,6 +192,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             # https://github.com/rwth-i6/sisyphus/issues/229
             out.append("--ntasks-per-node=1")
 
+        if not rqmt.get("sis_resumable", True):
+            # Slurm must not restart a task which cannot be resumed (e.g. on preemption or node failure)
+            out.append("--no-requeue")
+
         sbatch_args = rqmt.get("sbatch_args", [])
         if isinstance(sbatch_args, str):
             sbatch_args = sbatch_args.split()
