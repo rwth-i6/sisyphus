@@ -254,6 +254,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         name = self.process_task_name(name)
         out_log_file = f"{logpath}/%x.%A.%a"
         sbatch_call = ["sbatch", "-J", name, "--mail-type=None"]
+        # a requeued job writes to the same log file (same job id), keep the output of the previous attempt
+        sbatch_call += ["--open-mode=append"]
         sbatch_call += self.options(rqmt)
         sbatch_call += ["-a", f"{start_id}-{end_id}:{step_size}"]
         # The worker runs once, as the batch script on the first node, also for multi-node.
