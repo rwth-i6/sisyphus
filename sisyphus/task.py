@@ -162,14 +162,12 @@ class Task:
 
         try:
             if resume_job:
-                if self._resume is not None:
-                    task = self._resume
-                else:
-                    task = self._start
-                    logging.warning(
-                        "No resume function set (changed tasks after job was initialized?) "
-                        "Fallback to normal start function: %s" % task
+                if self._resume is None:
+                    raise Exception(
+                        "Task %s was started before but has no resume function, not running it again "
+                        "(use --force_resume to run the start function anyway)" % self.name()
                     )
+                task = self._resume
             else:
                 task = self._start
             assert task is not None, "Error loading task"

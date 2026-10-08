@@ -196,6 +196,9 @@ def worker_helper(args):
 
         call = sys.argv
         del call[call.index("--redirect_output")]
+        if args.resume_job is None:
+            # decided here, as the log file is created below
+            call += ["--resume_job", "yes" if os.path.isfile(log_file) else "no"]
 
         with open(log_file, "a") as logfile:
             if logfile.tell() > 0:
@@ -237,7 +240,11 @@ def worker_helper(args):
     logging_thread.start()
 
     sisyphus.job_path.Path.cacheing_enabled = True
-    resume_job = False
+    if args.resume_job is None:
+        # a previous attempt left its log file, checked before init_worker relinks it
+        resume_job = task.started(task_id)
+    else:
+        resume_job = args.resume_job == "yes"
     gs.active_engine.init_worker(task)
 
     # cleanup environment

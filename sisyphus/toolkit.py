@@ -957,6 +957,8 @@ def run(obj: Any, quiet: bool = False):
                         env.update(gs.ENVIRONMENT_SETTINGS)
 
                         call = " ".join(task.get_worker_call(task_id))
+                        # decided here, as the shell redirect below creates the log file
+                        call += " --resume_job %s" % ("yes" if task.started(task_id) else "no")
                         if quiet:
                             call += " --redirect_output"
                         else:
