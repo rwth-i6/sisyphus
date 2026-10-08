@@ -92,11 +92,17 @@ class WorkerResumeTest(unittest.TestCase):
         self._run_worker(job, resume_job="no")
         self.assertEqual(self._calls(job), ["run"])
 
-    def test_continued_attempt_not_resumable_is_error(self):
+    def test_continued_attempt_not_resumable_is_interrupted_not_resumable(self):
         job = self._setup_job(resumable=False, started=True)
         self._run_worker(job)
         self.assertEqual(self._calls(job), [])
-        self.assertTrue(self._error(job))
+        self.assertFalse(self._error(job))
+        (task,) = job._sis_tasks()
+        # the usage file of the worker is not recent anymore, the job is not known to the engine anymore
+        with mock.patch.object(gs, "WAIT_PERIOD_JOB_FS_SYNC", 0), mock.patch.object(
+            gs, "PLOGGING_UPDATE_FILE_PERIOD", 0
+        ), mock.patch.object(gs, "WAIT_PERIOD_JOB_CLEANUP", 0):
+            self.assertEqual(task._get_state_helper(None, 1), gs.STATE_INTERRUPTED_NOT_RESUMABLE)
 
     def test_first_attempt_not_resumable_runs_start(self):
         job = self._setup_job(resumable=False)

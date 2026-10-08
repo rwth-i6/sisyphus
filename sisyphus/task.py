@@ -160,13 +160,17 @@ class Task:
         tools.get_system_informations(sys.stdout)
         sys.stdout.flush()
 
+        if resume_job and self._resume is None:
+            # no error marker: the manager then shows it as interrupted_not_resumable, as after a timeout
+            logging.error(
+                "Task %s was started before but has no resume function, not running it again "
+                "(use --force_resume to run the start function anyway)" % self.name()
+            )
+            logging_thread.stop()
+            return
+
         try:
             if resume_job:
-                if self._resume is None:
-                    raise Exception(
-                        "Task %s was started before but has no resume function, not running it again "
-                        "(use --force_resume to run the start function anyway)" % self.name()
-                    )
                 task = self._resume
             else:
                 task = self._start
