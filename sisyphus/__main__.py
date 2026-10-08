@@ -141,18 +141,11 @@ def main():
         help="Task id, if not set trying to read it from environment variables",
     )
     parser_worker.add_argument(
-        "--resume_job",
-        choices=["yes", "no"],
-        default=None,
-        help="run the resume function (yes) or the start function (no), default: resume if the task was started before",
-    )
-    parser_worker.add_argument(
         "--force_resume",
         "--fr",
-        dest="resume_job",
-        action="store_const",
-        const="no",
-        help="force resume of non resumable tasks (runs the start function), good for debugging",
+        default=False,
+        action="store_true",
+        help="force resume of non resumable tasks, good for debugging",
     )
     parser_worker.add_argument("--engine", default="short", help="The engine running the Job")
     parser_worker.add_argument(

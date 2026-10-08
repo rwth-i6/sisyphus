@@ -95,6 +95,6 @@ class Parallel(Job):
         self.sh("cat {text} | gzip -d >> {out}", text=max_text)
 
     def tasks(self):
-        yield Task(start="setup", resume="setup", rqmt={}, args=range(1, 9), tries=4)
-        yield Task(start="run", resume="run", rqmt={}, args=range(1, 9))
-        yield Task(start="finalize", resume="finalize")
+        yield Task(start="setup", resumable=True, rqmt={}, args=range(1, 9), tries=4)
+        yield Task(start="run", resumable=True, rqmt={}, args=range(1, 9))
+        yield Task(start="finalize", resumable=True)

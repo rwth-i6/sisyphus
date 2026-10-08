@@ -327,8 +327,7 @@ class LocalEngine(threading.Thread, EngineBase):
             task_name = task.name()
             task_instance = TaskQueueInstance(call_with_id, logpath, rqmt, name, task_name, task_id)
 
-            # the worker can have additional options, e.g. --resume_job
-            if call_with_id[1:] != process.cmdline()[1 : len(call_with_id)]:
+            if call_with_id[1:] != process.cmdline()[1:]:
                 logging.warning("Job %s changed, recovering it anyway." % name)
                 logging.debug("Job changed: %i %s %s" % (pid, process.cmdline(), task_instance.call))
 
