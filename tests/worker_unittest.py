@@ -8,6 +8,7 @@ from unittest import mock
 import sisyphus.global_settings as gs
 from sisyphus import Job, Task
 from sisyphus.localengine import LocalEngine
+from sisyphus.simple_linux_utility_for_resource_management_engine import SimpleLinuxUtilityForResourceManagementEngine
 from sisyphus.tools import execute_in_dir
 from sisyphus import worker
 
@@ -109,6 +110,26 @@ class WorkerResumeTest(unittest.TestCase):
         self._run_worker(job)
         self.assertEqual(self._calls(job), ["run"])
         self.assertFalse(self._error(job))
+
+    def _run_slurm_worker(self, job):
+        # Slurm's init_worker links the log file to the engine log file, the check must come before
+        gs.active_engine = SimpleLinuxUtilityForResourceManagementEngine(default_rqmt={"cpu": 1, "mem": 1, "time": 1})
+        os.makedirs(job._sis_path(gs.JOB_LOG_ENGINE), exist_ok=True)
+        with open(os.path.join(job._sis_path(gs.JOB_LOG_ENGINE), "testjob.42.1"), "w") as f:
+            f.write("engine log of this attempt\n")
+        env = {"SLURM_ARRAY_TASK_ID": "1", "SLURM_ARRAY_JOB_ID": "42", "SLURM_JOB_NAME": "testjob"}
+        with mock.patch.dict(os.environ, env):
+            self._run_worker(job, task_id=None)
+
+    def test_slurm_first_attempt_runs_start(self):
+        job = self._setup_job()
+        self._run_slurm_worker(job)
+        self.assertEqual(self._calls(job), ["run"])
+
+    def test_slurm_continued_attempt_runs_resume(self):
+        job = self._setup_job(started=True)
+        self._run_slurm_worker(job)
+        self.assertEqual(self._calls(job), ["resume_run"])
 
     def _redirect_call(self, job, **kwargs):
         argv = ["sis", gs.CMD_WORKER, job._sis_path(), "run", "1", "--redirect_output"]
