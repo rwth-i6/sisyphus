@@ -3,7 +3,6 @@ import os
 import logging
 import sys
 import time
-import warnings
 from typing import Optional, Union, Any, Sequence, Dict, List
 import subprocess as sp
 from ast import literal_eval
@@ -32,7 +31,8 @@ class Task:
     ):
         """
         :param start: name of the function which will be executed, also when the task is resumed
-        :param resume: deprecated, use ``resumable=True``. Any value means resumable, the function is not used
+        :param resume: deprecated, use ``resumable=True``. Any value means resumable,
+                       the function is not executed, the start function also runs on resume
         :param rqmt: job requirements
             Might contain:
                 "cpu": number of cpus
@@ -59,7 +59,11 @@ class Task:
             args = [[]]
         if resume is not None:
             assert not resumable, "Task: set only resumable=True, resume is deprecated"
-            warnings.warn("Task resume is deprecated, use resumable=True", DeprecationWarning, stacklevel=2)
+            if resume != start:
+                logging.warning(
+                    "Task %r: the resume function %r is not executed, the start function also runs on resume. "
+                    "Use resumable=True instead of resume." % (start, resume)
+                )
             resumable = True
         self._start = start
         self._resumable = resumable

@@ -8,6 +8,7 @@ import unittest
 from unittest import mock
 
 from sisyphus import Job, Task
+import sisyphus.task as task_module
 from sisyphus.job_path import Path
 from sisyphus.tools import execute_in_dir
 from sisyphus.hash import sis_hash_helper
@@ -102,10 +103,17 @@ class TaskResumableTest(unittest.TestCase):
     def test_resumable(self):
         self.assertTrue(Task("run", resumable=True).resumeable())
 
-    def test_resume_is_deprecated(self):
-        with self.assertWarns(DeprecationWarning):
+    def test_resume_same_as_start(self):
+        with mock.patch.object(task_module.logging, "warning") as warning:
             task = Task("run", resume="run")
         self.assertTrue(task.resumeable())
+        warning.assert_not_called()
+
+    def test_resume_other_than_start_warns(self):
+        with mock.patch.object(task_module.logging, "warning") as warning:
+            task = Task("run", resume="other")
+        self.assertTrue(task.resumeable())
+        warning.assert_called_once()
 
     def test_resume_and_resumable(self):
         with self.assertRaises(AssertionError):
