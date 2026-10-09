@@ -294,10 +294,14 @@ class Manager(threading.Thread):
 
     @staticmethod
     def print_job_state(state, job, info_string, verbose=False):
-        if hasattr(job, "info") and state == gs.STATE_RUNNING:
-            job_manager_info_string = job.info()
-            if job_manager_info_string is not None:
-                info_string += " {%s}" % job_manager_info_string
+        if state == gs.STATE_RUNNING:
+            if hasattr(job, "info"):
+                job_manager_info_string = job.info()
+                if job_manager_info_string is not None:
+                    info_string += " {%s}" % job_manager_info_string
+            frac = job.completed_fraction()
+            if frac is not None:
+                info_string += " [%.1f%%]" % (frac * 100)
 
         if state == gs.STATE_RUNNING and gs.PRINT_OLD_LOG_FILE_RUNNING is not None:
             task = job._sis_next_task()
