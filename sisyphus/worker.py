@@ -5,6 +5,7 @@ import pickle
 import pprint
 import psutil
 import pwd
+import signal
 import socket
 import sys
 import shutil
@@ -156,6 +157,67 @@ class LoggingThread(Thread):
         self.join()
 
 
+class PreemptionWatcher(Thread):
+    """
+    Checks whether the engine is preempting the job, and then forwards SIGTERM to the processes of the task.
+    E.g. on preemption with GraceTime, Slurm only signals srun steps, not the batch script, i.e. not the worker
+    and not the processes it started.
+    """
+
+    def __init__(self, interval):
+        """
+        :param float interval: seconds between the checks
+        """
+        super().__init__(daemon=True)
+        self.interval = interval
+        self._cond = Condition()
+        self.__stop = False
+
+    def run(self):
+        while True:
+            with self._cond:
+                self._cond.wait(self.interval)
+                if self.__stop:
+                    return
+            if gs.active_engine.is_job_being_preempted():
+                break
+        processes = list(self._processes_to_signal(psutil.Process(os.getpid())))
+        logging.warning(
+            "Job is being preempted by the engine, forwarding SIGTERM to the processes of the task: %s"
+            % [process.pid for process in processes]
+        )
+        for process in processes:
+            try:
+                process.send_signal(signal.SIGTERM)
+            except psutil.NoSuchProcess:
+                pass
+
+    @classmethod
+    def _processes_to_signal(cls, process):
+        """
+        :param psutil.Process process:
+        :return: all children of process, recursively, without those the engine signals itself
+        :rtype: Iterator[psutil.Process]
+        """
+        try:
+            children = process.children()
+        except psutil.NoSuchProcess:
+            return
+        for child in children:
+            try:
+                if gs.active_engine.is_signaled_on_preemption(child):
+                    continue
+            except psutil.NoSuchProcess:
+                continue
+            yield child
+            yield from cls._processes_to_signal(child)
+
+    def stop(self):
+        with self._cond:
+            self.__stop = True
+            self._cond.notify_all()
+
+
 def worker(args):
     # Change job into error state in case of any exception
     sisyphus.toolkit._sis_running_in_worker = True
@@ -246,8 +308,15 @@ def worker_helper(args):
     if getattr(task._job, "_sis_environment", None):
         task._job._sis_environment.modify_environment()
 
+    preemption_watcher = None
+    if gs.WORKER_PREEMPTION_CHECK_INTERVAL is not None:
+        preemption_watcher = PreemptionWatcher(gs.WORKER_PREEMPTION_CHECK_INTERVAL)
+        preemption_watcher.start()
+
     try:
         # run task
         task.run(task_id, logging_thread=logging_thread)
     finally:
         logging_thread.stop()
+        if preemption_watcher is not None:
+            preemption_watcher.stop()

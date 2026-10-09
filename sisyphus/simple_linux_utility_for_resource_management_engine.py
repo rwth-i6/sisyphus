@@ -534,3 +534,11 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             logging.warning("%s\n%s" % (self._system_call_error_warn_msg(command), proc.stderr.strip()))
             time.sleep(gs.WAIT_PERIOD_QSTAT_PARSING)
         return False
+
+    def is_signaled_on_preemption(self, process) -> bool:
+        """
+        :param psutil.Process process:
+        :return: whether it is srun: Slurm signals its job step itself during the GraceTime,
+            while a SIGTERM to the srun client makes it kill the job step right away (SIGKILL).
+        """
+        return process.name() == "srun"
