@@ -163,6 +163,9 @@ def worker(args):
         gs.active_engine = gs.engine().get_used_engine(args.engine)
         worker_helper(args)
     except Exception:
+        if gs.active_engine.is_job_being_preempted():
+            logging.warning("Job is being preempted by the engine, not marking the task as error")
+            raise
         task_id = gs.active_engine.get_task_id(args.task_id)
         error_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.STATE_ERROR, args.task_name, task_id)
         log_file = "%s.%s.%i" % (args.jobdir + os.path.sep + gs.JOB_LOG, args.task_name, task_id)

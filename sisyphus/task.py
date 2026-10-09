@@ -201,13 +201,13 @@ class Task:
                 logging.error("Args: %s" % str(e.args))
                 logging.error("Return-Code: %s" % e.returncode)
                 logging_thread.stop()
-                self.error(task_id, True)
+                self._set_error_unless_preempted(task_id)
         except Exception:
             # Job failed
             logging.error("Job failed, traceback:")
             sys.excepthook(*sys.exc_info())
             logging_thread.stop()
-            self.error(task_id, True)
+            self._set_error_unless_preempted(task_id)
             # TODO handle failed job
         else:
             # Job finished normally
@@ -217,6 +217,12 @@ class Task:
             sys.stdout.flush()
             sys.stderr.flush()
             logging.info("Job finished successfully")
+
+    def _set_error_unless_preempted(self, task_id):
+        if gs.active_engine.is_job_being_preempted():
+            logging.warning("Job is being preempted by the engine, not marking the task as error")
+            return
+        self.error(task_id, True)
 
     def task_name(self):
         return "%s.%s" % (self._job._sis_id(), self.name())
