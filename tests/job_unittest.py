@@ -1,9 +1,14 @@
 import hashlib
 import os
+import pickle
 import shutil
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
+from sisyphus import Job, Task
+import sisyphus.task as task_module
 from sisyphus.job_path import Path
 from sisyphus.tools import execute_in_dir
 from sisyphus.hash import sis_hash_helper
@@ -78,6 +83,67 @@ class JobTest(unittest.TestCase):
             job = Test(text=Path("input_text.gz"))
             job._sis_setup_directory()
             shutil.rmtree(gs.WORK_DIR)
+
+
+class ResumableTestJob(Job):
+    def __init__(self, resumable):
+        self.resumable = resumable
+
+    def run(self):
+        pass
+
+    def tasks(self):
+        yield Task("run", resumable=self.resumable)
+
+
+class TaskResumableTest(unittest.TestCase):
+    def test_default_not_resumable(self):
+        self.assertFalse(Task("run").resumeable())
+
+    def test_resumable(self):
+        self.assertTrue(Task("run", resumable=True).resumeable())
+
+    def test_resume_same_as_start(self):
+        with mock.patch.object(task_module.logging, "warning") as warning:
+            task = Task("run", resume="run")
+        self.assertTrue(task.resumeable())
+        warning.assert_not_called()
+
+    def test_resume_other_than_start_warns(self):
+        with mock.patch.object(task_module.logging, "warning") as warning:
+            task = Task("run", resume="other")
+        self.assertTrue(task.resumeable())
+        warning.assert_called_once()
+
+    def test_resume_and_resumable(self):
+        with self.assertRaises(AssertionError):
+            Task("run", resume="run", resumable=True)
+
+    def test_unpickle_task_with_resume(self):
+        for resume, resumable in [("run", True), (None, False)]:
+            task = Task("run")
+            del task._resumable
+            task._resume = resume
+            self.assertEqual(pickle.loads(pickle.dumps(task)).resumeable(), resumable)
+
+    def test_interrupted_state(self):
+        with tempfile.TemporaryDirectory() as tmp_dir, execute_in_dir(tmp_dir), mock.patch.object(
+            gs, "BASE_DIR", tmp_dir
+        ), mock.patch.object(gs, "WAIT_PERIOD_JOB_FS_SYNC", 0), mock.patch.object(
+            gs, "PLOGGING_UPDATE_FILE_PERIOD", 0
+        ), mock.patch.object(gs, "WAIT_PERIOD_JOB_CLEANUP", 0):
+            for resumable, state in [
+                (True, gs.STATE_INTERRUPTED_RESUMABLE),
+                (False, gs.STATE_INTERRUPTED_NOT_RESUMABLE),
+            ]:
+                job = ResumableTestJob(resumable=resumable)
+                job._sis_setup_directory()
+                (task,) = job._sis_tasks()
+                # started before, not finished, not running anymore
+                with open(task.path(gs.JOB_LOG, 1), "w"):
+                    pass
+                os.utime(task.path(gs.JOB_LOG, 1), (0, 0))
+                self.assertEqual(task._get_state_helper(None, 1), state)
 
 
 if __name__ == "__main__":

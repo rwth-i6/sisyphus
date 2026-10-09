@@ -240,7 +240,6 @@ def worker_helper(args):
     logging_thread.start()
 
     sisyphus.job_path.Path.cacheing_enabled = True
-    resume_job = False
     gs.active_engine.init_worker(task)
 
     # cleanup environment
@@ -249,6 +248,6 @@ def worker_helper(args):
 
     try:
         # run task
-        task.run(task_id, resume_job, logging_thread=logging_thread)
+        task.run(task_id, logging_thread=logging_thread)
     finally:
         logging_thread.stop()

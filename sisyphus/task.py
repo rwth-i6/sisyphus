@@ -27,10 +27,12 @@ class Task:
         parallel: int = 0,
         tries: int = 1,
         continuable: bool = False,
+        resumable: bool = False,
     ):
         """
-        :param start: name of the function which will be executed on start
-        :param resume: name of the function which will be executed on resume, often set equal to start
+        :param start: name of the function which will be executed, also when the task is resumed
+        :param resume: deprecated, use ``resumable=True``. Any value means resumable,
+                       the function is not executed, the start function also runs on resume
         :param rqmt: job requirements
             Might contain:
                 "cpu": number of cpus
@@ -48,13 +50,23 @@ class Task:
         :param tries: how often this task is resubmitted after failure
         :param continuable: If set to True this task will not set a finished marker, useful for tasks that can be
                             continued for arbitrarily long, e.g. adding more epochs to neural network training
+        :param resumable: if True, an interrupted task is resubmitted, running the start function again,
+                          which then must continue from what the interrupted run left
         """
         if rqmt is None:
             rqmt = {}
         if args is None:
             args = [[]]
+        if resume is not None:
+            assert not resumable, "Task: set only resumable=True, resume is deprecated"
+            if resume != start:
+                logging.warning(
+                    "Task %r: the resume function %r is not executed, the start function also runs on resume. "
+                    "Use resumable=True instead of resume." % (start, resume)
+                )
+            resumable = True
         self._start = start
-        self._resume = resume
+        self._resumable = resumable
         self._rqmt = rqmt.copy()
         if mini_task:
             self._rqmt["engine"] = "short"
@@ -70,6 +82,12 @@ class Task:
     def __repr__(self):
         return "<Task %r job=%r>" % (self._start, getattr(self, "_job", None))
 
+    def __setstate__(self, state):
+        # tasks pickled with the job before resumable existed
+        if "_resume" in state:
+            state["_resumable"] = state.pop("_resume") is not None
+        self.__dict__.update(state)
+
     def reset_cache(self):
         self._state_cache = {}
         self._state_cache_time = {}
@@ -79,15 +97,13 @@ class Task:
         :param sisyphus.job.Job job:
         """
         self._job = job
-        for name in self._start, self._resume:
-            try:
-                if name is not None:
-                    getattr(self._job, name)
-            except AttributeError:
-                logging.critical("Trying to create a task with an invalid function name")
-                logging.critical("Job name: %s" % str(job))
-                logging.critical("Function name: %s" % str(name))
-                raise
+        try:
+            getattr(self._job, self._start)
+        except AttributeError:
+            logging.critical("Trying to create a task with an invalid function name")
+            logging.critical("Job name: %s" % str(job))
+            logging.critical("Function name: %s" % str(self._start))
+            raise
 
     def get_f(self, name):
         return getattr(self._job, name)
@@ -116,14 +132,13 @@ class Task:
         return self._start
 
     def resumeable(self):
-        return self._resume is not None
+        return self._resumable
 
-    def run(self, task_id, resume_job=False, logging_thread=None):
+    def run(self, task_id, logging_thread=None):
         """
         This function is executed to run this job.
 
         :param int task_id:
-        :param bool resume_job:
         :param sisyphus.worker.LoggingThread logging_thread:
         """
 
@@ -161,21 +176,9 @@ class Task:
         sys.stdout.flush()
 
         try:
-            if resume_job:
-                if self._resume is not None:
-                    task = self._resume
-                else:
-                    task = self._start
-                    logging.warning(
-                        "No resume function set (changed tasks after job was initialized?) "
-                        "Fallback to normal start function: %s" % task
-                    )
-            else:
-                task = self._start
-            assert task is not None, "Error loading task"
             # save current directory and change into work directory
             with tools.execute_in_dir(self.path(gs.JOB_WORK_DIR)):
-                f = getattr(self._job, task)
+                f = getattr(self._job, self._start)
 
                 # get job arguments
                 for arg_id in self._get_arg_idx_for_task_id(task_id):
@@ -418,7 +421,7 @@ class Task:
                             return gs.STATE_RETRY_ERROR
                         else:
                             # Task was started, but isn't running anymore => interrupted
-                            if self._resume is None:
+                            if not self._resumable:
                                 return gs.STATE_INTERRUPTED_NOT_RESUMABLE
                             else:
                                 return gs.STATE_INTERRUPTED_RESUMABLE
