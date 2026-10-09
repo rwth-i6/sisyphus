@@ -140,13 +140,6 @@ def main():
         default=None,
         help="Task id, if not set trying to read it from environment variables",
     )
-    parser_worker.add_argument(
-        "--force_resume",
-        "--fr",
-        default=False,
-        action="store_true",
-        help="force resume of non resumable tasks, good for debugging",
-    )
     parser_worker.add_argument("--engine", default="short", help="The engine running the Job")
     parser_worker.add_argument(
         "--redirect_output", default=False, action="store_true", help="Redirect stdout and stderr to logfile"

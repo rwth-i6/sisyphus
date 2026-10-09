@@ -344,14 +344,13 @@ def setup_job_directory(job: Job):
         print(type(job))
 
 
-def run_job(job: Job, task_name: str = None, task_id: int = 1, force_resume: bool = False):
+def run_job(job: Job, task_name: str = None, task_id: int = 1):
     """
     Run job directly in console window.
 
     :param Job job: Job with tasks to run
     :param str task_name: which task should run, default: The first listed task
     :param int task_id: which task_id should be used, default: 1
-    :param bool force_resume: Force resume of job in error state
     """
     assert isinstance(job, Job), "%s is not a Job" % job
 
@@ -374,8 +373,6 @@ def run_job(job: Job, task_name: str = None, task_id: int = 1, force_resume: boo
 
     try:
         call = task.get_worker_call(task_id)
-        if force_resume:
-            call.append("--force_resume")
         import subprocess
 
         process = subprocess.Popen(call)
