@@ -238,6 +238,15 @@ class EngineBase:
         """
         return False
 
+    def is_signaled_on_preemption(self, process: psutil.Process) -> bool:
+        """
+        Whether the engine itself signals this process (and its children) when preempting the job,
+        so the worker does not forward the signal to it again.
+
+        Can only be called in a worker context.
+        """
+        return False
+
     def get_job_node_hostnames(self) -> List[str]:
         """
         Returns the list of nodes the currently running job is executing on.
