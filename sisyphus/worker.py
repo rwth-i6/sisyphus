@@ -159,9 +159,10 @@ class LoggingThread(Thread):
 
 class PreemptionWatcher(Thread):
     """
-    Checks whether the engine is preempting the job, and then forwards SIGTERM to the processes of the task.
-    E.g. on preemption with GraceTime, Slurm only signals srun steps, not the batch script, i.e. not the worker
-    and not the processes it started.
+    Checks whether the engine is preempting the job,
+    and then forwards SIGTERM to the processes of the task.
+    E.g. on preemption with GraceTime, Slurm only signals srun steps, not the batch script,
+    i.e. not the worker and not the processes it started.
     """
 
     def __init__(self, interval):
@@ -171,13 +172,13 @@ class PreemptionWatcher(Thread):
         super().__init__(daemon=True)
         self.interval = interval
         self._cond = Condition()
-        self.__stop = False
+        self._stop_requested = False
 
     def run(self):
         while True:
             with self._cond:
                 self._cond.wait(self.interval)
-                if self.__stop:
+                if self._stop_requested:
                     return
             if gs.active_engine.is_job_being_preempted():
                 break
@@ -214,7 +215,7 @@ class PreemptionWatcher(Thread):
 
     def stop(self):
         with self._cond:
-            self.__stop = True
+            self._stop_requested = True
             self._cond.notify_all()
 
 

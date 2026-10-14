@@ -287,7 +287,9 @@ if sys.argv[0] == "-m":
     SIS_COMMAND += ["sisyphus"]
 
 #: Seconds between checks in the worker whether the engine is preempting the job (e.g. Slurm with GraceTime).
-#: Then SIGTERM is forwarded to the processes of the task, which otherwise might not get any signal. None to disable.
+#: Then SIGTERM is forwarded to the processes of the task,
+#: which otherwise might not get any signal.
+#: None to disable.
 WORKER_PREEMPTION_CHECK_INTERVAL = 300
 
 # Parameter to log used resources by each task
