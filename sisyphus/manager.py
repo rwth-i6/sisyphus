@@ -299,6 +299,7 @@ class Manager(threading.Thread):
                 job_manager_info_string = job.info()
                 if job_manager_info_string is not None:
                     info_string += " {%s}" % job_manager_info_string
+        if state in [gs.STATE_QUEUE, gs.STATE_RUNNING]:
             frac = job.completed_fraction()
             if frac is not None:
                 info_string += " [%.1f%%]" % (frac * 100)
