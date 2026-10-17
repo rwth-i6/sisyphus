@@ -402,6 +402,9 @@ class Task:
                             return gs.STATE_FINISHED
                         elif self.error(task_id):
                             return gs.STATE_ERROR
+                        # finished marker is written but younger than the grace period of finished()
+                        elif self.check_state(gs.STATE_FINISHED, task_id):
+                            return gs.STATE_RUNNING
                         # job logging file got updated recently, assume job is still running.
                         # used to avoid wrongly marking jobs as interrupted do to slow filesystem updates
                         elif self.running(task_id):
