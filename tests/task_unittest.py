@@ -129,12 +129,12 @@ class TaskStateTest(unittest.TestCase):
     def _write_finished_marker(self, task, task_id, age):
         self._write(task.path(gs.STATE_FINISHED, task_id), age=age)
 
-    def test_unknown_with_young_finished_marker_is_running(self):
+    def test_unknown_with_young_finished_marker_is_finished(self):
         task = self._setup_task(num_tasks=1)
         self._write_stale_logs(task, 1)
         self._write_finished_marker(task, 1, age=1)
         engine = FixedStateEngine({1: gs.STATE_UNKNOWN})
-        self.assertEqual(task.state(engine, 1), gs.STATE_RUNNING)
+        self.assertEqual(task.state(engine, 1), gs.STATE_FINISHED)
 
     def test_unknown_with_old_finished_marker_is_finished(self):
         task = self._setup_task(num_tasks=1)
