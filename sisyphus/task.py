@@ -398,7 +398,8 @@ class Task:
                 if engine_state == gs.STATE_UNKNOWN:
                     if self.started(task_id):
                         # check again if it finished or crashed while retrieving the state
-                        if self.finished(task_id):
+                        # (finished marker of any age: else it falls through to interrupted during the grace period)
+                        if self.check_state(gs.STATE_FINISHED, task_id):
                             return gs.STATE_FINISHED
                         elif self.error(task_id):
                             return gs.STATE_ERROR
