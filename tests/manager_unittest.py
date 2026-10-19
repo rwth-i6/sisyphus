@@ -3,6 +3,7 @@ from unittest import mock
 
 import sisyphus.global_settings as gs
 from sisyphus import manager as manager_module
+from sisyphus.engine import DeferSubmission
 
 
 class FakeTask:
@@ -52,8 +53,7 @@ class FakeEngine:
     def submit(self, task):
         self.submitted.append(task.name)
         if task.name in self.deferred:
-            return self.clock.now + 60
-        return None
+            raise DeferSubmission("submit limit", retry_at=self.clock.now + 60)
 
     def reset_cache(self):
         pass

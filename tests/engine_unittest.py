@@ -84,7 +84,12 @@ class EngineSubmitDeferredTest(unittest.TestCase):
             job = ArraySubmitTestJob(test_name=self.id())
             job._sis_setup_directory()
             (task,) = job._sis_tasks()
-            retry_at = engine.submit(task)
+            retry_at = None
+            try:
+                engine.submit(task)
+            except DeferSubmission as exc:
+                self.assertIsNone(exc.partial_result)
+                retry_at = exc.retry_at
             submit_log = task.path(gs.ENGINE_SUBMIT)
             if not os.path.exists(submit_log):
                 return retry_at, []

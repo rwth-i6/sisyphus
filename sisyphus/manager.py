@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Dict, Collection
 from multiprocessing.pool import ThreadPool
 
 from sisyphus import toolkit, tools
+from sisyphus.engine import DeferSubmission
 from sisyphus.loader import config_manager
 from sisyphus.block import Block
 from sisyphus.tools import finished_results_cache
@@ -426,9 +427,10 @@ class Manager(threading.Thread):
         return [job for job in self.jobs.get(state, []) if job not in self._submit_deferred_until]
 
     def _submit(self, job, task):
-        retry_at = self.job_engine.submit(task)
-        if retry_at is not None:
-            self._submit_deferred_until[job] = retry_at
+        try:
+            self.job_engine.submit(task)
+        except DeferSubmission as exc:
+            self._submit_deferred_until[job] = exc.retry_at
 
     def resume_jobs(self):
         # function to resume jobs:

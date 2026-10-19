@@ -164,8 +164,9 @@ class EngineBase:
         pass job to relevant engine
 
         :param sisyphus.task.Task task: Task to submit
-        :return: if the engine deferred some task ids, the ``time.monotonic()`` time to retry them, otherwise None
-        :rtype: float|None
+        :return: None
+        :raises DeferSubmission: if the engine deferred some task ids (the others are submitted),
+            with the earliest ``retry_at``
         """
 
         call = task.get_worker_call()
@@ -193,7 +194,7 @@ class EngineBase:
 
         # the actuary job submitting part
         submit_log = os.path.relpath(task.path(gs.ENGINE_SUBMIT))
-        retry_at = None
+        deferred = None
         for rqmt_key, (rqmt, task_ids) in rqmt_to_ids.items():
             task_ids = sorted(task_ids)
             logging.info("Submit to queue: %s %s %s" % (str(task.path()), task.name(), str(task_ids)))
@@ -206,7 +207,8 @@ class EngineBase:
                 # The deferred task ids get no submit log entry, so the deferral does not count
                 # toward MAX_SUBMIT_RETRIES; the task stays runnable.
                 logging.info("Submission deferred (%s): %s %s" % (exc, task.name(), task_ids))
-                retry_at = exc.retry_at if retry_at is None else min(retry_at, exc.retry_at)
+                if deferred is None or exc.retry_at < deferred.retry_at:
+                    deferred = exc
                 if exc.partial_result is None:
                     continue
                 engine_name, engine_info = exc.partial_result
@@ -224,7 +226,9 @@ class EngineBase:
                 submit_file.write("%s\n" % str((task_ids, submit_info)))
 
         task.reset_cache()
-        return retry_at
+        if deferred is not None:
+            # the submitted part is in the submit log already
+            raise DeferSubmission(str(deferred), retry_at=deferred.retry_at)
 
     def init_worker(self, task):
         """
@@ -369,6 +373,7 @@ class DeferSubmission(Exception):
     Raised by an engine's ``submit_call`` to defer this submission to a later manager cycle
     without recording a submit attempt (so it does NOT count toward ``MAX_SUBMIT_RETRIES``).
     E.g. the Slurm engine raises this when sbatch reports a submit limit like ``QOSMaxSubmitJobPerUserLimit``.
+    ``EngineBase.submit`` raises it as well, after submitting the remaining task ids.
     """
 
     def __init__(self, reason: str, *, retry_at: float, partial_result: Optional[Tuple[str, list]] = None):
