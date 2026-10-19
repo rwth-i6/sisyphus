@@ -244,6 +244,8 @@ class Manager(threading.Thread):
         self.jobs = None
         self.state_overview = None
         self._paused = True
+        # Jobs whose submission the engine deferred (DeferSubmission), with their time.monotonic() retry time
+        self._submit_deferred_until: Dict[Job, float] = {}
 
     def stop(self):
         self._stop_loop = True
@@ -418,6 +420,16 @@ class Manager(threading.Thread):
         # _sis_setup_directory can be called multiple times, it will only create the directory once
         self.thread_pool.map(lambda job: job._sis_setup_directory(), self.jobs.get(gs.STATE_HOLD, []))
 
+    def _jobs_to_submit(self, state):
+        now = time.monotonic()
+        self._submit_deferred_until = {job: t for job, t in self._submit_deferred_until.items() if t > now}
+        return [job for job in self.jobs.get(state, []) if job not in self._submit_deferred_until]
+
+    def _submit(self, job, task):
+        retry_at = self.job_engine.submit(task)
+        if retry_at is not None:
+            self._submit_deferred_until[job] = retry_at
+
     def resume_jobs(self):
         # function to resume jobs:
         def f(job):
@@ -432,11 +444,11 @@ class Manager(threading.Thread):
                     if self.ask_user("Resetup job directory (%s)?" % job, ("resetup", job)):
                         job._sis_setup_directory(force=True)
                 if self.ask_user("Resubmit job (%s)?" % job, ("resubmit", job)):
-                    self.job_engine.submit(task)
+                    self._submit(job, task)
             else:
                 logging.debug("Skip unresumable task")
 
-        self.thread_pool.map(f, self.jobs.get(gs.STATE_INTERRUPTED_RESUMABLE, []))
+        self.thread_pool.map(f, self._jobs_to_submit(gs.STATE_INTERRUPTED_RESUMABLE))
 
     def run_jobs(self):
         """
@@ -457,14 +469,14 @@ class Manager(threading.Thread):
             if task is None:
                 # job finished in the meantime
                 return
-            self.job_engine.submit(task)
+            self._submit(job, task)
 
         if self.interactive:
-            for job in self.jobs.get(gs.STATE_RUNNABLE, []):
+            for job in self._jobs_to_submit(gs.STATE_RUNNABLE):
                 if self.ask_user("Submit job (%s)?" % job, ("submit", job)):
                     f(job)
         else:
-            self.thread_pool.map(f, self.jobs.get(gs.STATE_RUNNABLE, []))
+            self.thread_pool.map(f, self._jobs_to_submit(gs.STATE_RUNNABLE))
 
     def check_output(self, write_output=False, update_all_outputs=False, force_update=False):
         with self.update_out_lock:
@@ -657,7 +669,7 @@ class Manager(threading.Thread):
                         self.print_state_overview()
                     last_state_overview = self.state_overview
 
-            if gs.STATE_RUNNABLE not in self.jobs:
+            if not self._jobs_to_submit(gs.STATE_RUNNABLE):
                 # Not thing to do right now, wait for jobs to finish
                 # otherwise continue directly
                 logging.debug("Wait for %i seconds" % gs.WAIT_PERIOD_BETWEEN_CHECKS)

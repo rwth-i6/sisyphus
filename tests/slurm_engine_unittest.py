@@ -67,11 +67,13 @@ class SlurmSubmitLimitTest(unittest.TestCase):
         with self.assertRaises(DeferSubmission) as ctx:
             self._submit([1, 2, 3])
         self.assertIn("QOSMaxSubmitJobPerUserLimit", str(ctx.exception))
+        self.assertEqual(ctx.exception.retry_at, 1060.0)
         self.assertIsNone(ctx.exception.partial_result)
         self.now = 1059.0
         with self.assertRaises(DeferSubmission) as ctx:
             self._submit([1, 2, 3])
         self.assertIn("QOSMaxSubmitJobPerUserLimit", str(ctx.exception))
+        self.assertEqual(ctx.exception.retry_at, 1060.0)
         self.assertEqual(self.sbatch_calls, 1)
         self.now = 1060.0
         self.sbatch_results = [_sbatch_ok(123)]

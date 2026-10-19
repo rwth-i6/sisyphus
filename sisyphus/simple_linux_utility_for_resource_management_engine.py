@@ -229,7 +229,9 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
 
         if time.monotonic() < self._submit_blocked_until:
             # Still backing off after a previous submit limit rejection -> defer to a later cycle.
-            raise DeferSubmission(f"Slurm submit quota reached ({self._submit_blocked_reason})")
+            raise DeferSubmission(
+                f"Slurm submit quota reached ({self._submit_blocked_reason})", retry_at=self._submit_blocked_until
+            )
 
         submitted = []
 
@@ -306,7 +308,7 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 "Slurm submit quota reached (%s); pausing new submissions for %.0fs."
                 % (reason, self._submit_limit_retry_wait)
             )
-            raise DeferSubmission(f"Slurm submit quota reached ({reason})")
+            raise DeferSubmission(f"Slurm submit quota reached ({reason})", retry_at=self._submit_blocked_until)
 
         ref_output = ["Submitted", "batch", "job"]
         ref_output = [i.encode() for i in ref_output]
