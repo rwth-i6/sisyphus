@@ -4,7 +4,7 @@ import collections
 import copy
 import logging
 import os
-from typing import List
+from typing import List, Optional, Tuple
 import psutil
 from ast import literal_eval
 
@@ -200,11 +200,14 @@ class EngineBase:
                     call, logpath, rqmt, task.task_name(), task.name(), task_ids
                 )
             except DeferSubmission as exc:
-                # The engine deferred this submission (e.g. Slurm AssocMaxSubmitJobLimit reached).
-                # Retry it next cycle WITHOUT writing the submit log, so the deferral does not count
+                # The engine deferred this submission (e.g. Slurm submit limit reached).
+                # The deferred task ids get no submit log entry, so the deferral does not count
                 # toward MAX_SUBMIT_RETRIES; the task stays runnable.
                 logging.info("Submission deferred (%s): %s %s" % (exc, task.name(), task_ids))
-                continue
+                if exc.partial_result is None:
+                    continue
+                engine_name, engine_info = exc.partial_result
+                task_ids = sorted(task_id for ids, _ in engine_info for task_id in ids)
             logging.debug("Command: (%s) Tasks ids: (%s)" % (" ".join(call), " ".join([str(i) for i in task_ids])))
             logging.debug("Requirements: %s" % (str(rqmt)))
 
@@ -361,5 +364,13 @@ class DeferSubmission(Exception):
     """
     Raised by an engine's ``submit_call`` to defer this submission to a later manager cycle
     without recording a submit attempt (so it does NOT count toward ``MAX_SUBMIT_RETRIES``).
-    E.g. the Slurm engine raises this when sbatch reports ``AssocMaxSubmitJobLimit``.
+    E.g. the Slurm engine raises this when sbatch reports a submit limit like ``QOSMaxSubmitJobPerUserLimit``.
     """
+
+    def __init__(self, reason: str, *, partial_result: Optional[Tuple[str, list]] = None):
+        """
+        :param reason:
+        :param partial_result: return value of ``submit_call`` for the task ids submitted before the deferral
+        """
+        super().__init__(reason)
+        self.partial_result = partial_result

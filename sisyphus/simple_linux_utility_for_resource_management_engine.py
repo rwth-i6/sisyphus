@@ -16,6 +16,15 @@ from sisyphus.global_settings import STATE_RUNNING, STATE_UNKNOWN, STATE_QUEUE, 
 
 ENGINE_NAME = "slurm"
 TaskInfo = namedtuple("TaskInfo", ["job_id", "task_id", "state"])
+# Slurm job state reasons of the submit job count limits (association and QOS), as sbatch reports them.
+# Array elements count each, pending ones included.
+_SUBMIT_LIMIT_REASONS = (
+    "AssocMaxSubmitJobLimit",
+    "AssocGrpSubmitJobsLimit",
+    "QOSMaxSubmitJobPerUserLimit",
+    "MaxSubmitJobsPerAccount",
+    "QOSGrpSubmitJobsLimit",
+)
 
 
 def try_to_multiply(y, x, backup_value=None):
@@ -71,9 +80,10 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self.ignore_jobs = ignore_jobs
         self.memory_allocation_type = memory_allocation_type
         self.job_name_mapping = job_name_mapping
-        # Backoff when sbatch rejects with AssocMaxSubmitJobLimit (association MaxSubmitJobs reached):
+        # Backoff when sbatch rejects with one of _SUBMIT_LIMIT_REASONS:
         # pause new submissions on this engine until this wall-clock time, then retry.
         self._submit_blocked_until = 0.0  # monotonic-clock deadline; 0.0 = in the past = not blocked
+        self._submit_blocked_reason = None  # the reason of the last rejection, from _SUBMIT_LIMIT_REASONS
         self._submit_limit_retry_wait = 60.0  # seconds to back off before retrying after a quota rejection
 
     def _system_call_timeout_warn_msg(self, command: Any) -> str:
@@ -218,10 +228,20 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             return
 
         if time.monotonic() < self._submit_blocked_until:
-            # Still backing off after a previous AssocMaxSubmitJobLimit -> defer to a later cycle.
-            raise DeferSubmission("Slurm submit quota reached (AssocMaxSubmitJobLimit)")
+            # Still backing off after a previous submit limit rejection -> defer to a later cycle.
+            raise DeferSubmission(f"Slurm submit quota reached ({self._submit_blocked_reason})")
 
         submitted = []
+
+        def _submit_range(start_id, end_id, step_size):
+            try:
+                job_id = self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
+            except DeferSubmission as exc:
+                if submitted:
+                    exc.partial_result = (ENGINE_NAME, submitted)
+                raise
+            submitted.append((list(range(start_id, end_id + 1, step_size)), job_id))
+
         start_id, end_id, step_size = (None, None, None)
         for task_id in task_ids:
             if start_id is None:
@@ -233,15 +253,13 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 end_id = task_id
             else:
                 # this id doesn't fit pattern, this should only happen if only parts of the jobs are restarted
-                job_id = self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
-                submitted.append((list(range(start_id, end_id + 1, step_size)), job_id))
+                _submit_range(start_id, end_id, step_size)
                 start_id, end_id, step_size = (task_id, None, None)
         assert start_id is not None
         if end_id is None:
             end_id = start_id
             step_size = 1
-        job_id = self.submit_helper(call, logpath, rqmt, name, task_name, start_id, end_id, step_size)
-        submitted.append((list(range(start_id, end_id + 1, step_size)), job_id))
+        _submit_range(start_id, end_id, step_size)
         return ENGINE_NAME, submitted
 
     def submit_helper(self, call, logpath, rqmt, name, task_name, start_id, end_id, step_size):
@@ -276,15 +294,19 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
                 continue
             break
 
-        if any(b"AssocMaxSubmitJobLimit" in line for line in err + out):
-            # Association MaxSubmitJobs reached -- not a job failure. Back off and retry later via
+        reason = next(
+            (reason for reason in _SUBMIT_LIMIT_REASONS for line in err + out if reason.encode() in line), None
+        )
+        if reason is not None:
+            # Submit job count limit reached -- not a job failure. Back off and retry later via
             # DeferSubmission (EngineBase.submit skips the submit log, so no MAX_SUBMIT_RETRIES count).
             self._submit_blocked_until = time.monotonic() + self._submit_limit_retry_wait
+            self._submit_blocked_reason = reason
             logging.warning(
-                "Slurm submit quota reached (AssocMaxSubmitJobLimit); pausing new submissions for %.0fs."
-                % self._submit_limit_retry_wait
+                "Slurm submit quota reached (%s); pausing new submissions for %.0fs."
+                % (reason, self._submit_limit_retry_wait)
             )
-            raise DeferSubmission("Slurm submit quota reached (AssocMaxSubmitJobLimit)")
+            raise DeferSubmission(f"Slurm submit quota reached ({reason})")
 
         ref_output = ["Submitted", "batch", "job"]
         ref_output = [i.encode() for i in ref_output]

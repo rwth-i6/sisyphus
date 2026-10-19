@@ -1,10 +1,12 @@
+import os
 import tempfile
 import unittest
+from ast import literal_eval
 from unittest import mock
 
 import sisyphus.global_settings as gs
 from sisyphus import Job, Task
-from sisyphus.engine import EngineBase
+from sisyphus.engine import DeferSubmission, EngineBase
 from sisyphus.simple_linux_utility_for_resource_management_engine import SimpleLinuxUtilityForResourceManagementEngine
 from sisyphus.tools import execute_in_dir
 
@@ -51,6 +53,57 @@ class EngineSubmitTest(unittest.TestCase):
                 engine.submit(task)
                 (rqmt,) = engine.submitted_rqmts
                 self.assertIs(rqmt["sis_resumable"], resumable)
+
+
+class ArraySubmitTestJob(Job):
+    def __init__(self, test_name):
+        self.test_name = test_name
+
+    def run(self, arg):
+        pass
+
+    def tasks(self):
+        yield Task("run", args=[1, 2, 3])
+
+
+class DeferringEngine(RecordingEngine):
+    def __init__(self, partial_result):
+        super().__init__()
+        self.partial_result = partial_result
+
+    def submit_call(self, call, logpath, rqmt, name, task_name, task_ids):
+        super().submit_call(call, logpath, rqmt, name, task_name, task_ids)
+        raise DeferSubmission("submit limit", partial_result=self.partial_result)
+
+
+class EngineSubmitDeferredTest(unittest.TestCase):
+    def _submit_history(self, engine):
+        with tempfile.TemporaryDirectory() as tmp_dir, execute_in_dir(tmp_dir), mock.patch.object(
+            gs, "BASE_DIR", tmp_dir
+        ):
+            job = ArraySubmitTestJob(test_name=self.id())
+            job._sis_setup_directory()
+            (task,) = job._sis_tasks()
+            engine.submit(task)
+            submit_log = task.path(gs.ENGINE_SUBMIT)
+            if not os.path.exists(submit_log):
+                return []
+            with open(submit_log) as f:
+                return [literal_eval(line) for line in f]
+
+    def test_deferred_no_history(self):
+        self.assertEqual(self._submit_history(DeferringEngine(partial_result=None)), [])
+
+    def test_partially_deferred_history_of_submitted(self):
+        history = self._submit_history(DeferringEngine(partial_result=("deferring", [([1, 2], "42")])))
+        ((task_ids, submit_info),) = history
+        self.assertEqual(task_ids, [1, 2])
+        self.assertEqual(submit_info["engine_info"], [([1, 2], "42")])
+        self.assertEqual(submit_info["engine_name"], "deferring")
+
+    def test_not_deferred(self):
+        ((task_ids, _),) = self._submit_history(RecordingEngine())
+        self.assertEqual(task_ids, [1, 2, 3])
 
 
 class SlurmOptionsTest(unittest.TestCase):
