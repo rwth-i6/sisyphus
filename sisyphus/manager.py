@@ -245,7 +245,8 @@ class Manager(threading.Thread):
         self.jobs = None
         self.state_overview = None
         self._paused = True
-        # Jobs whose submission the engine deferred (DeferSubmission), with their time.monotonic() retry time
+        # Jobs whose submission the engine deferred (DeferSubmission), with their time.monotonic() retry time.
+        # The engine holds the actual block (e.g. Slurm cooldown), this only avoids retrying these jobs every cycle.
         self._submit_deferred_until: Dict[Job, float] = {}
 
     def stop(self):
