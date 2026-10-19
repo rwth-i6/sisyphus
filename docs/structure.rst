@@ -200,7 +200,7 @@ A detailed overview of all settings can be found :ref:`here <sec-settings-api>`.
                          gateway="<gateway-machine-name>")}, # a gateway is only needed if the local machine has no SGE installation
             default_engine='long')
 
-    # Wait so long before marking a job as finished to allow network
+    # How long the usage and log file of a running job may lag behind to allow network
     # filesystems so synchronize, should be reduced if only the local engine and filesystem is used.
     WAIT_PERIOD_JOB_FS_SYNC = 30
 

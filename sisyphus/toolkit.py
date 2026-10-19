@@ -973,7 +973,6 @@ def run(obj: Any, quiet: bool = False):
     import sys
 
     gs.SIS_COMMAND = [sys.executable, "-m", "sisyphus"]
-    gs.SKIP_IS_FINISHED_TIMEOUT = True
 
     def get_jobs():
         """Helper function to get all relevant jobs"""
@@ -1005,8 +1004,6 @@ def run(obj: Any, quiet: bool = False):
         for job in todo_list:
             run_helper(job)
         jobs = get_jobs()
-
-    gs.SKIP_IS_FINISHED_TIMEOUT = False
 
 
 def submit_next_task(job: Job, setup_directory=True):

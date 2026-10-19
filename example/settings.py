@@ -18,7 +18,7 @@ def engine():
     )
 
 
-WAIT_PERIOD_JOB_FS_SYNC = 1  # finishing a job
+WAIT_PERIOD_JOB_FS_SYNC = 1  # usage / log file lag of a running job
 WAIT_PERIOD_BETWEEN_CHECKS = 1  # checking for finished jobs
 WAIT_PERIOD_CACHE = 1  # stopping to wait for actionable jobs to appear
 

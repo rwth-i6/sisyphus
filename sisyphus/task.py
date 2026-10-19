@@ -260,12 +260,7 @@ class Task:
         return current_state
 
     def finished(self, task_id=None, update=None) -> bool:
-        minimal_time_since_change = 0
-        if not gs.SKIP_IS_FINISHED_TIMEOUT:
-            minimal_time_since_change = gs.WAIT_PERIOD_JOB_FS_SYNC + gs.WAIT_PERIOD_JOB_CLEANUP
-        if self.check_state(
-            gs.STATE_FINISHED, task_id, update=update, combine=all, minimal_time_since_change=minimal_time_since_change
-        ):
+        if self.check_state(gs.STATE_FINISHED, task_id, update=update, combine=all):
             return True
         else:
             return False
@@ -398,8 +393,7 @@ class Task:
                 if engine_state == gs.STATE_UNKNOWN:
                     if self.started(task_id):
                         # check again if it finished or crashed while retrieving the state
-                        # (finished marker of any age: else it falls through to interrupted during the grace period)
-                        if self.check_state(gs.STATE_FINISHED, task_id):
+                        if self.finished(task_id):
                             return gs.STATE_FINISHED
                         elif self.error(task_id):
                             return gs.STATE_ERROR
