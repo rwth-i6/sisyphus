@@ -915,8 +915,6 @@ def setup_script_mode():
     add_coloring_to_logging()
 
     for param in [
-        "WAIT_PERIOD_JOB_FS_SYNC",  # Work around to avoid running into time out...
-        "WAIT_PERIOD_JOB_CLEANUP",  # same here
         "WAIT_PERIOD_MTIME_OF_INPUTS",  # Speed up by not waiting for slow filesystem
         "ENGINE_NOT_SETUP_WARNING",  # Disable unwanted warning
     ]:
