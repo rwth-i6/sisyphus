@@ -80,10 +80,6 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         self.ignore_jobs = ignore_jobs
         self.memory_allocation_type = memory_allocation_type
         self.job_name_mapping = job_name_mapping
-        # Backoff when sbatch rejects with one of _SUBMIT_LIMIT_REASONS:
-        # pause new submissions on this engine until this wall-clock time, then retry.
-        self._submit_blocked_until = 0.0  # monotonic-clock deadline; 0.0 = in the past = not blocked
-        self._submit_blocked_reason = None  # the reason of the last rejection, from _SUBMIT_LIMIT_REASONS
         self._submit_limit_retry_wait = 60.0  # seconds to back off before retrying after a quota rejection
 
     def _system_call_timeout_warn_msg(self, command: Any) -> str:
@@ -227,12 +223,6 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
             # skip empty list
             return
 
-        if time.monotonic() < self._submit_blocked_until:
-            # Still backing off after a previous submit limit rejection -> defer to a later cycle.
-            raise DeferSubmission(
-                f"Slurm submit quota reached ({self._submit_blocked_reason})", retry_at=self._submit_blocked_until
-            )
-
         submitted = []
 
         def _submit_range(start_id, end_id, step_size):
@@ -303,13 +293,14 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         if retval != 0 and reason is not None:
             # Submit job count limit reached -- not a job failure. Back off and retry later via
             # DeferSubmission (EngineBase.submit skips the submit log, so no MAX_SUBMIT_RETRIES count).
-            self._submit_blocked_until = time.monotonic() + self._submit_limit_retry_wait
-            self._submit_blocked_reason = reason
+            # Only this submission waits: the limit can be per QOS or partition, other submissions may pass.
             logging.warning(
-                "Slurm submit quota reached (%s); pausing new submissions for %.0fs."
-                % (reason, self._submit_limit_retry_wait)
+                "Slurm submit quota reached (%s) for %s; retrying it in %.0fs."
+                % (reason, name, self._submit_limit_retry_wait)
             )
-            raise DeferSubmission(f"Slurm submit quota reached ({reason})", retry_at=self._submit_blocked_until)
+            raise DeferSubmission(
+                f"Slurm submit quota reached ({reason})", retry_at=time.monotonic() + self._submit_limit_retry_wait
+            )
 
         ref_output = ["Submitted", "batch", "job"]
         ref_output = [i.encode() for i in ref_output]
