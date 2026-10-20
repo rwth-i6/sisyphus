@@ -95,6 +95,12 @@ class SlurmSubmitLimitTest(unittest.TestCase):
             self.sbatch_results = [_sbatch_error(msg)]
             self.assertEqual(self._submit([1]), ("slurm", [([1], None)]))
 
+    def test_submitted_with_limit_reason_in_message_not_deferred(self):
+        result = _sbatch_ok(123)
+        result.stderr = b"sbatch: QOSMaxSubmitJobPerUserLimit is 100, you have 99 jobs\n"
+        self.sbatch_results = [result]
+        self.assertEqual(self._submit([1]), ("slurm", [([1], "123")]))
+
     def test_partial_submission_keeps_job_id(self):
         self.sbatch_results = [_sbatch_ok(123), _sbatch_error("QOSMaxSubmitJobPerUserLimit")]
         with self.assertRaises(DeferSubmission) as ctx:

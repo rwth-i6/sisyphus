@@ -297,7 +297,8 @@ class SimpleLinuxUtilityForResourceManagementEngine(EngineBase):
         reason = next(
             (reason for reason in _SUBMIT_LIMIT_REASONS for line in err + out if reason.encode() in line), None
         )
-        if reason is not None:
+        # sbatch also prints site messages (job_submit plugin) on success, so check the return code too
+        if retval != 0 and reason is not None:
             # Submit job count limit reached -- not a job failure. Back off and retry later via
             # DeferSubmission (EngineBase.submit skips the submit log, so no MAX_SUBMIT_RETRIES count).
             self._submit_blocked_until = time.monotonic() + self._submit_limit_retry_wait
