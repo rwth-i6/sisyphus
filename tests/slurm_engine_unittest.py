@@ -62,25 +62,21 @@ class SlurmSubmitLimitTest(unittest.TestCase):
         rqmt = {"cpu": 1, "mem": 1, "time": 1}
         return self.engine.submit_call(["sis", "worker"], "log", rqmt, "Job.abc.run", "run", task_ids)
 
-    def test_qos_limit_deferred_with_cooldown(self):
+    def test_qos_limit_defers_only_this_submission(self):
         self.sbatch_results = [_sbatch_error("QOSMaxSubmitJobPerUserLimit")]
         with self.assertRaises(DeferSubmission) as ctx:
             self._submit([1, 2, 3])
         self.assertIn("QOSMaxSubmitJobPerUserLimit", str(ctx.exception))
+        self.assertEqual(ctx.exception.retry_at, 1060.0)
         self.assertIsNone(ctx.exception.partial_result)
-        self.now = 1059.0
-        with self.assertRaises(DeferSubmission) as ctx:
-            self._submit([1, 2, 3])
-        self.assertIn("QOSMaxSubmitJobPerUserLimit", str(ctx.exception))
-        self.assertEqual(self.sbatch_calls, 1)
-        self.now = 1060.0
+        # e.g. another job in another QOS, right after the rejection
+        self.now = 1001.0
         self.sbatch_results = [_sbatch_ok(123)]
-        self.assertEqual(self._submit([1, 2, 3]), ("slurm", [([1, 2, 3], "123")]))
+        self.assertEqual(self._submit([1]), ("slurm", [([1], "123")]))
         self.assertEqual(self.sbatch_calls, 2)
 
     def test_all_submit_limit_reasons_deferred(self):
         for reason in slurm_engine._SUBMIT_LIMIT_REASONS:
-            self.engine = slurm_engine.SimpleLinuxUtilityForResourceManagementEngine(default_rqmt={})
             self.sbatch_results = [_sbatch_error(reason)]
             with self.assertRaises(DeferSubmission) as ctx:
                 self._submit([1])

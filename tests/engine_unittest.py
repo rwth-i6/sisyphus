@@ -73,36 +73,46 @@ class DeferringEngine(RecordingEngine):
 
     def submit_call(self, call, logpath, rqmt, name, task_name, task_ids):
         super().submit_call(call, logpath, rqmt, name, task_name, task_ids)
-        raise DeferSubmission("submit limit", partial_result=self.partial_result)
+        raise DeferSubmission("submit limit", retry_at=123.0, partial_result=self.partial_result)
 
 
 class EngineSubmitDeferredTest(unittest.TestCase):
-    def _submit_history(self, engine):
+    def _submit(self, engine):
         with tempfile.TemporaryDirectory() as tmp_dir, execute_in_dir(tmp_dir), mock.patch.object(
             gs, "BASE_DIR", tmp_dir
         ):
             job = ArraySubmitTestJob(test_name=self.id())
             job._sis_setup_directory()
             (task,) = job._sis_tasks()
-            engine.submit(task)
+            retry_at = None
+            try:
+                engine.submit(task)
+            except DeferSubmission as exc:
+                self.assertIsNone(exc.partial_result)
+                retry_at = exc.retry_at
             submit_log = task.path(gs.ENGINE_SUBMIT)
             if not os.path.exists(submit_log):
-                return []
+                return retry_at, []
             with open(submit_log) as f:
-                return [literal_eval(line) for line in f]
+                return retry_at, [literal_eval(line) for line in f]
 
     def test_deferred_no_history(self):
-        self.assertEqual(self._submit_history(DeferringEngine(partial_result=None)), [])
+        retry_at, history = self._submit(DeferringEngine(partial_result=None))
+        self.assertEqual(retry_at, 123.0)
+        self.assertEqual(history, [])
 
     def test_partially_deferred_history_of_submitted(self):
-        history = self._submit_history(DeferringEngine(partial_result=("deferring", [([1, 2], "42")])))
+        retry_at, history = self._submit(DeferringEngine(partial_result=("deferring", [([1, 2], "42")])))
+        self.assertEqual(retry_at, 123.0)
         ((task_ids, submit_info),) = history
         self.assertEqual(task_ids, [1, 2])
         self.assertEqual(submit_info["engine_info"], [([1, 2], "42")])
         self.assertEqual(submit_info["engine_name"], "deferring")
 
     def test_not_deferred(self):
-        ((task_ids, _),) = self._submit_history(RecordingEngine())
+        retry_at, history = self._submit(RecordingEngine())
+        self.assertIsNone(retry_at)
+        ((task_ids, _),) = history
         self.assertEqual(task_ids, [1, 2, 3])
 
 
