@@ -238,7 +238,7 @@ SHOW_JOB_TARGETS = True
 # Controls whether to include 'creator' in serialized state of an abstract path
 INCLUDE_CREATOR_STATE = False
 
-#: How many seconds should be waited before assuming a job is finished after the finished file is written
+#: How many seconds the usage and log file of a running job may lag behind
 #: to allow network file system to sync up
 WAIT_PERIOD_JOB_FS_SYNC = 30
 #: How often should the manager check for finished jobs
@@ -251,7 +251,7 @@ WAIT_PERIOD_SSH_TIMEOUT = 15
 WAIT_PERIOD_QSTAT_PARSING = 15
 #: How many seconds should be waited before retrying to bind to the desired port
 WAIT_PERIOD_HTTP_RETRY_BIND = 10
-#: How many seconds should be waited before cleaning up a finished job
+#: Additional seconds the usage and log file of a running job may lag behind, e.g. while it cleans up
 WAIT_PERIOD_JOB_CLEANUP = 10
 #: How many seconds should all inputs be available before starting a job to avoid file system synchronization problems
 WAIT_PERIOD_MTIME_OF_INPUTS = 60
@@ -379,9 +379,6 @@ JOB_ADD_STACKTRACE_MAX_COUNT = 5
 # so a job dir alone does not say which setups still need it.
 # Written when a job directory is set up, for that job and for the creators of its inputs.
 JOB_INFO_USED_BY_BASE_DIR = False
-
-# Is enabled if tk.run is called
-SKIP_IS_FINISHED_TIMEOUT = False
 
 # Caching
 #: If enabled the results of finished jobs are cached in an extra file to reduce the file system access

@@ -235,14 +235,13 @@ class Task:
             path_type = "%s.%s" % (path_type, self.name())
         return self._job._sis_path(path_type, task_id)
 
-    def check_state(self, state, task_id=None, update=None, combine=all, minimal_time_since_change=0):
+    def check_state(self, state, task_id=None, update=None, combine=all):
         """
         :param state: name of state
         :param int|list[int]|None task_id:
         :param bool|None update: if not None change state to this value
         :param combine: how states are combines, e.g. only finished if all jobs are finished => all,
                         error state is true if only one or more is has the error flag => any
-        :param minimal_time_since_change: only true if state change is at least that old
         :return: if this state is currently set or not
         :rtype: bool
         """
@@ -255,17 +254,11 @@ class Task:
             task_id,
             update=update,
             combine=combine,
-            minimal_file_age=minimal_time_since_change,
         )
         return current_state
 
     def finished(self, task_id=None, update=None) -> bool:
-        minimal_time_since_change = 0
-        if not gs.SKIP_IS_FINISHED_TIMEOUT:
-            minimal_time_since_change = gs.WAIT_PERIOD_JOB_FS_SYNC + gs.WAIT_PERIOD_JOB_CLEANUP
-        if self.check_state(
-            gs.STATE_FINISHED, task_id, update=update, combine=all, minimal_time_since_change=minimal_time_since_change
-        ):
+        if self.check_state(gs.STATE_FINISHED, task_id, update=update, combine=all):
             return True
         else:
             return False
