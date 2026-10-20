@@ -442,13 +442,12 @@ class Job(metaclass=JobSingleton):
         return path
 
     # State logging
-    def _sis_file_logging(self, log_name, task_id=None, update=None, combine=all, minimal_file_age=0):
+    def _sis_file_logging(self, log_name, task_id=None, update=None, combine=all):
         """
         :param str log_name:
         :param int|list[int]|None task_id: task_id for array job, if None assume whole job
         :param bool update: new value
         :param combine: function to combine all array jobs to one bool, e.g. all/any
-        :param int|float minimal_file_age: in seconds
         :rtype: bool
         :return: logging via file system, True if file exist false if not
         """
@@ -462,10 +461,7 @@ class Job(metaclass=JobSingleton):
         current_state = os.path.isfile(logfile)
 
         if update is None:
-            if current_state:
-                return minimal_file_age <= 0 or minimal_file_age < time.time() - os.path.getmtime(logfile)
-            else:
-                return False
+            return current_state
         else:
             # create file
             if update and not current_state:

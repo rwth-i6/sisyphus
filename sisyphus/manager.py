@@ -297,7 +297,7 @@ class Manager(threading.Thread):
 
     @staticmethod
     def print_job_state(state, job, info_string, verbose=False):
-        if state == gs.STATE_RUNNING:
+        if state in [gs.STATE_QUEUE, gs.STATE_RUNNING]:
             if hasattr(job, "info"):
                 job_manager_info_string = job.info()
                 if job_manager_info_string is not None:

@@ -915,8 +915,6 @@ def setup_script_mode():
     add_coloring_to_logging()
 
     for param in [
-        "WAIT_PERIOD_JOB_FS_SYNC",  # Work around to avoid running into time out...
-        "WAIT_PERIOD_JOB_CLEANUP",  # same here
         "WAIT_PERIOD_MTIME_OF_INPUTS",  # Speed up by not waiting for slow filesystem
         "ENGINE_NOT_SETUP_WARNING",  # Disable unwanted warning
     ]:
@@ -973,7 +971,6 @@ def run(obj: Any, quiet: bool = False):
     import sys
 
     gs.SIS_COMMAND = [sys.executable, "-m", "sisyphus"]
-    gs.SKIP_IS_FINISHED_TIMEOUT = True
 
     def get_jobs():
         """Helper function to get all relevant jobs"""
@@ -1005,8 +1002,6 @@ def run(obj: Any, quiet: bool = False):
         for job in todo_list:
             run_helper(job)
         jobs = get_jobs()
-
-    gs.SKIP_IS_FINISHED_TIMEOUT = False
 
 
 def submit_next_task(job: Job, setup_directory=True):
