@@ -175,6 +175,11 @@ class TaskStateTest(unittest.TestCase):
         paths = {task.get_process_logging_path(task_id), task.path(gs.JOB_LOG, task_id)}
         return sum(1 for call in stat_mock.call_args_list if call.args[0] in paths)
 
+    @staticmethod
+    def _set_clock(clock, wall, monotonic=None):
+        clock.time.return_value = wall
+        clock.monotonic.return_value = wall if monotonic is None else monotonic
+
     def _scan_warnings(self, scan):
         with self.assertLogs(level="WARNING") as cm:
             scan()
@@ -187,19 +192,36 @@ class TaskStateTest(unittest.TestCase):
         t0 = time.time()
         self._write_heartbeat(task, 1, mtime=t0)
         with mock.patch.object(sisyphus.task, "time") as clock, mock.patch("os.stat", wraps=os.stat) as stat_mock:
-            clock.time.return_value = t0
+            self._set_clock(clock, t0)
             self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
             self.assertEqual(self._num_heartbeat_stats(task, 1, stat_mock), 1)
 
             stat_mock.reset_mock()
-            clock.time.return_value = t0 + 10
+            self._set_clock(clock, t0 + 10)
             self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
             self.assertEqual(self._num_heartbeat_stats(task, 1, stat_mock), 0)
 
             stat_mock.reset_mock()
-            clock.time.return_value = t0 + self._heartbeat_max_age() + 1
+            self._set_clock(clock, t0 + self._heartbeat_max_age() + 1)
             self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
             self.assertEqual(self._num_heartbeat_stats(task, 1, stat_mock), 2)
+
+    def test_running_heartbeat_check_after_wall_clock_jump(self):
+        task = self._setup_task(num_tasks=2)
+        engine = FixedStateEngine({1: gs.STATE_RUNNING, 2: gs.STATE_RUNNING})
+        t0 = time.time()
+        max_age = self._heartbeat_max_age()
+        self._write_heartbeat(task, 1, mtime=t0)
+        self._write_heartbeat(task, 2, mtime=t0 + 86400)
+        with mock.patch.object(sisyphus.task, "time") as clock, mock.patch("os.stat", wraps=os.stat) as stat_mock:
+            self._set_clock(clock, t0)
+            for task_id in (1, 2):
+                self.assertEqual(task.state(engine, task_id, force=True), gs.STATE_RUNNING)
+            stat_mock.reset_mock()
+            self._set_clock(clock, t0 - 86400, monotonic=t0 + max_age + 1)
+            for task_id in (1, 2):
+                self.assertEqual(task.state(engine, task_id, force=True), gs.STATE_RUNNING)
+                self.assertGreater(self._num_heartbeat_stats(task, task_id, stat_mock), 0)
 
     def test_running_heartbeat_check_not_blocking_scan(self):
         task = self._setup_task(num_tasks=1)
@@ -214,9 +236,9 @@ class TaskStateTest(unittest.TestCase):
             return real_stat(path, *args, **kwargs)
 
         with mock.patch.object(sisyphus.task, "time") as clock:
-            clock.time.return_value = t0
+            self._set_clock(clock, t0)
             self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
-            clock.time.return_value = t0 + 10
+            self._set_clock(clock, t0 + 10)
             with mock.patch("os.stat", _blocked_stat):
                 self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
 
@@ -232,7 +254,7 @@ class TaskStateTest(unittest.TestCase):
             def _scan(*, recent_task_ids):
                 for task_id in recent_task_ids:
                     self._write_heartbeat(task, task_id, mtime=t)
-                clock.time.return_value = t
+                self._set_clock(clock, t)
                 return self._scan_warnings(lambda: self.assertEqual(task.state(engine, force=True), gs.STATE_RUNNING))
 
             warnings = _scan(recent_task_ids=[3])
@@ -294,9 +316,9 @@ class TaskStateTest(unittest.TestCase):
         t0 = time.time()
         self._write_heartbeat(task, 1, mtime=t0)
         with mock.patch.object(sisyphus.task, "time") as clock:
-            clock.time.return_value = t0
+            self._set_clock(clock, t0)
             self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
-            clock.time.return_value = t0 + self._heartbeat_max_age() + 1
+            self._set_clock(clock, t0 + self._heartbeat_max_age() + 1)
             self.assertEqual(task.state(engine, 1, force=True), gs.STATE_INTERRUPTED_NOT_RESUMABLE)
 
     def test_running_marker_after_heartbeat_check(self):

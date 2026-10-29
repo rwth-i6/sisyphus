@@ -431,11 +431,14 @@ class Task:
 
     def _warn_if_heartbeat_stale(self, task_id):
         """Warn if the engine reports the task as running but it doesn't update its logging files anymore"""
-        now = time.time()
+        now = time.monotonic()
         if now < self._heartbeat_next_check.get(task_id, now):
             return
         usage_mtime, running_until = self._heartbeat(task_id)
-        self._heartbeat_next_check[task_id] = running_until if running_until is not None else now + _heartbeat_max_age()
+        max_age = _heartbeat_max_age()
+        # running_until is wall clock (file mtime), capped against clock jumps and mtime skew
+        recheck_in = max_age if running_until is None else min(running_until - time.time(), max_age)
+        self._heartbeat_next_check[task_id] = now + recheck_in
         if running_until is not None:
             self._heartbeat_stale_warned.discard(task_id)
         elif usage_mtime is not None and task_id not in self._heartbeat_stale_warned:
