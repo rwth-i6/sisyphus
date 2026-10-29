@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 import tempfile
@@ -6,6 +7,7 @@ import unittest
 from unittest import mock
 
 import sisyphus.global_settings as gs
+import sisyphus.task
 from sisyphus import Job, Task
 from sisyphus.localengine import LocalEngine
 from sisyphus.tools import execute_in_dir
@@ -156,6 +158,179 @@ class TaskStateTest(unittest.TestCase):
         self._write_finished_marker(task, 1, age=1)
         engine = FixedStateEngine({1: gs.STATE_UNKNOWN, 2: gs.STATE_RUNNING})
         self.assertEqual(task.state(engine), gs.STATE_RUNNING)
+
+    @staticmethod
+    def _write_heartbeat(task, task_id, mtime):
+        for path in (task.path(gs.JOB_LOG, task_id), task.get_process_logging_path(task_id)):
+            with open(path, "w"):
+                pass
+            os.utime(path, (mtime, mtime))
+
+    @staticmethod
+    def _heartbeat_max_age():
+        return gs.WAIT_PERIOD_JOB_FS_SYNC + gs.PLOGGING_UPDATE_FILE_PERIOD + gs.WAIT_PERIOD_JOB_CLEANUP
+
+    @staticmethod
+    def _num_heartbeat_stats(task, task_id, stat_mock):
+        paths = {task.get_process_logging_path(task_id), task.path(gs.JOB_LOG, task_id)}
+        return sum(1 for call in stat_mock.call_args_list if call.args[0] in paths)
+
+    @staticmethod
+    def _set_clock(clock, wall, monotonic=None):
+        clock.time.return_value = wall
+        clock.monotonic.return_value = wall if monotonic is None else monotonic
+
+    def _scan_warnings(self, scan):
+        with self.assertLogs(level="WARNING") as cm:
+            scan()
+            logging.warning("end of scan")
+        return [r.getMessage() for r in cm.records][:-1]
+
+    def test_running_heartbeat_check_throttled(self):
+        task = self._setup_task(num_tasks=1)
+        engine = FixedStateEngine({1: gs.STATE_RUNNING})
+        t0 = time.time()
+        self._write_heartbeat(task, 1, mtime=t0)
+        with mock.patch.object(sisyphus.task, "time") as clock, mock.patch("os.stat", wraps=os.stat) as stat_mock:
+            self._set_clock(clock, t0)
+            self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
+            self.assertEqual(self._num_heartbeat_stats(task, 1, stat_mock), 1)
+
+            stat_mock.reset_mock()
+            self._set_clock(clock, t0 + 10)
+            self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
+            self.assertEqual(self._num_heartbeat_stats(task, 1, stat_mock), 0)
+
+            stat_mock.reset_mock()
+            self._set_clock(clock, t0 + self._heartbeat_max_age() + 1)
+            self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
+            self.assertEqual(self._num_heartbeat_stats(task, 1, stat_mock), 2)
+
+    def test_running_heartbeat_check_after_wall_clock_jump(self):
+        task = self._setup_task(num_tasks=2)
+        engine = FixedStateEngine({1: gs.STATE_RUNNING, 2: gs.STATE_RUNNING})
+        t0 = time.time()
+        max_age = self._heartbeat_max_age()
+        self._write_heartbeat(task, 1, mtime=t0)
+        self._write_heartbeat(task, 2, mtime=t0 + 86400)
+        with mock.patch.object(sisyphus.task, "time") as clock, mock.patch("os.stat", wraps=os.stat) as stat_mock:
+            self._set_clock(clock, t0)
+            for task_id in (1, 2):
+                self.assertEqual(task.state(engine, task_id, force=True), gs.STATE_RUNNING)
+            stat_mock.reset_mock()
+            self._set_clock(clock, t0 - 86400, monotonic=t0 + max_age + 1)
+            for task_id in (1, 2):
+                self.assertEqual(task.state(engine, task_id, force=True), gs.STATE_RUNNING)
+                self.assertGreater(self._num_heartbeat_stats(task, task_id, stat_mock), 0)
+
+    def test_running_heartbeat_check_not_blocking_scan(self):
+        task = self._setup_task(num_tasks=1)
+        engine = FixedStateEngine({1: gs.STATE_RUNNING})
+        t0 = time.time()
+        self._write_heartbeat(task, 1, mtime=t0)
+        heartbeat_paths = {task.get_process_logging_path(1), task.path(gs.JOB_LOG, 1)}
+        real_stat = os.stat
+
+        def _blocked_stat(path, *args, **kwargs):
+            assert path not in heartbeat_paths, "heartbeat stat would block the scan"
+            return real_stat(path, *args, **kwargs)
+
+        with mock.patch.object(sisyphus.task, "time") as clock:
+            self._set_clock(clock, t0)
+            self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
+            self._set_clock(clock, t0 + 10)
+            with mock.patch("os.stat", _blocked_stat):
+                self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
+
+    def test_running_stale_heartbeat_warns_once_per_task(self):
+        task = self._setup_task(num_tasks=3)
+        engine = FixedStateEngine({1: gs.STATE_RUNNING, 2: gs.STATE_RUNNING, 3: gs.STATE_RUNNING})
+        t = time.time()
+        for task_id in (1, 2):
+            self._write_heartbeat(task, task_id, mtime=t - 1000)
+        max_age = self._heartbeat_max_age()
+        with mock.patch.object(sisyphus.task, "time") as clock:
+
+            def _scan(*, recent_task_ids):
+                for task_id in recent_task_ids:
+                    self._write_heartbeat(task, task_id, mtime=t)
+                self._set_clock(clock, t)
+                return self._scan_warnings(lambda: self.assertEqual(task.state(engine, force=True), gs.STATE_RUNNING))
+
+            warnings = _scan(recent_task_ids=[3])
+            self.assertEqual(len(warnings), 2)
+            self.assertIn("Task: run 1,", warnings[0])
+            self.assertIn("Task: run 2,", warnings[1])
+
+            t += max_age + 1
+            self.assertEqual(_scan(recent_task_ids=[3]), [])
+
+            t += max_age + 1
+            self.assertEqual(_scan(recent_task_ids=[1, 3]), [])
+
+            t += max_age + 1
+            warnings = _scan(recent_task_ids=[3])
+            self.assertEqual(len(warnings), 1)
+            self.assertIn("Task: run 1,", warnings[0])
+
+    def test_running_stale_heartbeat_warns_again_after_resubmit(self):
+        task = self._setup_task(num_tasks=1)
+        engine = FixedStateEngine({1: gs.STATE_RUNNING})
+        self._write_stale_logs(task, 1)
+        self.assertEqual(len(self._scan_warnings(lambda: task.state(engine, 1, force=True))), 1)
+        task.reset_cache()
+        self.assertEqual(len(self._scan_warnings(lambda: task.state(engine, 1, force=True))), 1)
+
+    def test_running_without_heartbeat_no_warning(self):
+        task = self._setup_task(num_tasks=1)
+        engine = FixedStateEngine({1: gs.STATE_RUNNING})
+        self.assertIsNone(task.running(1))
+        self.assertEqual(self._scan_warnings(lambda: task.state(engine, 1, force=True)), [])
+
+    def test_running_heartbeat_stat_error_is_absent(self):
+        task = self._setup_task(num_tasks=1)
+        self._write_stale_logs(task, 1)
+        usage_file = task.get_process_logging_path(1)
+        real_stat = os.stat
+
+        def _failing_stat(path, *args, **kwargs):
+            if path == usage_file:
+                raise OSError(116, "Stale file handle")
+            return real_stat(path, *args, **kwargs)
+
+        with mock.patch("os.stat", _failing_stat):
+            self.assertIsNone(task.running(1))
+            engine = FixedStateEngine({1: gs.STATE_RUNNING})
+            self.assertEqual(self._scan_warnings(lambda: task.state(engine, 1, force=True)), [])
+            engine = FixedStateEngine({1: gs.STATE_UNKNOWN})
+            self.assertEqual(task.state(engine, 1, force=True), gs.STATE_INTERRUPTED_NOT_RESUMABLE)
+
+    def test_running_heartbeat_directory_is_absent(self):
+        task = self._setup_task(num_tasks=1)
+        os.mkdir(task.get_process_logging_path(1))
+        self.assertIsNone(task.running(1))
+
+    def test_unknown_checks_heartbeat_each_scan(self):
+        task = self._setup_task(num_tasks=1)
+        engine = FixedStateEngine({1: gs.STATE_UNKNOWN})
+        t0 = time.time()
+        self._write_heartbeat(task, 1, mtime=t0)
+        with mock.patch.object(sisyphus.task, "time") as clock:
+            self._set_clock(clock, t0)
+            self.assertEqual(task.state(engine, 1, force=True), gs.STATE_RUNNING)
+            self._set_clock(clock, t0 + self._heartbeat_max_age() + 1)
+            self.assertEqual(task.state(engine, 1, force=True), gs.STATE_INTERRUPTED_NOT_RESUMABLE)
+
+    def test_running_marker_after_heartbeat_check(self):
+        task = self._setup_task(num_tasks=2)
+        engine = FixedStateEngine({1: gs.STATE_RUNNING, 2: gs.STATE_RUNNING})
+        for task_id in (1, 2):
+            self._write_heartbeat(task, task_id, mtime=time.time())
+            self.assertEqual(task.state(engine, task_id, force=True), gs.STATE_RUNNING)
+        self._write_finished_marker(task, 1, age=0)
+        self._write(task.path(gs.STATE_ERROR, 2), age=0)
+        self.assertEqual(task.state(engine, 1, force=True), gs.STATE_FINISHED)
+        self.assertEqual(task.state(engine, 2, force=True), gs.STATE_ERROR)
 
 
 if __name__ == "__main__":

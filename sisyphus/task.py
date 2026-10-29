@@ -1,9 +1,10 @@
 import math
 import os
 import logging
+import stat
 import sys
 import time
-from typing import Optional, Union, Any, Sequence, Dict, List
+from typing import Optional, Union, Any, Sequence, Dict, List, Tuple
 import subprocess as sp
 from ast import literal_eval
 
@@ -87,10 +88,13 @@ class Task:
         if "_resume" in state:
             state["_resumable"] = state.pop("_resume") is not None
         self.__dict__.update(state)
+        self.reset_cache()
 
     def reset_cache(self):
         self._state_cache = {}
         self._state_cache_time = {}
+        self._heartbeat_next_check = {}
+        self._heartbeat_stale_warned = set()
 
     def set_job(self, job):
         """
@@ -421,27 +425,54 @@ class Task:
                     else:
                         return gs.STATE_RUNNABLE
                 else:
-                    if engine_state == gs.STATE_RUNNING and self.running(task_id) is False:
-                        # Warn if job is running but doesn't update logging file anymore
-                        logging.warning(
-                            "Job marked as running but logging file has not been updated: "
-                            "%s assume it is running" % str(self._job)
-                        )
+                    if engine_state == gs.STATE_RUNNING:
+                        self._warn_if_heartbeat_stale(task_id)
                     return engine_state
+
+    def _warn_if_heartbeat_stale(self, task_id):
+        """Warn if the engine reports the task as running but it doesn't update its logging files anymore"""
+        now = time.monotonic()
+        if now < self._heartbeat_next_check.get(task_id, now):
+            return
+        usage_mtime, running_until = self._heartbeat(task_id)
+        max_age = _heartbeat_max_age()
+        # running_until is wall clock (file mtime), capped against clock jumps and mtime skew
+        recheck_in = max_age if running_until is None else min(running_until - time.time(), max_age)
+        self._heartbeat_next_check[task_id] = now + recheck_in
+        if running_until is not None:
+            self._heartbeat_stale_warned.discard(task_id)
+        elif usage_mtime is not None and task_id not in self._heartbeat_stale_warned:
+            self._heartbeat_stale_warned.add(task_id)
+            logging.warning(
+                f"Job marked as running but logging file has not been updated: "
+                f"{self._job} Task: {self.name()} {task_id}, assume it is running"
+            )
 
     def running(self, task_id):
         """
         :return: True if usage file changed recently, None if usage file doesn't exist False otherwise
         """
-        usage_file = self._job._sis_path(gs.PLOGGING_FILE + "." + self.name(), task_id, abspath=True)
-        maximal_file_age = gs.WAIT_PERIOD_JOB_FS_SYNC + gs.PLOGGING_UPDATE_FILE_PERIOD + gs.WAIT_PERIOD_JOB_CLEANUP
-        if not os.path.isfile(usage_file):
+        usage_mtime, running_until = self._heartbeat(task_id)
+        if usage_mtime is None:
             return None
-        if maximal_file_age > time.time() - os.path.getmtime(usage_file):
-            return True
+        return running_until is not None
 
-        log_file = self._job._sis_path(gs.JOB_LOG + "." + self.name(), task_id)
-        return os.path.isfile(log_file) and maximal_file_age > time.time() - os.path.getmtime(log_file)
+    def _heartbeat(self, task_id) -> Tuple[Optional[float], Optional[float]]:
+        """
+        :return: mtime of the usage file (None if it doesn't exist),
+            and the time until which the task counts as running (None if it doesn't)
+        """
+        maximal_file_age = _heartbeat_max_age()
+        usage_mtime = _regular_file_mtime(self.get_process_logging_path(task_id))
+        if usage_mtime is None:
+            return None, None
+        if maximal_file_age > time.time() - usage_mtime:
+            return usage_mtime, usage_mtime + maximal_file_age
+
+        log_mtime = _regular_file_mtime(self._job._sis_path(gs.JOB_LOG + "." + self.name(), task_id))
+        if log_mtime is not None and maximal_file_age > time.time() - log_mtime:
+            return usage_mtime, log_mtime + maximal_file_age
+        return usage_mtime, None
 
     def _get_arg_idx_for_task_id(self, task_id):
         """
@@ -504,3 +535,16 @@ class Task:
             logging.warning(f"Task {self.name()} run without an associated Job. Using global worker_wrapper.")
             call = gs.worker_wrapper(None, self.name(), call)
         return call
+
+
+def _heartbeat_max_age() -> float:
+    return gs.WAIT_PERIOD_JOB_FS_SYNC + gs.PLOGGING_UPDATE_FILE_PERIOD + gs.WAIT_PERIOD_JOB_CLEANUP
+
+
+def _regular_file_mtime(path: str) -> Optional[float]:
+    # like os.path.isfile, but the same stat call also gives the mtime
+    try:
+        st = os.stat(path)
+    except (OSError, ValueError):
+        return None
+    return st.st_mtime if stat.S_ISREG(st.st_mode) else None
