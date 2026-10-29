@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 import tempfile
@@ -7,6 +8,7 @@ from unittest import mock
 
 import sisyphus.global_settings as gs
 from sisyphus import Job, Task
+from sisyphus.job_path import Path
 from sisyphus.localengine import LocalEngine
 from sisyphus.tools import execute_in_dir
 
@@ -68,6 +70,63 @@ class TaskErrorTest(unittest.TestCase):
 
     def test_exception_while_preempted_is_no_error(self):
         self.assertFalse(self._run_failing_task(failure="exception", preempted=True))
+
+
+class InputsTestJob(Job):
+    def __init__(self, test_name, inputs):
+        self.test_name = test_name
+        self.inputs = inputs
+
+    def run(self):
+        pass
+
+    def tasks(self):
+        yield Task("run")
+
+
+class TaskInputsTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp_dir = tempfile.TemporaryDirectory()
+        self._exec_in_dir = execute_in_dir(self._tmp_dir.name)
+        self._exec_in_dir.__enter__()
+        self._base_dir = gs.BASE_DIR
+        gs.BASE_DIR = self._tmp_dir.name
+
+    def tearDown(self):
+        gs.BASE_DIR = self._base_dir
+        self._exec_in_dir.__exit__(None, None, None)
+        self._tmp_dir.cleanup()
+
+    def _setup_task(self, input_names):
+        paths = [os.path.join(self._tmp_dir.name, name) for name in input_names]
+        for path in paths:
+            with open(path, "w"):
+                pass
+            os.utime(path, (time.time() - 1000,) * 2)
+        job = InputsTestJob(test_name=self.id(), inputs=[Path(path) for path in paths])
+        job._sis_setup_directory()
+        (task,) = job._sis_tasks()
+        return task, paths
+
+    def test_inputs_summary_at_info_list_at_debug(self):
+        task, paths = self._setup_task(["a.txt", "b.txt"])
+        with self.assertLogs(level="DEBUG") as cm:
+            task.run(1, logging_thread=mock.Mock())
+        info = [r.getMessage() for r in cm.records if r.levelno >= logging.INFO]
+        debug = [r.getMessage() for r in cm.records if r.levelno == logging.DEBUG]
+        (summary,) = [m for m in info if m.startswith("Inputs:")]
+        self.assertIn("2 paths, 0 variables", summary)
+        for path in paths:
+            self.assertNotIn(path, info)
+            self.assertIn(path, debug)
+
+    def test_missing_input_still_checked(self):
+        task, paths = self._setup_task(["a.txt", "missing.txt"])
+        os.remove(paths[1])
+        with mock.patch.object(gs, "WAIT_PERIOD_FOR_INPUTS_AVAILABLE", 0), self.assertLogs(level="ERROR") as cm:
+            with self.assertRaises(FileNotFoundError):
+                task.run(1, logging_thread=mock.Mock())
+        self.assertEqual([r.getMessage() for r in cm.records], ["Input path does not exist: %s" % paths[1]])
 
 
 class ArrayTestJob(Job):

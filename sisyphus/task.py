@@ -146,12 +146,17 @@ class Task:
         job = self._job
 
         logging.info("Start Job: %s Task: %s" % (job, self.name()))
-        logging.info("Inputs:")
-        for i in sorted(self._job._sis_inputs):
+        inputs = sorted(self._job._sis_inputs)
+        num_variables = sum(1 for i in inputs if i.path_type != "Path")
+        logging.info(
+            f"Inputs: {len(inputs) - num_variables} paths, {num_variables} variables "
+            f"(listed in {self._job._sis_path(gs.JOB_INFO)}, and in the debug log)"
+        )
+        for i in inputs:
             if i.path_type == "Path":
-                logging.info(i.get_path())
+                logging.debug(i.get_path())
             else:
-                logging.info("%s (Variable: %s, %s)" % (i.get_path(), str(i), type(i.get())))
+                logging.debug("%s (Variable: %s, %s)" % (i.get_path(), str(i), type(i.get())))
 
             if gs.WAIT_PERIOD_FOR_INPUTS_AVAILABLE:
                 for _ in range(math.ceil(gs.WAIT_PERIOD_FOR_INPUTS_AVAILABLE)):
